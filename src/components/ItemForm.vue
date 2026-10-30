@@ -37,10 +37,6 @@ function submit() {
       <label>Owner
         <select v-model="f.owner"><option value="">Unassigned</option><option v-for="n in app.party" :key="n" :value="n">{{ n }}</option></select>
       </label>
-      <div class="grid g2">
-        <label>Slot<select v-model="f.slot"><option value="">No slot</option><option v-for="s in SLOT_ORDER" :key="s">{{ s }}</option></select></label>
-        <label class="check-row"><span>Equipped</span><input v-model="f.equipped" type="checkbox"></label>
-      </div>
 
       <div v-if="showSpell" class="grid">
         <label>Spell<input v-model="f.spellName" placeholder="Spell name" autocomplete="off"></label>
