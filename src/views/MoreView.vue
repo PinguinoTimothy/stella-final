@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ref } from 'vue'
 import { useAppStore } from '../stores/app'
 import { useCloudStore } from '../stores/cloud'
 
@@ -13,31 +12,6 @@ const emit = defineEmits<{
 
 const app = useAppStore()
 const cloud = useCloudStore()
-
-const email = ref('')
-const password = ref('')
-const error = ref('')
-const busy = ref(false)
-
-async function signIn() {
-  if (!email.value || !password.value) {
-    error.value = 'Enter your email and password.'
-    return
-  }
-
-  busy.value = true
-  error.value = ''
-
-  try {
-    await cloud.signIn(email.value.trim(), password.value)
-    password.value = ''
-    app.notify('Signed in')
-  } catch {
-    error.value = 'Sign-in failed. Check your email and password.'
-  } finally {
-    busy.value = false
-  }
-}
 
 function openTab(tab: 'party' | 'setup' | 'magicCatalog' | 'skills' | 'umr' | 'grapple' | 'conditions') {
     if (app.viewer && tab === 'setup') return
@@ -84,36 +58,6 @@ function openTab(tab: 'party' | 'setup' | 'magicCatalog' | 'skills' | 'umr' | 'g
         </button>
       </template>
 
-      <form v-else class="grid" @submit.prevent="signIn">
-        <p class="mute" style="margin:0">
-          Sign in with your admin account to save to the cloud.
-          Until then, changes stay on this device only.
-        </p>
-
-        <input
-          v-model="email"
-          type="email"
-          autocomplete="username"
-          placeholder="Admin email"
-          aria-label="Admin email"
-        >
-
-        <input
-          v-model="password"
-          type="password"
-          autocomplete="current-password"
-          placeholder="Password"
-          aria-label="Password"
-        >
-
-        <p v-if="error" class="mute" role="alert">
-          {{ error }}
-        </p>
-
-        <button class="cast" type="submit" :disabled="busy">
-          Sign in
-        </button>
-      </form>
     </div>
   </details>
 

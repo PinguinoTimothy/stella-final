@@ -19,3 +19,11 @@
 .fx-end { width: 44px; padding: 0; }
 .fx-target { justify-content: flex-start; gap: 8px; }
 .fx-target.foe { border: 1px solid #e53935; border-radius: 8px; padding: 8px; color: #e53935; }
+
+/* Admin sign-in */
+.login { min-height: 100dvh; display: grid; place-items: center; padding: 24px 14px; }
+.login-card { width: 100%; max-width: 380px; display: grid; gap: 12px; }
+.login-card h1 { margin: 0; }
+.login-card p { margin: 0; }
+.login-card input { width: 100%; }
+.login-err { color: var(--warn); }

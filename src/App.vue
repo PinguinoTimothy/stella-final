@@ -1,104 +1,81 @@
 <script setup>
-import { computed, onMounted, onUnmounted } from "vue";
-import BottomNav from "./components/BottomNav.vue";
-import ConfirmDialog from "./components/ConfirmDialog.vue";
-import ToastHost from "./components/ToastHost.vue";
-import ItemsView from "./views/ItemsView.vue";
-import MoreView from "./views/MoreView.vue";
-import SetupView from "./views/SetupView.vue";
-import PlaceholderView from "./views/PlaceholderView.vue";
-import { useAppStore } from "./stores/app";
-import CastView from "./views/CastView.vue";
-import PartyView from "./views/PartyView.vue";
-import MagicCatalogView from "./views/MagicCatalogView.vue";
-import PlayerView from "./views/PlayerView.vue";
-import SkillsView from './views/SkillsView.vue'
-import UmrView from './views/UmrView.vue'
-import FxView from './views/FxView.vue'
-import FxPlayerView from './views/FxPlayerView.vue'
-import SpellsView from "./views/SpellsView.vue";
-
-import GrappleView from './views/GrappleView.vue'
+import { computed } from 'vue'
+import { useAppStore } from './stores/app'
+import { useCloudStore } from './stores/cloud'
+import { useViewerPolling } from './composables/useViewerPolling'
+import BottomNav from './components/BottomNav.vue'
+import ConfirmDialog from './components/ConfirmDialog.vue'
+import ToastHost from './components/ToastHost.vue'
+import LoginView from './views/LoginView.vue'
+import PlaceholderView from './views/PlaceholderView.vue'
+import CastView from './views/CastView.vue'
 import ConditionsView from './views/ConditionsView.vue'
+import FxPlayerView from './views/FxPlayerView.vue'
+import FxView from './views/FxView.vue'
+import GrappleView from './views/GrappleView.vue'
+import ItemsView from './views/ItemsView.vue'
+import MagicCatalogView from './views/MagicCatalogView.vue'
+import MoreView from './views/MoreView.vue'
+import PartyView from './views/PartyView.vue'
+import PlayerView from './views/PlayerView.vue'
+import SetupView from './views/SetupView.vue'
+import SkillsView from './views/SkillsView.vue'
+import SpellsView from './views/SpellsView.vue'
+import UmrView from './views/UmrView.vue'
 
+const app = useAppStore()
+const cloud = useCloudStore()
+useViewerPolling()
 
-const app = useAppStore();
+// The admin app needs a session. Players (?view=1) skip the gate; what they can read is limited by the database policies.
+const locked = computed(() => !app.viewer && !cloud.session)
 
-let viewerTimer;
-
-onMounted(() => {
-  if (!app.viewer) return;
-
-  app.loadViewer();
-  viewerTimer = setInterval(() => {
-    if (!document.hidden) app.loadViewer();
-  }, 10000);
-
-  document.addEventListener("visibilitychange", refreshViewer);
-});
-
-onUnmounted(() => {
-  clearInterval(viewerTimer);
-  document.removeEventListener("visibilitychange", refreshViewer);
-});
-
-function refreshViewer() {
-  if (!document.hidden && app.viewer) app.loadViewer();
-}
-
-const views = {
+// One table per mode: tab → view, or [view, props]. A tab that is not listed shows the placeholder.
+const editorViews = {
+  cast: CastView,
+  fx: FxView,
+  db: SpellsView,
   items: ItemsView,
   more: MoreView,
   setup: SetupView,
-  cast: CastView,
   party: PartyView,
   magicCatalog: MagicCatalogView,
   skills: SkillsView,
   umr: UmrView,
-  fx: FxView,
-  db: SpellsView,
-    grapple: GrappleView,
+  grapple: GrappleView,
   conditions: ConditionsView,
-};
+}
 
-const titles = {
-  cast: "Cast",
-  fx: "Active effects",
-  db: "Spells",
-};
+const playerViews = {
+  items: PlayerView,
+  fx: FxPlayerView,
+  party: [PartyView, { readonly: true }],
+  more: MoreView,
+  magicCatalog: MagicCatalogView,
+  skills: SkillsView,
+  umr: UmrView,
+  grapple: GrappleView,
+  conditions: ConditionsView,
+}
 
-const view = computed(() => views[app.ui.tab]);
+const titles = { cast: 'Cast', fx: 'Active effects', db: 'Spells' }
+
+const entry = computed(() => (app.viewer ? playerViews : editorViews)[app.ui.tab])
+const view = computed(() => (Array.isArray(entry.value) ? entry.value[0] : entry.value))
+const viewProps = computed(() => (Array.isArray(entry.value) ? entry.value[1] : {}))
+// In player mode an unknown tab falls back to its own name, as before.
+const title = computed(() => titles[app.ui.tab] || (app.viewer ? app.ui.tab : ''))
 </script>
 
 <template>
-  <BottomNav />
-
-  <PlayerView v-if="app.viewer && app.ui.tab === 'items'" />
-
-  <PartyView
-    v-else-if="app.viewer && app.ui.tab === 'party'"
-    :readonly="true"
-  />
-
-  <FxPlayerView v-else-if="app.viewer && app.ui.tab === 'fx'" />
-
-  <MoreView v-else-if="app.viewer && app.ui.tab === 'more'" />
-
-  <MagicCatalogView v-else-if="app.viewer && app.ui.tab === 'magicCatalog'" />
-  <SkillsView v-else-if="app.viewer && app.ui.tab === 'skills'" />
-<UmrView v-else-if="app.viewer && app.ui.tab === 'umr'" />
-    <GrappleView v-else-if="app.viewer && app.ui.tab === 'grapple'" />
-  <ConditionsView v-else-if="app.viewer && app.ui.tab === 'conditions'" />
-
-  <PlaceholderView
-    v-else-if="app.viewer"
-    :title="titles[app.ui.tab] || app.ui.tab"
-  />
-
+  <LoginView v-if="locked" />
   <template v-else>
-    <component :is="view" v-if="view" />
-    <PlaceholderView v-else :title="titles[app.ui.tab]" />
-    <ToastHost />
-    <ConfirmDialog />
+    <BottomNav />
+    <component :is="view" v-if="view" v-bind="viewProps" />
+    <PlaceholderView v-else :title="title" />
+    <template v-if="!app.viewer">
+      <ToastHost />
+      <ConfirmDialog />
+    </template>
   </template>
 </template>
