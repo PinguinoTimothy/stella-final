@@ -3,6 +3,7 @@ import { computed, ref, watch, nextTick } from "vue";
 import { useAppStore } from "../stores/app";
 import { useSpells } from "../stores/spells";
 import { CLASS_TABLES } from "../lib/classes";
+import { advance } from "../lib/effects";
 import FxStrip from "../components/Active/FxStrip.vue";
 import { useEffects } from "../stores/effects";
 
@@ -11,11 +12,26 @@ const spellStore = useSpells();
 const catalogSearch = ref("");
 const castCatalog = ref([]);
 const castCatalogLoading = ref(false);
+const domainCandidates = ref({})
+const domainCatalogLoading = ref({})
+const domainCandidatesByLevel = ref({});
+const domainLoadingByLevel = ref({});
 const knownCatalogList = ref(null);
 const showKnownCatalog = ref(true);
 const effects = useEffects();
 
 const eyeBlinking = ref(false);
+
+const classIndex = ref(0);
+const selectedLevel = ref(0);
+const prepareMode = ref(false);
+const openSpell = ref(null);
+const openDomainSpell = ref(null);
+
+const castingSlot = ref("");
+let castingTimer;
+let normalCatalogRequest = 0;
+let domainCatalogRequest = 0;
 
 const classTheme = computed(() => {
   // Primera clase: morado-rosa. Segunda: azul.
@@ -44,14 +60,6 @@ async function blinkEye() {
   }, 450);
 }
 
-const classIndex = ref(0);
-const selectedLevel = ref(0);
-const prepareMode = ref(false);
-const openSpell = ref(null);
-
-const castingSlot = ref("");
-let castingTimer;
-
 function animateSlot(level, domain, index) {
   castingSlot.value = `${classIndex.value}:${level}:${domain ? "d" : "r"}:${index}`;
 
@@ -61,7 +69,7 @@ function animateSlot(level, domain, index) {
   }, 400);
 }
 
-const characterClass = computed(() => app.S.cl[classIndex.value] || null);
+const characterClass = computed(() => app.S.cl?.[classIndex.value] || null);
 
 function ensureClass(c) {
   if (!c) return;
@@ -75,8 +83,16 @@ function ensureClass(c) {
 
   for (let level = 0; level < 10; level++) {
     if (c.base[level] === undefined) c.base[level] = null;
-    if (!Number.isFinite(Number(c.used[level]))) c.used[level] = 0;
-    if (!Number.isFinite(Number(c.dused[level]))) c.dused[level] = 0;
+
+    const used = Number(c.used[level]);
+    c.used[level] = Number.isFinite(used) && used >= 0 ? used : 0;
+
+    const domainUsedValue = Number(c.dused[level]);
+    c.dused[level] =
+      Number.isFinite(domainUsedValue) && domainUsedValue >= 0
+        ? domainUsedValue
+        : 0;
+
     if (!Array.isArray(c.sp[level])) c.sp[level] = [];
 
     for (const spell of c.sp[level]) {
@@ -92,10 +108,11 @@ function ensureClass(c) {
 watch(
   () => app.S.cl,
   (classes) => {
-    classes.forEach(ensureClass);
+    const list = Array.isArray(classes) ? classes : [];
+    list.forEach(ensureClass);
 
-    if (classIndex.value >= classes.length) {
-      classIndex.value = Math.max(0, classes.length - 1);
+    if (classIndex.value >= list.length) {
+      classIndex.value = Math.max(0, list.length - 1);
     }
   },
   { deep: true, immediate: true },
@@ -104,6 +121,7 @@ watch(
 watch(characterClass, () => {
   selectedLevel.value = 0;
   openSpell.value = null;
+  openDomainSpell.value = null;
 });
 
 const abilityModifier = (c) => Math.floor(((Number(c?.score) || 10) - 10) / 2);
@@ -170,6 +188,93 @@ function domainRemaining(c, level) {
   return slots ? Math.max(0, slots.domain - domainUsed(c, level)) : 0;
 }
 
+function domainCandidatesFor(level) {
+  return domainCandidatesByLevel.value[level] || [];
+}
+
+function isDomainLoading(level) {
+  return !!domainLoadingByLevel.value[level];
+}
+
+function selectedDomainSpell(c, level) {
+  const candidates = domainCandidatesFor(level);
+  if (!candidates.length) return null;
+
+  const selected = String(c?.dsel?.[level] || "").toLowerCase();
+  return (
+    candidates.find(
+      (spell) => String(spell.n || spell.name || "").toLowerCase() === selected,
+    ) || candidates[0]
+  );
+}
+
+function selectDomainSpell(c, level, name) {
+  ensureClass(c);
+  const candidateExists = domainCandidatesFor(level).some(
+    (spell) => String(spell.n || spell.name || "") === String(name || ""),
+  );
+  if (!candidateExists || c.dsel[level] === name) return;
+
+  app.snapshot();
+  c.dsel[level] = name;
+  openDomainSpell.value = null;
+}
+
+function domainSpellKey(level, spell) {
+  if (!spell) return null;
+  return `${classIndex.value}:${level}:${spell.n || spell.name || ""}`;
+}
+
+function toggleDomainSpell(level, spell) {
+  const key = domainSpellKey(level, spell);
+  if (!key) return;
+  openDomainSpell.value = openDomainSpell.value === key ? null : key;
+}
+
+function domainSpellSchool(spell) {
+  if (!spell) return "";
+  return spell.s || spell.school || spellDetails(spell.n || spell.name)?.s || "";
+}
+
+function domainSpellDescription(spell) {
+  if (!spell) return "";
+  return spell.d || spell.descr || spell.description || spellDetails(spell.n || spell.name)?.d || "";
+}
+
+function canCastDomain(c, level) {
+  return !!selectedDomainSpell(c, level) && domainRemaining(c, level) > 0;
+}
+
+function castDomainSpell(c, level) {
+  const spell = selectedDomainSpell(c, level);
+
+  if (!spell) {
+    app.notify("No hay un conjuro de dominio disponible para este nivel.");
+    return;
+  }
+
+  if (!canCastDomain(c, level)) {
+    app.notify("No quedan espacios de dominio disponibles.");
+    return;
+  }
+
+  ensureClass(c);
+  app.snapshot();
+
+  c.dused[level] = domainUsed(c, level) + 1;
+  animateSlot(level, true, c.dused[level] - 1);
+
+  const spellName = spell.n || spell.name;
+  app.log(
+    "spell",
+    spellName,
+    `${c.name} · level ${level} · DC ${spellDC(c, level, spell)} · domain slot`,
+  );
+
+  blinkEye();
+  effects.offerTrack(spellName, classIndex.value);
+}
+
 function remaining(c, level) {
   return regularRemaining(c, level) + domainRemaining(c, level);
 }
@@ -200,23 +305,6 @@ function canPrepare(c, level) {
   return preparedCount(c, level) < capacity;
 }
 
-function preparedDomainCount(c, level) {
-  return (c?.sp?.[level] || []).reduce(
-    (sum, spell) =>
-      sum + (spell.dom ? Math.max(0, Number(spell.prep) || 0) : 0),
-    0
-  );
-}
-
-function canPrepareDomain(c, level) {
-  const slots = slotInfo(c, level);
-
-  return (
-    slots.domain > 0 &&
-    preparedDomainCount(c, level) < slots.domain
-  );
-}
-
 const availableLevels = computed(() => {
   const c = characterClass.value;
   if (!c) return [];
@@ -233,11 +321,11 @@ const levelsToShow = computed(() => {
 });
 
 function spellsFor(c, level) {
-  const spells = c?.sp?.[level] || [];
+  const spells = (c?.sp?.[level] || []).filter((spell) => !spell.dom);
 
-  // In Cast mode, prepared casters only see prepared spells.
+  // In Cast mode, prepared casters only see normally prepared spells.
   if (c?.type === "prep" && !prepareMode.value) {
-    return spells.filter((spell) => (Number(spell.prep) || 0) > 0 || spell.dom);
+    return spells.filter((spell) => (Number(spell.prep) || 0) > 0);
   }
 
   return spells;
@@ -247,7 +335,7 @@ function spellDetails(name) {
   return (
     (app.S.db || []).find(
       (spell) =>
-        String(spell.n || "").toLowerCase() ===
+        String(spell.n || spell.name || "").toLowerCase() ===
         String(name || "").toLowerCase(),
     ) || null
   );
@@ -278,62 +366,128 @@ function classAliases(c) {
     .filter(Boolean);
 }
 
-async function loadCastCatalog(c, level) {
-  if (!c) return;
-
-  castCatalogLoading.value = true;
-
-  try {
-    const result = await spellStore.loadForCast({
-      classAliases: classAliases(c),
-      level: String(level),
-      domains: c.dom ? c.domains : [],
-    });
-
-    castCatalog.value = (result?.rows || []).map((spell) => ({
-      ...spell,
-      n: spell.n || spell.name,
-      s: spell.s || spell.school,
-      d: spell.d || spell.descr,
-      dom: !!spell.dom,
-    }));
-
-    await nextTick();
-
-    if (knownCatalogList.value) {
-      knownCatalogList.value.scrollTop = 0;
-    }
-  } catch (error) {
-    console.error("Error cargando catálogo:", error);
-    castCatalog.value = [];
-  } finally {
-    castCatalogLoading.value = false;
-  }
-}
-
+// Normal spells are fetched separately from domain candidates.
 watch(
   [
+    () => classIndex.value,
     () => characterClass.value?.abbr,
+    () => characterClass.value?.type,
+    () => characterClass.value?.all,
     () => selectedLevel.value,
     () => prepareMode.value,
-    () => JSON.stringify(characterClass.value?.domains || []),
-    () => characterClass.value?.dom,
   ],
-  () => {
+  async () => {
+    const request = ++normalCatalogRequest;
+    const c = characterClass.value;
+    const needsCatalog = !!c && ((prepareMode.value && c.all) || c.type === "spont");
+
+    if (!needsCatalog) {
+      castCatalog.value = [];
+      castCatalogLoading.value = false;
+      return;
+    }
+
+    castCatalogLoading.value = true;
+
+    try {
+      const result = await spellStore.loadForCast({
+        classAliases: classAliases(c),
+        level: String(selectedLevel.value),
+        domains: [],
+      });
+
+      if (request !== normalCatalogRequest) return;
+
+      castCatalog.value = (result?.rows || []).map((spell) => ({
+        ...spell,
+        n: spell.n || spell.name,
+        s: spell.s || spell.school,
+        d: spell.d || spell.descr,
+        dom: false,
+      }));
+
+      await nextTick();
+      if (request === normalCatalogRequest && knownCatalogList.value) {
+        knownCatalogList.value.scrollTop = 0;
+      }
+    } catch (error) {
+      if (request === normalCatalogRequest) {
+        console.error("Error cargando catálogo normal:", error);
+        castCatalog.value = [];
+      }
+    } finally {
+      if (request === normalCatalogRequest) {
+        castCatalogLoading.value = false;
+      }
+    }
+  },
+  { immediate: true },
+);
+
+// Domain candidates are loaded independently for every visible spell level.
+watch(
+  [
+    () => classIndex.value,
+    () => !!characterClass.value?.dom,
+    () => JSON.stringify(characterClass.value?.domains || []),
+    () => prepareMode.value,
+    () => availableLevels.value.map(({ level }) => level).join(","),
+  ],
+  async () => {
+    const request = ++domainCatalogRequest;
     const c = characterClass.value;
 
-    const needsCatalog =
-      c &&
-      (
-        (prepareMode.value && (c.all || (c.dom && c.domains.length))) ||
-        c.type === "spont"
-      );
+    domainCandidatesByLevel.value = {};
+    domainLoadingByLevel.value = {};
 
-    if (needsCatalog) {
-      loadCastCatalog(c, selectedLevel.value);
-    } else {
-      castCatalog.value = [];
-    }
+    if (!c || !c.dom || prepareMode.value || !c.domains?.length) return;
+
+    const levels = availableLevels.value
+      .map(({ level }) => level)
+      .filter((level) => level >= 1);
+
+    domainLoadingByLevel.value = Object.fromEntries(
+      levels.map((level) => [level, true]),
+    );
+
+    await Promise.all(
+      levels.map(async (level) => {
+        try {
+          const rows = await spellStore.loadDomainCandidates({
+            domains: c.domains || [],
+            level: String(level),
+          });
+
+          if (request !== domainCatalogRequest) return;
+
+          domainCandidatesByLevel.value = {
+            ...domainCandidatesByLevel.value,
+            [level]: (rows || []).map((spell) => ({
+              ...spell,
+              n: spell.n || spell.name,
+              s: spell.s || spell.school,
+              d: spell.d || spell.descr || spell.description,
+              dom: true,
+            })),
+          };
+        } catch (error) {
+          if (request === domainCatalogRequest) {
+            console.error(`Error cargando conjuros de dominio de nivel ${level}:`, error);
+            domainCandidatesByLevel.value = {
+              ...domainCandidatesByLevel.value,
+              [level]: [],
+            };
+          }
+        } finally {
+          if (request === domainCatalogRequest) {
+            domainLoadingByLevel.value = {
+              ...domainLoadingByLevel.value,
+              [level]: false,
+            };
+          }
+        }
+      }),
+    );
   },
   { immediate: true },
 );
@@ -359,60 +513,39 @@ function catalogFor(c, level) {
 
   return castCatalog.value
     .filter((spell) => {
-if (!spell.dom && spellLevelFor(spell, c) !== level) return false;
-      if (
-        query &&
-        !String(spell.n || "")
-          .toLowerCase()
-          .includes(query)
-      ) {
+      const name = String(spell.n || spell.name || "");
+      if (!name || spell.dom || spellLevelFor(spell, c) !== Number(level)) {
         return false;
       }
 
-      return !(c.sp[level] || []).some(
-        (known) => known.n.toLowerCase() === spell.n.toLowerCase(),
+      if (query && !name.toLowerCase().includes(query)) return false;
+
+      return !(c?.sp?.[level] || []).some(
+        (known) =>
+          !known.dom &&
+          String(known.n || "").toLowerCase() === name.toLowerCase(),
       );
     })
     .slice(0, 40);
 }
 
 function preparationList(c, level) {
-  const saved = c?.sp?.[level] || [];
-
-  const savedNames = new Set(
-    saved.map((spell) => String(spell.n || "").toLowerCase())
-  );
-
-  const fromCatalog = castCatalog.value
-    .filter((spell) => {
-      // Si la clase no tiene "todos los conjuros",
-      // solo mostramos los conjuros procedentes de dominios.
-      if (!c?.all && !spell.dom) return false;
-
-      return !savedNames.has(
-        String(spell.n || "").toLowerCase()
-      );
-    })
-    .map((spell) => ({
-      n: spell.n || spell.name,
-      note: "",
-      prep: 0,
-      left: 0,
-      dom: !!spell.dom,
-      dcb: 0,
-      s: spell.s || spell.school,
-      d: spell.d || spell.descr,
-      lv: spell.lv,
-    }));
-
-  return [...saved, ...fromCatalog];
+  return (c?.sp?.[level] || []).filter((spell) => !spell.dom);
 }
 
 function addSpell(c, level, spell) {
+  if (!spell || spell.dom) return;
   ensureClass(c);
 
+  const spellName = String(spell.n || spell.name || "").trim();
+  if (!spellName) return;
+
   if (
-    c.sp[level].some((known) => known.n.toLowerCase() === spell.n.toLowerCase())
+    c.sp[level].some(
+      (known) =>
+        !known.dom &&
+        String(known.n || "").toLowerCase() === spellName.toLowerCase(),
+    )
   ) {
     return;
   }
@@ -427,9 +560,9 @@ function addSpell(c, level, spell) {
   app.snapshot();
 
   c.sp[level].push({
-    n: spell.n,
-    s: spell.s || "",
-    d: spell.d || "",
+    n: spellName,
+    s: spell.s || spell.school || "",
+    d: spell.d || spell.descr || spell.description || "",
     lv: spell.lv || "",
     note: "",
     prep: 0,
@@ -438,8 +571,8 @@ function addSpell(c, level, spell) {
     dcb: 0,
   });
 
-  app.log("spell", "Spell added", `${spell.n} · ${c.name} · level ${level}`);
-  app.notifyUndo(`Conjuro añadido: ${spell.n}`);
+  app.log("spell", "Spell added", `${spellName} · ${c.name} · level ${level}`);
+  app.notifyUndo(`Conjuro añadido: ${spellName}`);
 }
 
 function spellKey(level, spell) {
@@ -447,51 +580,36 @@ function spellKey(level, spell) {
 }
 
 function toggleSpell(level, spell) {
+  if (!spell || spell.dom) return;
   const key = spellKey(level, spell);
   openSpell.value = openSpell.value === key ? null : key;
 }
 
 function canCast(c, level, spell) {
+  if (!spell || spell.dom) return false;
+
   if (c.type !== "spont" && Number(spell.left) <= 0) {
     return false;
   }
 
-  return spell.dom
-    ? domainRemaining(c, level) > 0
-    : regularRemaining(c, level) > 0;
+  return regularRemaining(c, level) > 0;
 }
 
 function castSpell(c, level, spell) {
+  if (!spell || spell.dom) return;
+
   if (!canCast(c, level, spell)) {
-    app.notify("No quedan espacios disponibles para este conjuro.");
+    app.notify("No quedan espacios normales disponibles para este conjuro.");
     return;
   }
 
+  ensureClass(c);
   app.snapshot();
 
-  let usedDomain = false;
-  let slotIndex;
+  c.used[level] = regularUsed(c, level) + 1;
+  const slotIndex = c.used[level] - 1;
 
-  if (spell.dom) {
-    if (domainRemaining(c, level) <= 0) {
-      app.notify("No quedan espacios de dominio disponibles.");
-      return;
-    }
-
-    c.dused[level]++;
-    usedDomain = true;
-    slotIndex = c.dused[level] - 1;
-  } else {
-    if (regularRemaining(c, level) <= 0) {
-      app.notify("No quedan espacios normales disponibles.");
-      return;
-    }
-
-    c.used[level]++;
-    slotIndex = c.used[level] - 1;
-  }
-
-  animateSlot(level, usedDomain, slotIndex);
+  animateSlot(level, false, slotIndex);
 
   if (c.type === "prep") {
     spell.left = Math.max(0, (Number(spell.left) || 0) - 1);
@@ -500,15 +618,19 @@ function castSpell(c, level, spell) {
   app.log(
     "spell",
     spell.n,
-    `${c.name} · level ${level} · DC ${spellDC(c, level, spell)}${usedDomain ? " · domain slot" : ""}`,
+    `${c.name} · level ${level} · DC ${spellDC(c, level, spell)}`,
   );
 
   blinkEye();
-
   effects.offerTrack(spell.n, classIndex.value);
 }
 
 function setSlotUsed(c, level, index, domain = false) {
+  ensureClass(c);
+  const slots = slotInfo(c, level);
+  const capacity = domain ? slots?.domain || 0 : slots?.regular || 0;
+  if (!slots || index < 0 || index >= capacity) return;
+
   app.snapshot();
 
   const key = domain ? "dused" : "used";
@@ -527,21 +649,12 @@ function setSlotUsed(c, level, index, domain = false) {
 }
 
 function changePreparation(c, level, spell, delta) {
-  const isDomain = !!spell.dom;
+  if (!spell || spell.dom) return;
+  ensureClass(c);
 
-  if (delta > 0) {
-    const canPrepareSpell = isDomain
-      ? canPrepareDomain(c, level)
-      : canPrepare(c, level);
-
-    if (!canPrepareSpell) {
-      app.notify(
-        isDomain
-          ? "Ya has preparado el conjuro de dominio de este nivel."
-          : "Ya has preparado todos los espacios normales de este nivel."
-      );
-      return;
-    }
+  if (delta > 0 && !canPrepare(c, level)) {
+    app.notify("Ya has preparado todos los espacios normales de este nivel.");
+    return;
   }
 
   app.snapshot();
@@ -550,8 +663,9 @@ function changePreparation(c, level, spell, delta) {
   if (!c.sp[level].includes(spell)) {
     let savedSpell = c.sp[level].find(
       (known) =>
+        !known.dom &&
         String(known.n || "").toLowerCase() ===
-        String(spell.n || "").toLowerCase()
+          String(spell.n || "").toLowerCase(),
     );
 
     if (!savedSpell) {
@@ -563,7 +677,7 @@ function changePreparation(c, level, spell, delta) {
         note: "",
         prep: 0,
         left: 0,
-        dom: isDomain,
+        dom: false,
         dcb: 0,
       };
 
@@ -581,17 +695,17 @@ function changePreparation(c, level, spell, delta) {
   if (delta > 0) {
     spell.left = Math.min(
       next,
-      Math.max(0, Number(spell.left) || 0) + 1
+      Math.max(0, Number(spell.left) || 0) + 1,
     );
   } else {
     spell.left = Math.min(
       Math.max(0, Number(spell.left) || 0),
-      next
+      next,
     );
   }
 
   app.log(
-    `${delta > 0 ? "Preparado" : "Retirada preparación de"} ${spell.n}`
+    `${delta > 0 ? "Preparado" : "Retirada preparación de"} ${spell.n}`,
   );
 
   app.notifyUndo("Preparación actualizada");
@@ -616,6 +730,8 @@ function changeSpellDC(c, spell, delta) {
 }
 
 async function removeSpell(c, level, spell) {
+  if (!spell || spell.dom) return;
+
   const confirmed = await app.ask({
     title: "¿Eliminar conjuro?",
     msg: `Se eliminará ${spell.n} del nivel ${level}.`,
@@ -646,7 +762,7 @@ async function rest() {
 
   app.snapshot();
 
-  for (const c of app.S.cl) {
+  for (const c of app.S.cl || []) {
     ensureClass(c);
 
     for (let level = 0; level < 10; level++) {
@@ -654,7 +770,10 @@ async function rest() {
       c.dused[level] = 0;
 
       for (const spell of c.sp[level]) {
-        spell.left = Math.max(0, Number(spell.prep) || 0);
+        // Legacy domain records are not prepared spells and are left untouched.
+        if (!spell.dom) {
+          spell.left = Math.max(0, Number(spell.prep) || 0);
+        }
       }
     }
   }
@@ -668,8 +787,9 @@ async function rest() {
   }
 
   // Resting passes 8 hours (4800 rounds); effects that run out are removed.
+  if (!Array.isArray(app.S.fx)) app.S.fx = [];
   advance(app.S.fx, 4800);
-  app.S.fx = app.S.fx.filter((e) => e.rem === null || e.rem > 0);
+  app.S.fx = app.S.fx.filter((effect) => effect.rem === null || effect.rem > 0);
 
   app.log(
     "rest",
@@ -684,16 +804,19 @@ function selectClass(index) {
   classIndex.value = index;
   selectedLevel.value = 0;
   openSpell.value = null;
+  openDomainSpell.value = null;
 }
 
 function selectLevel(level) {
   selectedLevel.value = level;
   openSpell.value = null;
+  openDomainSpell.value = null;
 }
 
 function setMode(preparing) {
   prepareMode.value = preparing;
   openSpell.value = null;
+  openDomainSpell.value = null;
 }
 </script>
 
@@ -898,23 +1021,92 @@ function setMode(preparing) {
           />
         </div>
 
-<p
-  v-if="characterClass.type === 'prep' && !slotInfo(characterClass, level).atWill"
-  class="mute note"
->
-  Preparados: {{ preparedCount(characterClass, level) }} de
-  {{ slotInfo(characterClass, level).regular }} espacios normales.
+        <!-- Los conjuros de dominio son independientes de la lista y preparación normales. -->
+        <div
+          v-if="characterClass.dom && level >= 1 && !prepareMode"
+          class="detail domain-spell-panel"
+          style="border-color: var(--dom)"
+        >
+          <p class="mute">Conjuro de dominio · Nivel {{ level }}</p>
 
-  <template v-if="slotInfo(characterClass, level).domain">
-    · Dominio: {{ preparedDomainCount(characterClass, level) }} de
-    {{ slotInfo(characterClass, level).domain }}.
-  </template>
-</p>
+          <p v-if="isDomainLoading(level)" class="mute">
+            Buscando conjuros de dominio...
+          </p>
 
-<div
-  v-if="prepareMode && (characterClass.all || (characterClass.dom && characterClass.domains?.length))"
-  class="catalog"
->          <div v-if="catalogSearch.trim().length >= 2" class="catalog-results">
+          <p v-else-if="!domainCandidatesFor(level).length" class="mute">
+            No hay conjuros de dominio para este nivel.
+          </p>
+
+          <template v-else>
+            <select
+              :value="selectedDomainSpell(characterClass, level)?.n || ''"
+              aria-label="Conjuro de dominio"
+              @change="selectDomainSpell(characterClass, level, $event.target.value)"
+            >
+              <option
+                v-for="spell in domainCandidatesFor(level)"
+                :key="spell.n"
+                :value="spell.n"
+              >
+                {{ spell.n + (spell.domainName ? ' (' + spell.domainName + ')' : '') }}
+              </option>
+            </select>
+
+            <div class="row">
+              <button
+                class="nm"
+                :disabled="!selectedDomainSpell(characterClass, level)"
+                @click="toggleDomainSpell(level, selectedDomainSpell(characterClass, level))"
+              >
+                {{ selectedDomainSpell(characterClass, level)?.n }}
+                <span class="tag dom">Dominio</span>
+                <span class="mute">
+                  CD {{ spellDC(characterClass, level, selectedDomainSpell(characterClass, level)) }}
+                </span>
+              </button>
+
+              <button
+                class="cast"
+                :disabled="!canCastDomain(characterClass, level)"
+                @click="castDomainSpell(characterClass, level)"
+              >
+                Lanzar
+              </button>
+            </div>
+
+            <div
+              v-if="openDomainSpell === domainSpellKey(level, selectedDomainSpell(characterClass, level))"
+              class="detail"
+            >
+              <p v-if="domainSpellSchool(selectedDomainSpell(characterClass, level))" class="mute">
+                {{ domainSpellSchool(selectedDomainSpell(characterClass, level)) }}
+              </p>
+              <p v-if="domainSpellDescription(selectedDomainSpell(characterClass, level))">
+                {{ domainSpellDescription(selectedDomainSpell(characterClass, level)) }}
+              </p>
+              <p v-else class="mute">
+                No hay descripción disponible para este conjuro.
+              </p>
+            </div>
+          </template>
+        </div>
+
+        <p
+          v-if="characterClass.type === 'prep' && !slotInfo(characterClass, level).atWill"
+          class="mute note"
+        >
+          Preparados: {{ preparedCount(characterClass, level) }} de
+          {{ slotInfo(characterClass, level).regular }} espacios normales.
+        </p>
+
+        <div v-if="prepareMode && characterClass.all" class="catalog">
+          <input
+            v-model="catalogSearch"
+            type="search"
+            placeholder="Buscar conjuro..."
+            class="known-catalog-search"
+          />
+          <div v-if="catalogSearch.trim().length >= 2" class="catalog-results">
             <button
               v-for="spell in catalogFor(characterClass, level)"
               :key="spell.n"
@@ -930,13 +1122,18 @@ function setMode(preparing) {
             </p>
           </div>
         </div>
+
         <p
           v-if="prepareMode && characterClass.all && castCatalogLoading"
           class="mute"
         >
           Cargando conjuros de este nivel...
         </p>
-        <div v-if="characterClass.type === 'spont'" class="known-catalog">
+
+        <div
+          v-if="characterClass.type === 'spont' && level === selectedLevel"
+          class="known-catalog"
+        >
           <div class="known-catalog-header">
             <div>
               <h3>Añadir conjuros conocidos</h3>
@@ -970,48 +1167,48 @@ function setMode(preparing) {
           </div>
 
           <template v-if="showKnownCatalog">
+            <p v-if="castCatalogLoading" class="mute">Cargando conjuros...</p>
 
-          <p v-if="castCatalogLoading" class="mute">Cargando conjuros...</p>
+            <div v-else ref="knownCatalogList" class="known-catalog-list">
+              <div
+                v-for="spell in catalogFor(characterClass, selectedLevel)"
+                :key="spell.n"
+                class="known-catalog-row"
+              >
+                <div class="known-catalog-info">
+                  <span class="known-catalog-name">{{ spell.n }}</span>
+                  <span v-if="spell.s" class="known-catalog-school">
+                    {{ spell.s }}
+                  </span>
+                </div>
 
-          <div v-else ref="knownCatalogList" class="known-catalog-list">
-            <div
-              v-for="spell in catalogFor(characterClass, selectedLevel)"
-              :key="spell.n"
-              class="known-catalog-row"
-            >
-              <div class="known-catalog-info">
-                <span class="known-catalog-name">{{ spell.n }}</span>
-                <span v-if="spell.s" class="known-catalog-school">
-                  {{ spell.s }}
-                </span>
+                <button
+                  type="button"
+                  class="known-catalog-add"
+                  @click="addSpell(characterClass, selectedLevel, spell)"
+                >
+                  +
+                </button>
               </div>
 
-<button
-  type="button"
-  class="known-catalog-add"
-  @click="addSpell(characterClass, selectedLevel, spell)"
->
-  +
-</button>
+              <p
+                v-if="!catalogFor(characterClass, selectedLevel).length"
+                class="mute"
+              >
+                No hay más conjuros disponibles.
+              </p>
             </div>
-
-            <p
-              v-if="!catalogFor(characterClass, selectedLevel).length"
-              class="mute"
-            >
-              No hay más conjuros disponibles.
-            </p>
-          </div>
           </template>
         </div>
 
         <div class="spell-list">
-<p
-  v-if="!(prepareMode && (characterClass.all || (characterClass.dom && characterClass.domains?.length))
-    ? preparationList(characterClass, level).length
-    : spellsFor(characterClass, level).length)"
-  class="mute"
->            {{
+          <p
+            v-if="!(prepareMode && characterClass.all
+              ? preparationList(characterClass, level).length
+              : spellsFor(characterClass, level).length)"
+            class="mute"
+          >
+            {{
               prepareMode
                 ? "No hay conjuros registrados en este nivel."
                 : "No hay conjuros preparados o conocidos en este nivel."
@@ -1019,9 +1216,9 @@ function setMode(preparing) {
           </p>
 
           <article
-v-for="spell in prepareMode && (characterClass.all || (characterClass.dom && characterClass.domains?.length))
-  ? preparationList(characterClass, level)
-  : spellsFor(characterClass, level)"
+            v-for="spell in prepareMode && characterClass.all
+              ? preparationList(characterClass, level)
+              : spellsFor(characterClass, level)"
             :key="spell.n"
             class="spell sp"
           >
@@ -1029,10 +1226,7 @@ v-for="spell in prepareMode && (characterClass.all || (characterClass.dom && cha
               <button class="nm" @click="toggleSpell(level, spell)">
                 <span>{{ spell.n }}</span>
                 <span class="sm">
-                  <span class="mute"
-                    >CD {{ spellDC(characterClass, level, spell) }}</span
-                  >
-                  <span v-if="spell.dom" class="tag dom">Dominio</span>
+                  <span class="mute">CD {{ spellDC(characterClass, level, spell) }}</span>
                 </span>
               </button>
 
@@ -1041,22 +1235,20 @@ v-for="spell in prepareMode && (characterClass.all || (characterClass.dom && cha
                 class="step"
               >
                 <button
-                  :disabled="!spell.prep"
+                  :disabled="spell.dom || !spell.prep"
                   aria-label="Preparar menos"
                   @click="changePreparation(characterClass, level, spell, -1)"
                 >
                   −
                 </button>
                 <b>{{ spell.prep || 0 }}</b>
-<button
-  :disabled="spell.dom
-    ? !canPrepareDomain(characterClass, level)
-    : !canPrepare(characterClass, level)"
-  aria-label="Preparar más"
-  @click="changePreparation(characterClass, level, spell, 1)"
->
-  +
-</button>
+                <button
+                  :disabled="spell.dom || !canPrepare(characterClass, level)"
+                  aria-label="Preparar más"
+                  @click="changePreparation(characterClass, level, spell, 1)"
+                >
+                  +
+                </button>
               </span>
 
               <span
@@ -1077,12 +1269,12 @@ v-for="spell in prepareMode && (characterClass.all || (characterClass.dom && cha
             </div>
 
             <div v-if="openSpell === spellKey(level, spell)" class="detail">
-              <p v-if="spellDetails(spell.n)?.s" class="mute">
-                {{ spellDetails(spell.n).s }}
+              <p v-if="spell.s || spellDetails(spell.n)?.s" class="mute">
+                {{ spell.s || spellDetails(spell.n).s }}
               </p>
 
-              <p v-if="spellDetails(spell.n)?.d">
-                {{ spellDetails(spell.n).d }}
+              <p v-if="spell.d || spellDetails(spell.n)?.d">
+                {{ spell.d || spellDetails(spell.n).d }}
               </p>
 
               <p v-else class="mute">
@@ -1147,6 +1339,7 @@ v-for="spell in prepareMode && (characterClass.all || (characterClass.dom && cha
     <button class="rest" @click="rest">Descansar y recuperar</button>
   </div>
 </template>
+
 <style scoped>
 .cast-view {
   --cast-accent: #d76bdc;
@@ -1319,6 +1512,7 @@ v-for="spell in prepareMode && (characterClass.all || (characterClass.dom && cha
     transform: scaleY(0.1);
   }
 }
+
 @media (prefers-reduced-motion: no-preference) {
   .cast-view :deep(.pip.pl) {
     animation: pulse 0.34s ease-out;
@@ -1340,53 +1534,10 @@ v-for="spell in prepareMode && (characterClass.all || (characterClass.dom && cha
   }
 }
 
-.cast-view :deep(.chip[aria-selected="true"]),
-.cast-view :deep(.lvb[aria-selected="true"]),
-.cast-view :deep(.modebar button[aria-pressed="true"]) {
-  border-color: var(--cast-accent);
-  color: var(--cast-accent);
-}
-
-.cast-view :deep(.dcb b) {
-  color: var(--cast-accent);
-}
-
 .cast-view :deep(.pip.pl) {
   position: relative;
   z-index: 1;
   animation: pulse 0.34s ease-out;
-}
-
-@keyframes pulse {
-  0% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 var(--cast-glow);
-  }
-  50% {
-    transform: scale(1.3);
-    box-shadow: 0 0 12px 4px var(--cast-glow);
-  }
-  100% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 transparent;
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .stella-eye.cast-blink .lid {
-    animation: cast-blink 0.42s ease-in-out;
-  }
-}
-
-@keyframes cast-blink {
-  0%,
-  100% {
-    transform: scaleY(1);
-  }
-  45%,
-  65% {
-    transform: scaleY(0.1);
-  }
 }
 
 /* Selectores de clase, nivel y modo: tonos suaves */
@@ -1561,5 +1712,14 @@ v-for="spell in prepareMode && (characterClass.all || (characterClass.dom && cha
   color: #9bd5ff;
   font-size: 0.78rem;
   cursor: pointer;
+}
+
+.domain-spell-panel > select {
+  width: 100%;
+  margin: 6px 0 10px;
+}
+
+.domain-spell-panel > .detail {
+  margin-top: 10px;
 }
 </style>

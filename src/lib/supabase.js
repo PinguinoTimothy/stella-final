@@ -169,12 +169,10 @@ if (aliases.length && level !== '') {
 }
 
 
-if (domainNames.length && level !== '') {
-  const n = safe(level)
-
+if (domainNames.length) {
   conditions.push(
     `or(${domainNames.map(name =>
-      `domain.ilike.*${name} (${n})*`
+      `domain.ilike.*${name}*`
     ).join(',')})`
   )
 }

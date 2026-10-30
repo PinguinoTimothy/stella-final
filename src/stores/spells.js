@@ -164,6 +164,8 @@ async function loadForCast({
     query,
   })
 
+  
+
   const domainNames = domains
     .map(domain => typeof domain === 'string' ? domain : domain.name)
     .filter(Boolean)
@@ -211,6 +213,73 @@ async function loadForCast({
   }
 }
 
+
+
+async function loadDomainCandidates({ domains = [], level = 0 } = {}) {
+  const result = []
+  const seen = new Set()
+  const targetLevel = Number(level)
+
+  function matchesDomainLevel(spell, domainName) {
+    const entries = String(spell.domain || '').split(',')
+
+    return entries.some(entry => {
+const match = entry.trim().match(/^(.*?)\s*\(\s*(\d+)\s*\)$/)
+
+      return (
+        match &&
+        match[1].trim().toLowerCase() === domainName.toLowerCase() &&
+        Number(match[2]) === targetLevel
+      )
+    })
+  }
+
+  for (const domain of domains) {
+    const name = String(domain?.name || '').trim()
+    const parent = String(domain?.parent || '').trim()
+
+    if (!name) continue
+
+    const searchDomain = async domainName => {
+      const response = await fetchSpellCatalogPage({
+        offset: 0,
+        limit: 1000,
+        domains: [domainName],
+      })
+
+      return response.rows.filter(spell =>
+        matchesDomainLevel(spell, domainName)
+      )
+    }
+
+    let rows = await searchDomain(name)
+
+    // Solo se recurre al padre si el dominio propio no tiene resultados.
+    if (!rows.length && parent) {
+      rows = await searchDomain(parent)
+    }
+
+    for (const spell of rows) {
+      const key = String(spell.name || '').trim().toLowerCase()
+
+      if (!key || seen.has(key)) continue
+
+      seen.add(key)
+
+      result.push({
+        ...spell,
+        n: spell.name,
+        s: spell.school,
+        d: spell.descr,
+        dom: true,
+        domainName: name,
+      })
+    }
+  }
+
+  return result
+}
+
   return {
     imported,
     all,
@@ -227,6 +296,7 @@ async function loadForCast({
     setFilters,
     find,
     suggest,
-    loadForCast
+loadForCast,
+loadDomainCandidates
   }
 })
