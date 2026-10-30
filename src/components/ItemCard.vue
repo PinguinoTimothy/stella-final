@@ -7,7 +7,6 @@ import { IGLYPH } from "../lib/constants";
 import {
   curOf,
   isCharged,
-  isEquippable,
   isStack,
   itemCat,
   maxOf,
@@ -38,7 +37,6 @@ const glyph = computed(() => IGLYPH[it.value.k] || IGLYPH._);
 <template>
   <article
     class="item-card ic"
-    :class="{ equipped: it.equipped, spent }"
     :data-c="itemCat(it)"
   >
     <div class="ic-row">
@@ -62,7 +60,6 @@ const glyph = computed(() => IGLYPH[it.value.k] || IGLYPH._);
             <span v-if="it.slot && !hideSlot && it.slot !== it.k" class="tag">{{
               it.slot
             }}</span>
-            <span v-if="it.equipped && !hideEq" class="tag dom">equipped</span>
           </span>
           <span v-if="it.o" class="ic-n">{{ it.o }}</span>
         </span>
@@ -105,14 +102,7 @@ const glyph = computed(() => IGLYPH[it.value.k] || IGLYPH._);
         >
         <button aria-label="Add one" @click="inv.adjustQty(it, 1)">+</button>
       </span>
-      <button
-        v-else-if="isEquippable(it) && !readonly"
-        class="ic-eq"
-        :aria-pressed="!!it.equipped"
-        @click="inv.toggleEquip(it)"
-      >
-        {{ it.equipped ? "Unequip" : "Equip" }}
-      </button>
+
     </div>
   </article>
 </template>

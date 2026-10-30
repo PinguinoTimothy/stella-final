@@ -6,7 +6,7 @@ import ItemCard from '../components/ItemCard.vue'
 import ItemDetail from '../components/ItemDetail.vue'
 import ItemForm from '../components/ItemForm.vue'
 import MoneyPanel from '../components/MoneyPanel.vue'
-import { curOf, groupByCategory, inOwner, isCharged, isUse, loadout } from '../lib/items'
+import { curOf, groupByCategory, inOwner, isCharged, isUse } from '../lib/items'
 import { useAppStore } from '../stores/app'
 
 const app = useAppStore()
@@ -16,27 +16,23 @@ const form = ref(null)               // null = closed · { item: null } = add ·
 const props = defineProps({
   readonly: { type: Boolean, default: false }
 })
-const VIEWS = [['inventory', 'Inventario'], ['equipped', 'Equipados'], ['uses', 'Usables']]
+const VIEWS = [['inventory', 'Inventario'], ['uses', 'Usables']]
 const items = computed(() => app.S.items)
 const chips = computed(() => [['', 'All'], ...app.party.map((n) => [n, n]), ['__none', 'Shared']])
 const scope = computed(() => items.value.filter((it) => inOwner(it, ui.owner)))
-const nEquipped = computed(() => scope.value.filter((it) => it.equipped).length)
 const nEmpty = computed(() => scope.value.filter((it) => isCharged(it) && curOf(it) <= 0).length)
 
 const filtered = computed(() => {
   const q = ui.search.trim().toLowerCase()
   return scope.value.filter((it) => {
-    if (ui.itemView === 'equipped' && !it.equipped) return false
     if (ui.itemView === 'uses' && !isUse(it)) return false
     return !q || [it.n, it.k, it.slot, it.o, it.spellName, it.owner, it.aura].join(' ').toLowerCase().includes(q)
   })
 })
 const groups = computed(() => groupByCategory(filtered.value))
-const blocks = computed(() => (ui.itemView === 'equipped' ? loadout(filtered.value, ui.owner) : []))
 const detail = computed(() => items.value.find((it) => it.id === detailId.value) || null)
 const emptyMsg = computed(() => {
   if (ui.search) return 'Nothing matches your search.'
-  if (ui.itemView === 'equipped') return 'Nothing equipped here. Open an item and tap Equip.'
   if (ui.itemView === 'uses') return 'No wands, scrolls, potions or charged items here.'
   return 'Nothing here yet.'
 })
@@ -56,7 +52,6 @@ function edit(it) {
   <section class="panel items-toolbar">
     <p class="isum">
       <span><b>{{ scope.length }}</b>{{ scope.length === 1 ? 'item' : 'items' }}</span>
-      <span><b>{{ nEquipped }}</b>equipped</span>
       <span v-if="nEmpty" class="warn"><b>{{ nEmpty }}</b>empty</span>
     </p>
     <input v-model="ui.search" class="sr" placeholder="Buscar objetos..." aria-label="Search items">
@@ -74,20 +69,6 @@ function edit(it) {
     {{ emptyMsg }}
     <p v-if="!ui.search && ui.itemView === 'inventory'" class="mute">Tap + to add an item.</p>
   </section>
-
-  <template v-else-if="ui.itemView === 'equipped'">
-    <section v-for="b in blocks" :key="b.owner" class="io">
-      <h2 v-if="!ui.owner || blocks.length > 1" class="io-h">{{ b.owner || 'Shared' }}</h2>
-      <section v-for="s in b.slots" :key="s.slot" class="ig">
-        <h3 class="ig-h slot">
-          {{ s.slot }}
-          <span v-if="s.counted" :class="{ over: s.over }">{{ s.items.length }}/{{ s.lim }}{{ s.over ? ' · too many for this slot' : '' }}</span>
-        </h3>
-        <div class="item-grid"><ItemCard :readonly="props.readonly" v-for="it in s.items" :key="it.id" :item="it" hide-owner hide-slot hide-eq @open="detailId = it.id" /></div>
-      </section>
-      <p v-if="b.owner" class="io-free">{{ b.free.length ? 'Free slots: ' + b.free.join(', ') : 'Every body slot is filled.' }}</p>
-    </section>
-  </template>
 
   <template v-else>
     <section v-for="g in groups" :key="g.id" class="ig">
