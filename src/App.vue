@@ -13,6 +13,7 @@ import ConditionsView from './views/ConditionsView.vue'
 import FxPlayerView from './views/FxPlayerView.vue'
 import FxView from './views/FxView.vue'
 import GrappleView from './views/GrappleView.vue'
+import HistoryView from './views/HistoryView.vue'
 import ItemsView from './views/ItemsView.vue'
 import MagicCatalogView from './views/MagicCatalogView.vue'
 import MoreView from './views/MoreView.vue'
@@ -44,6 +45,7 @@ const editorViews = {
   umr: UmrView,
   grapple: GrappleView,
   conditions: ConditionsView,
+  history: HistoryView,
 }
 
 const playerViews = {
@@ -56,6 +58,7 @@ const playerViews = {
   umr: UmrView,
   grapple: GrappleView,
   conditions: ConditionsView,
+  history: HistoryView,
 }
 
 const titles = { cast: 'Cast', fx: 'Active effects', db: 'Spells' }
