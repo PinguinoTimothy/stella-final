@@ -4,6 +4,7 @@ import { useAppStore } from "../stores/app";
 import { useSpells } from "../stores/spells";
 import { CLASS_TABLES } from "../lib/classes";
 import { advance } from "../lib/effects";
+import SpellInfo from "../components/SpellInfo.vue";
 import FxStrip from "../components/Active/FxStrip.vue";
 import { useEffects } from "../stores/effects";
 
@@ -489,6 +490,29 @@ watch(
       }),
     );
   },
+  { immediate: true },
+);
+
+// Descriptions and durations are fetched by name for every spell on screen.
+function fullSpell(spell) {
+  const d = spellDetails(spell?.n || spell?.name) || spellStore.find(spell?.n || spell?.name) || {}
+  return { ...d, ...spell, n: spell.n || spell.name, d: spell.d || d.d || "", s: spell.s || d.s || "", dom: d.domain || "" };
+}
+
+watch(
+  () => {
+    const c = characterClass.value;
+    if (!c) return "";
+    const names = [];
+    for (const level of levelsToShow.value) {
+      for (const sp of c.sp?.[level] || []) if (sp?.n) names.push(sp.n);
+    }
+    for (const list of Object.values(domainCandidatesByLevel.value)) {
+      for (const sp of list || []) if (sp?.n) names.push(sp.n);
+    }
+    return [...new Set(names)].join("|");
+  },
+  (joined) => { if (joined) spellStore.ensure(joined.split("|")); },
   { immediate: true },
 );
 
@@ -1078,15 +1102,7 @@ function setMode(preparing) {
               v-if="openDomainSpell === domainSpellKey(level, selectedDomainSpell(characterClass, level))"
               class="detail"
             >
-              <p v-if="domainSpellSchool(selectedDomainSpell(characterClass, level))" class="mute">
-                {{ domainSpellSchool(selectedDomainSpell(characterClass, level)) }}
-              </p>
-              <p v-if="domainSpellDescription(selectedDomainSpell(characterClass, level))">
-                {{ domainSpellDescription(selectedDomainSpell(characterClass, level)) }}
-              </p>
-              <p v-else class="mute">
-                No hay descripción disponible para este conjuro.
-              </p>
+              <SpellInfo :spell="fullSpell(selectedDomainSpell(characterClass, level))" />
             </div>
           </template>
         </div>
@@ -1269,17 +1285,7 @@ function setMode(preparing) {
             </div>
 
             <div v-if="openSpell === spellKey(level, spell)" class="detail">
-              <p v-if="spell.s || spellDetails(spell.n)?.s" class="mute">
-                {{ spell.s || spellDetails(spell.n).s }}
-              </p>
-
-              <p v-if="spell.d || spellDetails(spell.n)?.d">
-                {{ spell.d || spellDetails(spell.n).d }}
-              </p>
-
-              <p v-else class="mute">
-                No hay descripción de este conjuro en los datos locales de Vue.
-              </p>
+              <SpellInfo :spell="fullSpell(spell)" />
 
               <label class="grid">
                 Notas

@@ -256,3 +256,27 @@ export async function fetchSpellRatings() {
 
   return [...values].sort((a, b) => Number(a) - Number(b))
 }
+
+
+/** Reads full spell rows for exact names (case-insensitive fallback for misses). Used by Cast / Active. */
+export async function fetchSpellsByNames(names = []) {
+  const clean = [...new Set(names.map((n) => String(n || '').trim()).filter(Boolean))]
+  if (!clean.length) return []
+  const quote = (n) => '"' + n.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"'
+  const get = async (params) => {
+    const r = await fetch(`${SB_URL}/rest/v1/spells?${params}`, { headers: headers(SB_ANON), cache: 'no-store' })
+    if (!r.ok) await fail(r)
+    return r.json()
+  }
+  const rows = []
+  for (let i = 0; i < clean.length; i += 40) {
+    const chunk = clean.slice(i, i + 40)
+    rows.push(...await get(`select=*&custom=eq.false&name=in.(${chunk.map(quote).join(',')})&limit=200`))
+  }
+  const found = new Set(rows.map((r) => r.name.toLowerCase()))
+  for (const n of clean.filter((n) => !found.has(n.toLowerCase())).slice(0, 10)) {
+    const safe = n.replace(/[(),.*"\\%]/g, ' ').replace(/\s+/g, ' ').trim()
+    if (safe) rows.push(...await get(`select=*&custom=eq.false&name=ilike.${encodeURIComponent(safe)}&limit=1`))
+  }
+  return rows
+}

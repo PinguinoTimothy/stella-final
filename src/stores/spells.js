@@ -5,6 +5,7 @@ import { useAppStore } from './app'
 import {
   fetchSpellCatalogPage,
   fetchSpellRatings,
+  fetchSpellsByNames,
 } from '../lib/supabase'
 import { SEED } from '../lib/spellSeed'
 
@@ -37,12 +38,40 @@ export const useSpells = defineStore('spells', () => {
 
   let requestId = 0
 
+  // Spells fetched on demand by name (Cast, Active). Keyed by lowercase name.
+  const cache = ref({})
+  const pending = new Set()
+  const norm = (row) => ({ ...row, n: row.name, s: row.school, d: row.descr })
+
+  /** Makes sure the given spell names are in the cache (one request for all the missing ones). */
+  async function ensure(names) {
+    const missing = [...new Set((names || []).map((n) => String(n || '').trim()).filter(Boolean))]
+      .filter((n) => {
+        const k = n.toLowerCase()
+        return !cache.value[k] && !pending.has(k) && !(app.S.db || []).some((d) => String(d.n || '').toLowerCase() === k)
+      })
+    if (!missing.length) return
+    missing.forEach((n) => pending.add(n.toLowerCase()))
+    try {
+      const rows = await fetchSpellsByNames(missing)
+      const next = { ...cache.value }
+      rows.forEach((r) => { next[String(r.name).toLowerCase()] = norm(r) })
+      // Remember misses too so we don't ask again every render.
+      missing.forEach((n) => { if (!next[n.toLowerCase()]) next[n.toLowerCase()] = { n, miss: true } })
+      cache.value = next
+    } catch (e) {
+      console.error('Error loading spells by name:', e)
+    } finally {
+      missing.forEach((n) => pending.delete(n.toLowerCase()))
+    }
+  }
+
   const all = computed(() => {
     const catalog = imported.value.length
       ? imported.value
       : seedSpells()
 
-    return catalog.concat(app.S.db || [])
+    return Object.values(cache.value).filter((x) => !x.miss).concat(catalog, app.S.db || [])
   })
 
   const index = computed(() => {
@@ -297,6 +326,7 @@ const match = entry.trim().match(/^(.*?)\s*\(\s*(\d+)\s*\)$/)
     find,
     suggest,
 loadForCast,
-loadDomainCandidates
+loadDomainCandidates,
+    ensure,
   }
 })

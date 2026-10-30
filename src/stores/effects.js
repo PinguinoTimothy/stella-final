@@ -57,9 +57,14 @@ export const useEffects = defineStore('effects', () => {
    * A dice duration (1d4 rounds) opens the Active form pre-filled so the player enters the roll.
    * Returns 'tracked', 'dice' or 'none'.
    */
+  function trackManual(name, ci, d) {
+    app.closeToast()
+    app.ui.fxPrefill = { n: name, ci, u: 'rd', a: '', k: d ? kindOf(d) : 'buff', tg: d ? selfOf(d) : '', hint: 'Duration: ' + ((d && d.dur) || 'unknown') + '. Enter it by hand.' }
+    app.ui.fxAdd = true; app.ui.tab = 'fx'
+  }
   function track(name, ci) {
     const d = spells.find(name), c = app.S.cl[ci], p = d && c ? parseDur(d.dur, c.cl || 1) : null
-    if (!p) return { state: 'none' }
+    if (!p) { trackManual(name, ci, d); return { state: 'manual' } }
     if (p.dice) {
       app.closeToast()
       app.ui.fxPrefill = { n: name, ci, u: p.u, a: '', k: kindOf(d), tg: selfOf(d), hint: 'Roll ' + p.dice + ' and enter the result.' }
@@ -73,9 +78,14 @@ export const useEffects = defineStore('effects', () => {
   }
 
   /** Toast shown after a cast: spell name + its duration, with Track and Undo. Plain "cast" toast when it has no duration. */
-  function offerTrack(name, ci) {
+  async function offerTrack(name, ci) {
+    await spells.ensure([name])
     const d = spells.find(name), c = app.S.cl[ci], p = d && c ? parseDur(d.dur, c.cl || 1) : null
-    if (!p) { app.notifyUndo('Lanzado: ' + name); return }
+    if (!p) {
+      // Unknown or instantaneous duration: still let the player track it by hand.
+      app.notify('Lanzado: ' + name, { label: 'Track', run: () => trackManual(name, ci, d), label2: 'Undo', run2: app.undo })
+      return
+    }
     const when = p.dice ? p.dice + ' ' + UN[p.u] : p.perm ? 'until dismissed' : fmtR(p.a * RD[p.u])
     app.notify(name + ': ' + when, { label: 'Track', run: () => track(name, ci), label2: 'Undo', run2: app.undo })
   }

@@ -1,6 +1,6 @@
 <script setup>
 // One active effect: name, remaining time, progress bar. Tap the name to open details, notes and time adjustments.
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { useEffects } from '../../stores/effects'
 import { useSpells } from '../../stores/spells'
 import { fmtR, fxPct } from '../../lib/effects'
@@ -14,6 +14,7 @@ const spells = useSpells()
 const e = computed(() => props.effect)
 const expired = computed(() => e.value.rem === 0)
 const spell = computed(() => spells.find(e.value.n))
+watch(() => props.open, (o) => { if (o) spells.ensure([e.value.n]) }, { immediate: true })
 const time = computed(() => e.value.rem === null ? 'no limit' : expired.value ? 'Expired' : fmtR(e.value.rem))
 </script>
 
