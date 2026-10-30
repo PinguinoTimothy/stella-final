@@ -27,3 +27,7 @@
 .login-card p { margin: 0; }
 .login-card input { width: 100%; }
 .login-err { color: var(--warn); }
+
+/* Magic catalog: the old page stays visible, dimmed, while the next one loads */
+.magic-stale { opacity: .55; transition: opacity .15s; pointer-events: none; }
+.magic-retry { margin-left: 8px; }

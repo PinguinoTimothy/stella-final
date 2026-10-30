@@ -280,3 +280,75 @@ export async function fetchSpellsByNames(names = []) {
   }
   return rows
 }
+
+/* ---------- Magic catalog: filtered, paged reads (never the whole table) ---------- */
+
+// Everything a card and the details sheet show. `fulltext` is only searched on the server, never downloaded.
+const MAGIC_COLUMNS = 'id,position,name,aura,cl,slot,price,weight,descr,requirements,cost,group_name,source'
+const MAGIC_SEARCH_FIELDS = ['name', 'slot', 'group_name', 'descr', 'aura', 'source', 'requirements', 'price', 'cl', 'fulltext']
+
+const cleanTerm = (v) => String(v ?? '').replace(/[(),."\\*%]/g, ' ').replace(/\s+/g, ' ').trim()
+const likeEscape = (v) => String(v).replace(/[\\%_]/g, '\\$&')
+
+/** PostgREST filters for the catalog screen's search box, group and slot. */
+function magicParams({ query = '', group = '', slot = '' } = {}) {
+  const p = new URLSearchParams()
+  const q = cleanTerm(query)
+  if (q) p.set('or', `(${MAGIC_SEARCH_FIELDS.map((f) => `${f}.ilike.*${q}*`).join(',')})`)
+  if (group) p.set('group_name', `eq.${group}`)
+  if (group.trim().toLowerCase() === 'wondrous item' && slot) p.set('slot', `ilike.${likeEscape(slot.trim())}`)
+  return p
+}
+
+async function getJson(url, signal, extra = {}) {
+  const r = await fetch(url, { headers: { ...headers(SB_ANON), ...extra }, cache: 'no-store', signal })
+  if (!r.ok) await fail(r)
+  return r
+}
+
+/** One page of the catalog. Returns { rows, total }. */
+export async function fetchMagicPage({ offset = 0, limit = 50, signal, ...filter } = {}) {
+  const p = magicParams(filter)
+  p.set('select', MAGIC_COLUMNS); p.set('order', 'position.asc,id.asc'); p.set('limit', String(limit)); p.set('offset', String(offset))
+  const r = await getJson(`${SB_URL}/rest/v1/magic_items?${p}`, signal, { Prefer: 'count=exact' })
+  const rows = await r.json()
+  const total = Number((r.headers.get('Content-Range') || '').split('/')[1])
+  return { rows, total: Number.isFinite(total) ? total : rows.length }
+}
+
+/** Only id and price of every matching item: enough to sort by price without downloading the items. */
+export async function fetchMagicPriceIndex({ signal, ...filter } = {}) {
+  const base = magicParams(filter)
+  base.set('select', 'id,price'); base.set('order', 'position.asc,id.asc')
+  let all = []
+  for (let offset = 0; ; offset += 1000) {
+    const p = new URLSearchParams(base); p.set('limit', '1000'); p.set('offset', String(offset))
+    const rows = await (await getJson(`${SB_URL}/rest/v1/magic_items?${p}`, signal)).json()
+    all = all.concat(rows)
+    if (rows.length < 1000) return all
+  }
+}
+
+/** Full rows for the given ids (a price-sorted page), in no particular order. */
+export async function fetchMagicByIds(ids, signal) {
+  if (!ids.length) return []
+  const quote = (v) => '"' + String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"'
+  const p = new URLSearchParams({ select: MAGIC_COLUMNS, id: `in.(${ids.map(quote).join(',')})`, limit: String(ids.length) })
+  return (await getJson(`${SB_URL}/rest/v1/magic_items?${p}`, signal)).json()
+}
+
+/** The values of the Group and Slot selectors. Two small columns, nothing else. */
+export async function fetchMagicFacets(signal) {
+  const groups = new Set(), slots = new Set()
+  for (let offset = 0; ; offset += 1000) {
+    const p = new URLSearchParams({ select: 'group_name,slot', order: 'position.asc,id.asc', limit: '1000', offset: String(offset) })
+    const rows = await (await getJson(`${SB_URL}/rest/v1/magic_items?${p}`, signal)).json()
+    for (const r of rows) {
+      const g = String(r.group_name || '').trim(), s = String(r.slot || '').trim()
+      if (g) groups.add(g)
+      if (g.toLowerCase() === 'wondrous item' && s) slots.add(s)
+    }
+    if (rows.length < 1000) break
+  }
+  return { groups: [...groups].sort(), slots: [...slots].sort() }
+}
