@@ -1,0 +1,21 @@
+/* Styles that only exist in the Vue version (everything else comes from app.css). */
+.det-head { display: flex; align-items: center; gap: 12px; margin: 4px 0 12px; }
+.det-use { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0 0 14px; }
+.det-use .step button { width: 52px; min-height: 52px; font-size: 26px; }
+.det-use .ic-nn { font-size: 22px; min-width: 56px; text-align: center; }
+.det-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+.det-actions .cast { grid-column: 1 / -1; }
+.item-form textarea { width: 100%; font: inherit; }
+
+.money-panel { margin-bottom: 14px; }
+.money-panel h2 { margin: 0; font-size: 20px; }
+.money-panel .money-grid { margin-top: 12px; }
+.money-panel label { display: grid; gap: 5px; color: var(--mute); font-size: 14px; }
+.money-panel input { min-width: 0; width: 100%; }
+
+.fx-tick { margin-top: 12px; min-height: 56px; font-size: 19px; }
+.fx-adv { margin-top: 8px; }
+.fx-tools { margin-top: 8px; }
+.fx-end { width: 44px; padding: 0; }
+.fx-target { justify-content: flex-start; gap: 8px; }
+.fx-target.foe { border: 1px solid #e53935; border-radius: 8px; padding: 8px; color: #e53935; }
