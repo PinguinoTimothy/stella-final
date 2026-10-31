@@ -2,10 +2,11 @@
 // Add / edit form (one component for both). `item` is the item being edited, or null to add a new one.
 import { computed, reactive, ref, watch } from 'vue'
 import Sheet from './Sheet.vue'
+import SpellSuggestions from './SpellSuggestions.vue'
 import { CHARGED_KINDS, KINDS, SLOT_ORDER, SPELL_KINDS } from '../lib/constants'
 import { newItem } from '../lib/items'
-import { fetchSpellCatalogPage } from '../lib/supabase'
 import { lowestSpellLevel } from '../lib/spellcasting'
+import { useSpellSearch } from '../composables/useSpellSearch'
 import { useAppStore } from '../stores/app'
 import { useInventory } from '../stores/inventory'
 import { useSpells } from '../stores/spells'
@@ -25,68 +26,44 @@ const canAdv = computed(() => !showCharges.value || !showSpell.value)
 // Once the user has typed a value, a spell pick does not overwrite it. When editing, the saved values count as typed.
 const touched = reactive({ name: editing, cl: editing, spellLevel: editing, max: editing, price: editing })
 
-// Spell suggestions: searched on the server (the full spell list, not the 50 loaded at startup).
-const suggestions = ref([])
+// Spell suggestions come from the database search (the full spell list, not the 50 loaded at startup).
+const finder = useSpellSearch()
+const suggestions = finder.results
 const picked = ref(null)
-let timer = 0, requestId = 0
 
 watch(() => f.spellName, (value) => {
   const term = String(value || '').trim()
-  clearTimeout(timer)
   if (term === picked.value) return
   picked.value = null
-  if (term.length < 2) { suggestions.value = []; return }
-  timer = setTimeout(() => search(term), 250)
+  finder.search(term)
 })
 
-async function search(term) {
-  const id = ++requestId
-  let rows = []
-  try {
-    rows = (await fetchSpellCatalogPage({ query: term, limit: 10 })).rows
-  } catch {
-    // Without the server, only the custom spells below are offered.
-  }
-  if (id !== requestId) return
-
-  // Custom spells live in the character data, not in the catalog.
-  const q = term.toLowerCase()
-  const custom = (app.S.db || [])
-    .filter((d) => String(d.n || '').toLowerCase().includes(q))
-    .map((d) => ({ name: d.n, lv: d.lv || '' }))
-
-  const seen = new Set()
-  suggestions.value = [...custom, ...rows]
-    .filter((s) => {
-      const key = String(s.name || '').toLowerCase()
-      if (!key || seen.has(key)) return false
-      seen.add(key)
-      return true
-    })
-    .slice(0, 10)
-}
-
-/** Base price of a wand: 750 gp × caster level × spell level (375 gp × caster level for 0-level spells). */
-function wandPrice(cl, level) {
+// Base prices (gp) per caster level and spell level. Spells of level 0 use half of the per-level figure.
+//   wand 750 × CL × level (375 × CL for level 0) · scroll 25 × CL × level (12.5 × CL) · potion 50 × CL × level (25 × CL)
+const PRICE_PER = { Wand: 750, Scroll: 25, Potion: 50 }
+function magicPrice(kind, cl, level) {
+  const base = PRICE_PER[kind]
   const c = Number(cl) || 0, l = Number(level) || 0
-  return l === 0 ? 375 * c : 750 * c * l
+  if (!base) return null
+  return l === 0 ? (base / 2) * c : base * c * l
 }
 
-// Keeps the price in step with the wand's spell and caster level, until the user types a price.
+// Keeps the price in step with the spell and caster level, until the user types a price.
 watch(() => [f.k, f.spellName, f.cl, f.spellLevel], () => {
-  if (f.k !== 'Wand' || !f.spellName || touched.price) return
-  f.price = wandPrice(f.cl, f.spellLevel)
+  if (!PRICE_PER[f.k] || !f.spellName || touched.price) return
+  f.price = magicPrice(f.k, f.cl, f.spellLevel)
 })
 
 /** Chosen from the suggestions: loads the full spell and fills level, caster level and name when the user has not typed them. */
-async function pick(name) {
+async function pick(spell) {
+  const name = spell.n
   picked.value = name
   f.spellName = name
-  suggestions.value = []
+  finder.clear()
 
   await spells.ensure([name])
-  const sp = spells.find(name)
-  const lv = sp ? lowestSpellLevel(sp.lv) : null
+  const sp = spells.find(name) || spell
+  const lv = lowestSpellLevel(sp.lv)
   if (lv === null) return
 
   if (!touched.spellLevel) f.spellLevel = lv
@@ -122,14 +99,7 @@ function submit() {
 
       <div v-if="showSpell" class="grid">
         <label>Spell<input v-model="f.spellName" placeholder="Search spell by name…" autocomplete="off"></label>
-        <ul v-if="suggestions.length" class="spell-suggestions" role="listbox" aria-label="Matching spells">
-          <li v-for="s in suggestions" :key="s.name">
-            <button type="button" class="spell-option" role="option" @click="pick(s.name)">
-              <span class="spell-option-name">{{ s.name }}</span>
-              <span v-if="lowestSpellLevel(s.lv) !== null" class="spell-option-level">Lvl {{ lowestSpellLevel(s.lv) }}</span>
-            </button>
-          </li>
-        </ul>
+        <SpellSuggestions :items="suggestions" meta="level" @pick="pick" />
         <div class="grid g2">
           <label>Caster level<input v-model.number="f.cl" type="number" min="1" inputmode="numeric" @input="touched.cl = true"></label>
           <label>Spell level<input v-model.number="f.spellLevel" type="number" min="0" max="9" inputmode="numeric" @input="touched.spellLevel = true"></label>
@@ -158,36 +128,3 @@ function submit() {
     </form>
   </Sheet>
 </template>
-
-<style scoped>
-.spell-suggestions {
-  list-style: none;
-  margin: 6px 0 0;
-  padding: 0;
-  max-height: 260px;
-  overflow-y: auto;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--surface);
-}
-.spell-suggestions li + li { border-top: 1px solid var(--line); }
-.spell-option {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  width: 100%;
-  min-height: 44px;
-  padding: 10px 14px;
-  background: none;
-  border: 0;
-  border-radius: 0;
-  color: var(--ink);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.spell-option:hover, .spell-option:focus-visible { background: var(--raise); outline: none; }
-.spell-option-name { font-weight: 600; }
-.spell-option-level { color: var(--mute); font-size: 0.9em; white-space: nowrap; }
-</style>
