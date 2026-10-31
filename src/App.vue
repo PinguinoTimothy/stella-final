@@ -17,6 +17,7 @@ import FxView from './views/FxView.vue'
 import GrappleView from './views/GrappleView.vue'
 import HistoryView from './views/HistoryView.vue'
 import ItemsView from './views/ItemsView.vue'
+import EquipmentCatalogView from './views/EquipmentCatalogView.vue'
 import MagicCatalogView from './views/MagicCatalogView.vue'
 import MonsterCatalogView from './views/MonsterCatalogView.vue'
 import MoreView from './views/MoreView.vue'
@@ -44,6 +45,7 @@ const editorViews = {
   setup: SetupView,
   party: PartyView,
   magicCatalog: MagicCatalogView,
+  equipmentCatalog: EquipmentCatalogView,
   monsters: MonsterCatalogView,
   skills: SkillsView,
   umr: UmrView,
@@ -58,6 +60,7 @@ const playerViews = {
   party: [PartyView, { readonly: true }],
   more: MoreView,
   magicCatalog: MagicCatalogView,
+  equipmentCatalog: EquipmentCatalogView,
   monsters: MonsterCatalogView,
   skills: SkillsView,
   umr: UmrView,

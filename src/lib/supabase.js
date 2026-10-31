@@ -352,3 +352,61 @@ export async function fetchMagicFacets(signal) {
   }
   return { groups: [...groups].sort(), slots: [...slots].sort() }
 }
+
+/* ---------- Equipment catalog (view equipment_catalog, see migrations/002_equipment_catalog.sql) ---------- */
+
+const EQUIPMENT_COLUMNS = 'id,base_id,name,kind,heading,category,price_gp,weight_lb,body_md,sources'
+const EQUIPMENT_ORDER = {
+  name: 'name.asc,id.asc',
+  asc: 'price_gp.asc.nullslast,name.asc,id.asc',
+  desc: 'price_gp.desc.nullslast,name.asc,id.asc',
+}
+
+/** PostgREST filters for the equipment screen: search box and category. */
+function equipmentParams({ query = '', category = '' } = {}) {
+  const p = new URLSearchParams()
+  const q = cleanTerm(query)
+  if (q) p.set('or', `(name.ilike.*${q}*,heading.ilike.*${q}*,category.ilike.*${q}*)`)
+  if (category) p.set('category', `eq.${category}`)
+  return p
+}
+
+/** One page of the equipment catalog. Returns { rows, total }. */
+export async function fetchEquipmentPage({ offset = 0, limit = 50, sort = 'name', signal, ...filter } = {}) {
+  const p = equipmentParams(filter)
+  p.set('select', EQUIPMENT_COLUMNS)
+  p.set('order', EQUIPMENT_ORDER[sort] || EQUIPMENT_ORDER.name)
+  p.set('limit', String(limit))
+  p.set('offset', String(offset))
+  const r = await getJson(`${SB_URL}/rest/v1/equipment_catalog?${p}`, signal, { Prefer: 'count=exact' })
+  const rows = await r.json()
+  const total = Number((r.headers.get('Content-Range') || '').split('/')[1])
+  return { rows, total: Number.isFinite(total) ? total : rows.length }
+}
+
+/** Distinct categories of the catalog, for the filter. Reads one small column. */
+export async function fetchEquipmentCategories(signal) {
+  const set = new Set()
+  for (let offset = 0; ; offset += 1000) {
+    const p = new URLSearchParams({ select: 'category', order: 'category.asc,id.asc', limit: '1000', offset: String(offset) })
+    const rows = await (await getJson(`${SB_URL}/rest/v1/equipment_catalog?${p}`, signal)).json()
+    for (const r of rows) {
+      const c = String(r.category || '').trim()
+      if (c) set.add(c)
+    }
+    if (rows.length < 1000) break
+  }
+  return [...set].sort((a, b) => a.localeCompare(b))
+}
+
+/** Stats and effects of a base entry (copies share them). Read only when the details sheet opens. */
+export async function fetchEquipmentDetail(baseId, signal) {
+  const p = new URLSearchParams({
+    select: 'item_stat(seq,section,key,value_raw),item_effect(seq,target,qualifier,text)',
+    id: `eq.${baseId}`,
+    limit: '1',
+  })
+  const [row] = await (await getJson(`${SB_URL}/rest/v1/item?${p}`, signal)).json()
+  const bySeq = (list) => (list || []).slice().sort((a, b) => a.seq - b.seq)
+  return { stats: bySeq(row?.item_stat), effects: bySeq(row?.item_effect) }
+}
