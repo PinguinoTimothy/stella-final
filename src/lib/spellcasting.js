@@ -119,3 +119,13 @@ export const newClassSpell = (spell) => ({
   lv: spell.lv || '',
   note: '', prep: 0, left: 0, dom: false, dcb: 0,
 })
+
+/** Lowest spell level in a level string such as "Sor/Wiz 3, Clr 2". Null if there is none. */
+export function lowestSpellLevel(lv = '') {
+  let best = null
+  for (const m of String(lv || '').matchAll(/([A-Za-z]+)\s*(\d)/g)) {
+    const v = Number(m[2])
+    if (best === null || v < best) best = v
+  }
+  return best
+}
