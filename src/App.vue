@@ -23,6 +23,8 @@ import SetupView from './views/SetupView.vue'
 import SkillsView from './views/SkillsView.vue'
 import SpellsView from './views/SpellsView.vue'
 import UmrView from './views/UmrView.vue'
+import MonsterCatalogView from './views/MonsterCatalogView.vue'
+import CombatTray from './components/Monsters/CombatTray.vue'
 
 const app = useAppStore()
 const cloud = useCloudStore()
@@ -46,6 +48,8 @@ const editorViews = {
   grapple: GrappleView,
   conditions: ConditionsView,
   history: HistoryView,
+      monsters: MonsterCatalogView,
+      combat: CombatTray
 }
 
 const playerViews = {
@@ -59,6 +63,8 @@ const playerViews = {
   grapple: GrappleView,
   conditions: ConditionsView,
   history: HistoryView,
+    monsters: MonsterCatalogView,
+    combat: CombatTray
 }
 
 const titles = { cast: 'Cast', fx: 'Active effects', db: 'Spells' }
@@ -78,6 +84,7 @@ const title = computed(() => titles[app.ui.tab] || (app.viewer ? app.ui.tab : ''
     <PlaceholderView v-else :title="title" />
     <template v-if="!app.viewer">
       <ToastHost />
+      <CombatTray />
       <ConfirmDialog />
     </template>
   </template>

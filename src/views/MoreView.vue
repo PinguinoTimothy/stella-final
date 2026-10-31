@@ -13,7 +13,7 @@ const emit = defineEmits<{
 const app = useAppStore()
 const cloud = useCloudStore()
 
-function openTab(tab: 'party' | 'setup' | 'magicCatalog' | 'skills' | 'umr' | 'grapple' | 'conditions' | 'history') {
+function openTab(tab: 'party' | 'setup' | 'magicCatalog' | 'skills' | 'umr' | 'grapple' | 'conditions' | 'history' | 'monsters') {
     if (app.viewer && tab === 'setup') return
 
   app.ui.tab = tab
@@ -128,6 +128,14 @@ function openTab(tab: 'party' | 'setup' | 'magicCatalog' | 'skills' | 'umr' | 'g
     <span>
       <b>History</b>
       <small>Casts, item uses, money and rests</small>
+    </span>
+    <span aria-hidden="true">›</span>
+  </button>
+
+<button class="more-row setup-link" @click="openTab('monsters')">
+      <span>
+      <b>Monsters</b>
+      <small>Bestiary: quick combat stats</small>
     </span>
     <span aria-hidden="true">›</span>
   </button>

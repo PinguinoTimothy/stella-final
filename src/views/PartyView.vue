@@ -1,8 +1,13 @@
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useAppStore } from '../stores/app'
 import { fmtR } from '../lib/effects'
+import { cmpItem } from '../lib/items'
+import ItemCard from '../components/ItemCard.vue'
+import ItemDetail from '../components/ItemDetail.vue'
+import ItemForm from '../components/ItemForm.vue'
+import Sheet from '../components/Sheet.vue'
 
 const app = useAppStore()
 const props = defineProps({
@@ -11,6 +16,10 @@ const props = defineProps({
 const newName = ref('')
 const selectedName = ref('')
 const showAdd = ref(false)
+const detailId = ref(null)   // item open in the detail sheet
+const form = ref(null)       // null = closed · { item } = edit
+const pickerOpen = ref(false) // "Añadir objeto" sheet
+const pickerQuery = ref('')
 
 const members = computed(() =>
   app.party.map((name) => {
@@ -29,6 +38,60 @@ const members = computed(() =>
 const selected = computed(() =>
   members.value.find((member) => member.name === selectedName.value) || null,
 )
+
+// Same order as the Items screen: equipped first, then by name.
+const sortedItems = computed(() =>
+  selected.value ? [...selected.value.items].sort(cmpItem) : [],
+)
+
+const detail = computed(() =>
+  app.S.items.find((it) => it.id === detailId.value) || null,
+)
+// If the open item disappears (deleted, undo…), close its sheet.
+watch(detail, (d) => { if (!d) detailId.value = null })
+// Switching character closes the picker.
+watch(selectedName, () => { pickerOpen.value = false; pickerQuery.value = '' })
+
+/* Add-item picker: items not carried by this character, split into unassigned and carried by others. */
+const pickerRows = computed(() => {
+  const name = selected.value?.name
+  const q = pickerQuery.value.trim().toLowerCase()
+  const rows = app.S.items
+    .filter((it) => it.owner !== name)
+    .filter((it) => !q || [it.n, it.k, it.slot, it.owner, it.aura].join(' ').toLowerCase().includes(q))
+    .sort((a, b) => String(a.n).localeCompare(String(b.n)))
+  return {
+    free: rows.filter((it) => !it.owner),
+    held: rows.filter((it) => it.owner),
+  }
+})
+
+function openPicker() {
+  if (props.readonly || !selected.value) return
+  pickerQuery.value = ''
+  pickerOpen.value = true
+}
+
+/* Assigns an item to the open character. Taking it from someone else unequips it, like the original. */
+function assign(item) {
+  if (props.readonly || !selected.value) return
+  const name = selected.value.name
+  if (item.owner === name) return
+  const prev = item.owner
+  app.snapshot()
+  item.owner = name
+  if (prev) item.equipped = false
+  const msg = prev ? `Moved ${item.n} from ${prev} to ${name}` : `Assigned ${item.n} to ${name}`
+  app.log('party', msg)
+  app.notifyUndo(msg)
+  pickerOpen.value = false
+}
+
+function edit(item) {
+  if (props.readonly) return
+  detailId.value = null
+  form.value = { item }
+}
 
 function affects(effect, name) {
   const target = name.toLowerCase()
@@ -87,14 +150,6 @@ async function removeMember(member) {
   app.notifyUndo(`Retirado: ${member.name}`)
 }
 
-function manageInventory() {
-  if (!selected.value) return
-
-  app.ui.owner = selected.value.name
-  app.ui.itemView = 'inventory'
-  app.ui.search = ''
-  app.ui.tab = 'items'
-}
 </script>
 
 <template>
@@ -170,8 +225,8 @@ function manageInventory() {
       <section class="panel">
         <div class="row">
           <h2>Inventario</h2>
-<button v-if="!props.readonly" @click="manageInventory">
-  Gestionar objetos
+<button v-if="!props.readonly" class="cast" style="margin: 1rem;" @click="openPicker">
+  + Añadir objeto
 </button>
         </div>
 
@@ -179,16 +234,15 @@ function manageInventory() {
           No tiene objetos asignados.
         </p>
 
-        <div v-else class="party-items">
-          <article
-            v-for="item in selected.items"
-            :key="item.id"
-            class="party-item"
-          >
-            <b>{{ item.n }}</b>
-            <span class="mute">{{ item.k || 'Objeto' }}</span>
-            <span v-if="item.equipped" class="tag dom">Equipado</span>
-          </article>
+        <div v-else class="item-grid">
+          <ItemCard
+            v-for="it in sortedItems"
+            :key="it.id"
+            :item="it"
+            :readonly="props.readonly"
+            hide-owner
+            @open="detailId = it.id"
+          />
         </div>
       </section>
 
@@ -223,6 +277,66 @@ function manageInventory() {
   Retirar {{ selected.name }} del grupo
 </button>
     </template>
+
+    <ItemDetail
+      v-if="detail"
+      :item="detail"
+      :readonly="props.readonly"
+      @close="detailId = null"
+      @edit="edit"
+    />
+    <ItemForm
+      v-if="form && !props.readonly"
+      :item="form.item"
+      @close="form = null"
+    />
+
+    <Sheet
+      v-if="pickerOpen && selected && !props.readonly"
+      :title="`Añadir objeto a ${selected.name}`"
+      @close="pickerOpen = false"
+    >
+      <input
+        v-model="pickerQuery"
+        type="search"
+        placeholder="Buscar objetos…"
+        aria-label="Buscar objetos"
+        autocomplete="off"
+      >
+
+      <p v-if="!pickerRows.free.length && !pickerRows.held.length" class="item-empty">
+        Todos los objetos ya están con {{ selected.name }}.
+        Crea objetos nuevos desde la pestaña Objetos.
+      </p>
+
+      <section v-if="pickerRows.free.length" class="pk-g">
+        <h3 class="ig-h">Sin asignar <span>{{ pickerRows.free.length }}</span></h3>
+        <article v-for="it in pickerRows.free" :key="it.id" class="pk">
+          <span class="pk-t">
+            <b>{{ it.n }}</b>
+            <small>
+              <span>{{ it.k || 'Objeto' }}</span>
+              <span v-if="it.slot && it.slot !== it.k" class="tag">{{ it.slot }}</span>
+            </small>
+          </span>
+          <button @click="assign(it)">Asignar</button>
+        </article>
+      </section>
+
+      <section v-if="pickerRows.held.length" class="pk-g">
+        <h3 class="ig-h">Llevados por otros <span>{{ pickerRows.held.length }}</span></h3>
+        <article v-for="it in pickerRows.held" :key="it.id" class="pk">
+          <span class="pk-t">
+            <b>{{ it.n }}</b>
+            <small>
+              <span>{{ it.k || 'Objeto' }}</span>
+              <span class="tag">con {{ it.owner }}</span>
+            </small>
+          </span>
+          <button @click="assign(it)">Quitar</button>
+        </article>
+      </section>
+    </Sheet>
   </main>
 </template>
 
@@ -246,24 +360,6 @@ function manageInventory() {
 .party-list {
   display: grid;
   gap: 8px;
-}
-
-.party-items {
-  display: grid;
-  gap: 10px;
-}
-
-.party-item {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--line, rgba(255,255,255,.1));
-}
-
-.party-item b {
-  flex: 1 1 130px;
 }
 
 .party-effect {
