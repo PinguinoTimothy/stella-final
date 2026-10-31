@@ -24,6 +24,7 @@ export function plainText(md = '') {
   return String(md)
     .replace(/^##\s+.*$/m, '')                          // the title is shown on its own
     .replace(/^‹SOURCE.*›\s*$/gm, '')                   // sources are shown on their own
+        .replace(/^(?:\*\*)?(?:Price|Weight|Category|Cost|Associated Skill|Accuracy)(?:\*\*)?\b.{0,160}$/gim, '') // header lines, already shown above
     .replace(/‹(?:[^/›]*\/)?([^›]*)›/g, '$1')           // ‹rule/Dungeon Guides› → Dungeon Guides
     .replace(/@\w+\[(?:[^/\]]*\/)?([^\]]*)\]/g, '$1')   // @HL[(M):] → (M): ; @hll[spell/Acid Arrow] → Acid Arrow
     .replace(/::\w+\{[^}]*\}/g, '')                     // ::tabular{...}
