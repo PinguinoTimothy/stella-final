@@ -1,8 +1,7 @@
 <script setup>
-// More › Monsters: the bestiary. Tap a monster to read its stat block; the + button adds it to combat.
+// More › Monsters: the bestiary. Tap a name to read it in a centred panel; + adds it to combat.
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import BackButton from '../components/BackButton.vue'
-import Sheet from '../components/Sheet.vue'
 import CombatCard from '../components/Monsters/CombatCard.vue'
 import { useAppStore } from '../stores/app'
 import { useMonsterFights } from '../stores/monsterFights'
@@ -67,12 +66,16 @@ onMounted(async () => {
   } catch {
     // The type filter stays empty; the list still works.
   }
+  window.addEventListener('keydown', onKey)
 })
-onBeforeUnmount(() => clearTimeout(debounce))
+onBeforeUnmount(() => {
+  clearTimeout(debounce)
+  window.removeEventListener('keydown', onKey)
+})
 
-/* ---------- stat block (read only) ---------- */
+/* ---------- stat panel (centred, read only) ---------- */
 
-const stats = ref(null)   // { monster, card, error, loading } while the sheet is open
+const stats = ref(null)   // { monster, card, error, loading } while the panel is open
 let statsReq = 0
 
 async function openStats(m) {
@@ -93,6 +96,10 @@ async function openStats(m) {
 function closeStats() {
   statsReq++
   stats.value = null
+}
+
+function onKey(e) {
+  if (e.key === 'Escape' && stats.value) closeStats()
 }
 
 /* ---------- combat ---------- */
@@ -148,21 +155,32 @@ function addFromStats() {
     {{ loading ? 'Loading…' : 'Load more' }}
   </button>
 
-  <Sheet v-if="stats" :title="stats.monster.name" @close="closeStats">
-    <p v-if="stats.loading" class="mute">Loading…</p>
-    <p v-else-if="stats.error" class="mute" role="alert">{{ stats.error }}</p>
-    <template v-else-if="stats.card">
-      <CombatCard :card="stats.card" />
-      <button class="cast" style="width:100%;margin-top:12px" @click="addFromStats">Add to combat</button>
-    </template>
-  </Sheet>
+  <!-- Centred panel with the stat block. Escape, × or a tap outside closes it. -->
+  <div v-if="stats" class="mc-bg" @click.self="closeStats">
+    <section class="mc-modal" role="dialog" aria-modal="true" :aria-label="stats.monster.name">
+      <header class="mc-head">
+        <h2>{{ stats.monster.name }}</h2>
+        <button class="x" aria-label="Close" @click="closeStats">×</button>
+      </header>
+
+      <div class="mc-body">
+        <p v-if="stats.loading" class="mute">Loading…</p>
+        <p v-else-if="stats.error" class="mute" role="alert">{{ stats.error }}</p>
+        <CombatCard v-else-if="stats.card" :card="stats.card" />
+      </div>
+
+      <footer v-if="stats.card" class="mc-foot">
+        <button class="cast" style="width:100%" @click="addFromStats">Add to combat</button>
+      </footer>
+    </section>
+  </div>
 </template>
 
 <style scoped>
 .cat-row {
   display: flex;
-  gap: 8px;
-  align-items: stretch;
+  gap: 6px;
+  align-items: center;
 }
 
 .cat-main {
@@ -172,9 +190,64 @@ function addFromStats() {
 
 .cat-add {
   flex: none;
-  width: 52px;
-  min-height: 52px;
+  width: 36px;
+  min-width: 36px;
+  min-height: 36px;
   padding: 0;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.mc-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, .55);
+}
+
+.mc-modal {
+  width: min(560px, 100%);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface, #11222d);
+  border: 1px solid var(--line, #264452);
+  border-radius: 18px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, .5);
+}
+
+.mc-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line, #264452);
+}
+
+.mc-head h2 {
+  flex: 1;
+  margin: 0;
   font-size: 22px;
+}
+
+.mc-head .x {
+  min-width: 36px;
+  min-height: 36px;
+}
+
+.mc-body {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 12px 16px 16px;
+}
+
+.mc-foot {
+  padding: 10px 14px;
+  border-top: 1px solid var(--line, #264452);
 }
 </style>

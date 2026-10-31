@@ -1,6 +1,6 @@
 <script setup>
-// Combat tray: the open fights, always visible. A fixed column on the right on desktop,
-// a bottom drawer on phones. Can be hidden to a small tab; the choice is remembered in this browser.
+// Combat tray: the open fights. A fixed column on the right on desktop, a bottom drawer on phones.
+// Can be hidden to a small tab; the choice is remembered in this browser. Also available in player mode.
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { useAppStore } from '../../stores/app'
 import { useMonsterFights } from '../../stores/monsterFights'
@@ -29,8 +29,10 @@ watch(hidden, (v) => {
 const expanded = ref(false)   // phone drawer: closed by default
 const amount = ref(5)
 const amt = computed(() => Math.max(1, Math.abs(Math.round(Number(amount.value)) || 0)))
-const show = computed(() => true)                   // also in player mode
-// const sidePanel = computed(() => show.value && !hidden.value)
+
+// Shown in both modes. Hidden means only the small tab is visible.
+const sidePanel = computed(() => !hidden.value)
+const readonly = computed(() => app.viewer)
 
 const detailUid = ref(null)
 const detail = computed(() => fights.fights.find((f) => f.uid === detailUid.value) || null)
@@ -74,85 +76,83 @@ async function clearAll() {
 </script>
 
 <template>
-  <template v-if="show">
-    <aside v-if="sidePanel" class="combat-tray" :class="{ open: expanded }" aria-label="Combat">
-      <header class="ct-head">
-        <button class="ct-toggle" type="button" :aria-expanded="expanded" @click="expanded = !expanded">
-          <b>Combat</b>
-          <span class="mute">{{ fights.fights.length ? `${fights.activeIndex + 1} / ${fights.fights.length}` : 'empty' }}</span>
-        </button>
-        <div class="ct-nav">
-          <button :disabled="fights.fights.length < 2" aria-label="Previous monster" @click="fights.step(-1)">‹</button>
-          <button :disabled="fights.fights.length < 2" aria-label="Next monster" @click="fights.step(1)">›</button>
-          <button :disabled="!fights.fights.length" class="danger" aria-label="Clear all" @click="clearAll">Clear</button>
-          <button class="ct-hide" aria-label="Hide combat" @click="hide">Hide</button>
+  <aside v-if="sidePanel" class="combat-tray" :class="{ open: expanded }" aria-label="Combat">
+    <header class="ct-head">
+      <button class="ct-toggle" type="button" :aria-expanded="expanded" @click="expanded = !expanded">
+        <b>Combat</b>
+        <span class="mute">{{ fights.fights.length ? `${fights.activeIndex + 1} / ${fights.fights.length}` : 'empty' }}</span>
+      </button>
+      <div class="ct-nav">
+        <button :disabled="fights.fights.length < 2" aria-label="Previous monster" @click="fights.step(-1)">‹</button>
+        <button :disabled="fights.fights.length < 2" aria-label="Next monster" @click="fights.step(1)">›</button>
+        <button v-if="!readonly" :disabled="!fights.fights.length" class="danger" aria-label="Clear all" @click="clearAll">Clear</button>
+        <button class="ct-hide" aria-label="Hide combat" @click="hide">Hide</button>
+      </div>
+    </header>
+
+    <div v-if="!readonly" class="ct-amount">
+      <input v-model.number="amount" type="number" min="1" inputmode="numeric" aria-label="Amount">
+      <button class="danger" :disabled="!fights.active" @click="applyToActive(-1)">Damage</button>
+      <button class="cast" :disabled="!fights.active" @click="applyToActive(1)">Heal</button>
+    </div>
+
+    <div class="ct-body">
+      <p v-if="!fights.fights.length" class="mute">
+        No open fights. Add monsters from More → Monsters.
+      </p>
+
+      <article
+        v-for="f in fights.fights"
+        :key="f.uid"
+        class="ct-card"
+        :class="{ active: f.uid === fights.active?.uid, down: isDown(f) }"
+      >
+        <div class="ct-row">
+          <button class="ct-name" :aria-current="f.uid === fights.active?.uid" @click="openDetail(f.uid)">
+            {{ f.name }}
+          </button>
+          <span v-if="isDown(f)" class="tag warn">down</span>
+          <span class="ct-hp"><b>{{ f.hp }}</b>/{{ f.maxHp }}</span>
+          <button v-if="!readonly" class="ct-x" aria-label="Remove from combat" @click="fights.remove(f.uid)">×</button>
         </div>
+
+        <div class="ct-bar" aria-hidden="true"><i :style="{ width: pct(f) + '%' }"></i></div>
+
+        <div v-if="!readonly" class="ct-btns">
+          <button aria-label="Minus 5" @click="fights.change(f.uid, -5)">−5</button>
+          <button aria-label="Minus 1" @click="fights.change(f.uid, -1)">−1</button>
+          <button aria-label="Plus 1" @click="fights.change(f.uid, 1)">+1</button>
+          <button aria-label="Plus 5" @click="fights.change(f.uid, 5)">+5</button>
+          <button aria-label="Reset HP" @click="fights.reset(f.uid)">↺</button>
+        </div>
+
+        <p v-if="f.loading" class="mute">Loading…</p>
+        <p v-else-if="f.error" class="mute" role="alert">{{ f.error }}</p>
+      </article>
+    </div>
+  </aside>
+
+  <!-- Hidden: a small tab to bring the panel back. -->
+  <button v-else class="ct-tab" type="button" aria-label="Show combat" @click="reveal">
+    Combat
+    <span v-if="fights.fights.length">{{ fights.fights.length }}</span>
+  </button>
+
+  <!-- Popover with the full stat block. Clicking outside or × closes it. -->
+  <template v-if="sidePanel && detail">
+    <div class="ct-pop-bg" aria-hidden="true" @click="detailUid = null"></div>
+    <section class="ct-pop" role="dialog" :aria-label="detail.name">
+      <header class="ct-pop-head">
+        <h2>{{ detail.name }}</h2>
+        <span class="mute">HP {{ detail.hp }}/{{ detail.maxHp }}</span>
+        <button class="x" aria-label="Close" @click="detailUid = null">×</button>
       </header>
-
-      <div class="ct-amount">
-        <input v-model.number="amount" type="number" min="1" inputmode="numeric" aria-label="Amount">
-        <button class="danger" :disabled="!fights.active" @click="applyToActive(-1)">Damage</button>
-        <button class="cast" :disabled="!fights.active" @click="applyToActive(1)">Heal</button>
+      <div class="ct-pop-body">
+        <p v-if="detail.loading" class="mute">Loading…</p>
+        <p v-else-if="detail.error" class="mute" role="alert">{{ detail.error }}</p>
+        <CombatCard v-else-if="detail.card" :card="detail.card" />
       </div>
-
-      <div class="ct-body">
-        <p v-if="!fights.fights.length" class="mute">
-          No open fights. Add monsters from More → Monsters.
-        </p>
-
-        <article
-          v-for="f in fights.fights"
-          :key="f.uid"
-          class="ct-card"
-          :class="{ active: f.uid === fights.active?.uid, down: isDown(f) }"
-        >
-          <div class="ct-row">
-            <button class="ct-name" :aria-current="f.uid === fights.active?.uid" @click="openDetail(f.uid)">
-              {{ f.name }}
-            </button>
-            <span v-if="isDown(f)" class="tag warn">down</span>
-            <span class="ct-hp"><b>{{ f.hp }}</b>/{{ f.maxHp }}</span>
-            <button class="ct-x" aria-label="Remove from combat" @click="fights.remove(f.uid)">×</button>
-          </div>
-
-          <div class="ct-bar" aria-hidden="true"><i :style="{ width: pct(f) + '%' }"></i></div>
-
-          <div class="ct-btns">
-            <button aria-label="Minus 5" @click="fights.change(f.uid, -5)">−5</button>
-            <button aria-label="Minus 1" @click="fights.change(f.uid, -1)">−1</button>
-            <button aria-label="Plus 1" @click="fights.change(f.uid, 1)">+1</button>
-            <button aria-label="Plus 5" @click="fights.change(f.uid, 5)">+5</button>
-            <button aria-label="Reset HP" @click="fights.reset(f.uid)">↺</button>
-          </div>
-
-          <p v-if="f.loading" class="mute">Loading…</p>
-          <p v-else-if="f.error" class="mute" role="alert">{{ f.error }}</p>
-        </article>
-      </div>
-    </aside>
-
-    <!-- Hidden: a small tab to bring the panel back. -->
-    <button v-else class="ct-tab" type="button" aria-label="Show combat" @click="reveal">
-      Combat
-      <span v-if="fights.fights.length">{{ fights.fights.length }}</span>
-    </button>
-
-    <!-- Popover with the full stat block. Clicking outside or × closes it. -->
-    <template v-if="sidePanel && detail">
-      <div class="ct-pop-bg" aria-hidden="true" @click="detailUid = null"></div>
-      <section class="ct-pop" role="dialog" :aria-label="detail.name">
-        <header class="ct-pop-head">
-          <h2>{{ detail.name }}</h2>
-          <span class="mute">HP {{ detail.hp }}/{{ detail.maxHp }}</span>
-          <button class="x" aria-label="Close" @click="detailUid = null">×</button>
-        </header>
-        <div class="ct-pop-body">
-          <p v-if="detail.loading" class="mute">Loading…</p>
-          <p v-else-if="detail.error" class="mute" role="alert">{{ detail.error }}</p>
-          <CombatCard v-else-if="detail.card" :card="detail.card" />
-        </div>
-      </section>
-    </template>
+    </section>
   </template>
 </template>
 

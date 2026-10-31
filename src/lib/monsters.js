@@ -136,6 +136,20 @@ function formatSpellsKnown(spells) {
   }
 }
 
+// Plain list of names: accepts strings or { name } objects.
+const textList = (v) =>
+  list(v).map((x) => (typeof x === 'string' ? x : x?.name || '')).filter(Boolean)
+
+// Gear comes as { combat, other } or as flat fields; either a string or a list.
+function gearText(d) {
+  const g = d.gear || {}
+  const text = (v) => (Array.isArray(v) ? v.join(', ') : String(v || '').trim())
+  return {
+    combat: text(g.combat ?? d.combat_gear),
+    other: text(g.other ?? d.other_gear),
+  }
+}
+
 /** Turns the raw record into what the combat card needs. Missing fields become null or empty. */
 export function combatSummary(d) {
   const ac = d.AC || {}
@@ -225,5 +239,9 @@ export function combatSummary(d) {
     source: (d.sources || []).map((s) => `${s.name}${s.page ? `, p. ${s.page}` : ''}`).join(' · '),
     descShort: d.desc_short || '',
     descLong: d.desc_long || '',
+
+        defensiveAbilities: textList(d.defensive_abilities),
+    combatGear: gearText(d).combat,
+    otherGear: gearText(d).other,
   }
 }

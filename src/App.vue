@@ -6,6 +6,8 @@ import { useViewerPolling } from './composables/useViewerPolling'
 import BottomNav from './components/BottomNav.vue'
 import ConfirmDialog from './components/ConfirmDialog.vue'
 import ToastHost from './components/ToastHost.vue'
+import CombatTray from './components/Monsters/CombatTray.vue'
+import InitiativeRail from './components/Initiative/InitiativeRail.vue'
 import LoginView from './views/LoginView.vue'
 import PlaceholderView from './views/PlaceholderView.vue'
 import CastView from './views/CastView.vue'
@@ -16,6 +18,7 @@ import GrappleView from './views/GrappleView.vue'
 import HistoryView from './views/HistoryView.vue'
 import ItemsView from './views/ItemsView.vue'
 import MagicCatalogView from './views/MagicCatalogView.vue'
+import MonsterCatalogView from './views/MonsterCatalogView.vue'
 import MoreView from './views/MoreView.vue'
 import PartyView from './views/PartyView.vue'
 import PlayerView from './views/PlayerView.vue'
@@ -23,8 +26,6 @@ import SetupView from './views/SetupView.vue'
 import SkillsView from './views/SkillsView.vue'
 import SpellsView from './views/SpellsView.vue'
 import UmrView from './views/UmrView.vue'
-import MonsterCatalogView from './views/MonsterCatalogView.vue'
-import CombatTray from './components/Monsters/CombatTray.vue'
 
 const app = useAppStore()
 const cloud = useCloudStore()
@@ -43,13 +44,12 @@ const editorViews = {
   setup: SetupView,
   party: PartyView,
   magicCatalog: MagicCatalogView,
+  monsters: MonsterCatalogView,
   skills: SkillsView,
   umr: UmrView,
   grapple: GrappleView,
   conditions: ConditionsView,
   history: HistoryView,
-      monsters: MonsterCatalogView,
-      combat: CombatTray
 }
 
 const playerViews = {
@@ -58,13 +58,12 @@ const playerViews = {
   party: [PartyView, { readonly: true }],
   more: MoreView,
   magicCatalog: MagicCatalogView,
+  monsters: MonsterCatalogView,
   skills: SkillsView,
   umr: UmrView,
   grapple: GrappleView,
   conditions: ConditionsView,
   history: HistoryView,
-    monsters: MonsterCatalogView,
-    combat: CombatTray
 }
 
 const titles = { cast: 'Cast', fx: 'Active effects', db: 'Spells' }
@@ -82,10 +81,9 @@ const title = computed(() => titles[app.ui.tab] || (app.viewer ? app.ui.tab : ''
     <BottomNav />
     <component :is="view" v-if="view" v-bind="viewProps" />
     <PlaceholderView v-else :title="title" />
-    <template v-if="!app.viewer">
-      <ToastHost />
-      <CombatTray />
-      <ConfirmDialog />
-    </template>
+    <ToastHost />
+    <CombatTray />
+    <InitiativeRail />
+    <ConfirmDialog />
   </template>
 </template>
