@@ -147,7 +147,7 @@ function addFromStats() {
         </span>
         <i aria-hidden="true">›</i>
       </button>
-      <button class="cast cat-add" aria-label="Add to combat" title="Add to combat" @click="addFight(m)">+</button>
+      <button class="cast cat-add combat-add" aria-label="Add to combat" title="Add to combat" @click="addFight(m)">+</button>
     </div>
   </div>
 
@@ -169,7 +169,7 @@ function addFromStats() {
         <CombatCard v-else-if="stats.card" :card="stats.card" />
       </div>
 
-      <footer v-if="stats.card" class="mc-foot">
+      <footer v-if="stats.card" class="mc-foot combat-add">
         <button class="cast" style="width:100%" @click="addFromStats">Add to combat</button>
       </footer>
     </section>
@@ -177,6 +177,13 @@ function addFromStats() {
 </template>
 
 <style scoped>
+/* Phones: no combat controls (the combat panel is desktop only). */
+@media (max-width: 899px) {
+  .combat-add {
+    display: none !important;
+  }
+}
+
 .cat-row {
   display: flex;
   gap: 6px;

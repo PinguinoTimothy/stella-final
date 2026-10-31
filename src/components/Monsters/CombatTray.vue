@@ -389,6 +389,14 @@ async function clearAll() {
 
 /* Phones: a drawer above the bottom navigation. Collapsed it is only the header. */
 @media (max-width: 899px) {
+  /* Phones: no combat interface. The fights stay saved and show again on a wider screen. */
+  .combat-tray,
+  .ct-tab,
+  .ct-pop,
+  .ct-pop-bg {
+    display: none !important;
+  }
+
   .combat-tray {
     top: auto;
     left: 0;
@@ -448,9 +456,4 @@ async function clearAll() {
   }
 }
 
-@media (max-width: 899px) {
-  body.has-tray #app {
-    padding-bottom: 72px;
-  }
-}
 </style>

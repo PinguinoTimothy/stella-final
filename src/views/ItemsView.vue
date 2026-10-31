@@ -7,6 +7,7 @@ import ItemDetail from '../components/ItemDetail.vue'
 import ItemForm from '../components/ItemForm.vue'
 import MoneyPanel from '../components/MoneyPanel.vue'
 import { curOf, groupByCategory, inOwner, isCharged, isUse } from '../lib/items'
+import { fmtNum } from '../lib/format'
 import { useAppStore } from '../stores/app'
 
 const app = useAppStore()
@@ -21,6 +22,11 @@ const items = computed(() => app.S.items)
 const chips = computed(() => [['', 'All'], ...app.party.map((n) => [n, n]), ['__none', 'Shared']])
 const scope = computed(() => items.value.filter((it) => inOwner(it, ui.owner)))
 const nEmpty = computed(() => scope.value.filter((it) => isCharged(it) && curOf(it) <= 0).length)
+// Gold value of the items in the current owner filter: price each × quantity. Items without a price count as 0.
+const totalGp = computed(() => {
+  const sum = scope.value.reduce((acc, it) => acc + (Number(it.price) || 0) * Math.max(1, Number(it.qty) || 1), 0)
+  return Math.round(sum * 100) / 100
+})
 
 const filtered = computed(() => {
   const q = ui.search.trim().toLowerCase()
@@ -53,6 +59,7 @@ function edit(it) {
     <p class="isum">
       <span><b>{{ scope.length }}</b>{{ scope.length === 1 ? 'item' : 'items' }}</span>
       <span v-if="nEmpty" class="warn"><b>{{ nEmpty }}</b>empty</span>
+      <span v-if="totalGp" class="itotal" title="Value of these items: price × quantity"><b>{{ fmtNum(totalGp) }}</b>gp</span>
     </p>
     <input v-model="ui.search" class="sr" placeholder="Buscar objetos..." aria-label="Search items">
     <div class="items-tabs">
