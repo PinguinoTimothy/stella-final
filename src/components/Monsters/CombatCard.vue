@@ -1,271 +1,351 @@
 <script setup>
-// Stat block. Key numbers first (HP, AC, saves, CMB, CMD, initiative), then attacks, then the rest.
+// Monster stat block. Same reading order as the classic printed stat block, so it is quick to scan:
+// header and CR, Defense, Offense, Statistics, Special Abilities. Each section is a column of label/value
+// lines, and the numbers that are used most in combat (HP, AC, saves) are large tiles.
 import { abilityMod, signed } from '../../lib/monsters'
 
-defineProps({ card: { type: Object, required: true } })
+const props = defineProps({ card: { type: Object, required: true } })
+
+const xpText = (xp) => `XP ${Number(xp).toLocaleString('en-US')}`
+const kindLabel = (k) => ({ melee: 'Melee', ranged: 'Ranged' }[k] || String(k).charAt(0).toUpperCase() + String(k).slice(1))
+const joinList = (list) => (list || []).join(', ')
+const hasDefense = (c) => c.dr.length || c.immunities.length || c.resistances.length || c.weaknesses.length || c.sr != null || c.defensiveAbilities.length
 </script>
 
 <template>
-  <div class="combat-card">
-    <p class="mute cc-sub">
-      CR {{ card.cr }}<template v-if="card.xp"> · XP {{ card.xp }}</template>
-      · {{ card.size }} {{ card.type }}<template v-if="card.alignment"> · {{ card.alignment }}</template>
-    </p>
+  <article class="sb">
+    <header class="sb-head">
+      <div class="sb-title">
+        <h3 class="sb-name">{{ card.name }}</h3>
+        <p class="sb-sub">
+          <span>{{ [card.size, card.type].filter(Boolean).join(' ') }}</span>
+          <span v-if="card.alignment">{{ card.alignment }}</span>
+          <span v-if="card.xp">{{ xpText(card.xp) }}</span>
+        </p>
+      </div>
+      <span class="sb-cr"><small>CR</small>{{ card.cr }}</span>
+    </header>
 
-    <!-- Key numbers -->
-    <div class="cc-key">
-      <div class="cc-hp"><span>HP</span><b>{{ card.hp }}</b><small>{{ card.hpLong }}</small></div>
-      <div><span>AC</span><b>{{ card.ac }}</b><b><small>touch {{ card.touch }}</small></b><small> flat {{ card.flatFooted }}</small></div>
-      <div><span>Fort</span><b>{{ signed(card.saves.fort) }}</b></div>
-      <div><span>Ref</span><b>{{ signed(card.saves.ref) }}</b></div>
-      <div><span>Will</span><b>{{ signed(card.saves.will) }}</b></div>
-      <div><span>CMB</span><b>{{ signed(card.cmb) }}</b><small v-if="card.cmbOther">{{ card.cmbOther }}</small></div>
-      <div><span>CMD</span><b>{{ card.cmd }}</b><small v-if="card.cmdOther">{{ card.cmdOther }}</small></div>
-      <div><span>Init</span><b>{{ signed(card.init) }}</b></div>
-    </div>
+    <p v-if="card.descShort" class="sb-intro">{{ card.descShort }}</p>
 
-    <!-- Attacks: the most used part in combat -->
-    <section class="cc-attacks">
-      <h3>Attacks</h3>
-      <p v-if="!card.attacks.length" class="mute">No attacks listed.</p>
-      <div v-for="g in card.attacks" :key="g.kind" class="cc-atk-group">
-        <span class="cc-pill">{{ g.kind }}</span>
-        <ul class="cc-atk">
+    <dl class="sb-facts">
+      <div v-if="card.init != null"><dt>Init</dt><dd>{{ signed(card.init) }}</dd></div>
+      <div v-if="card.senses.length"><dt>Senses</dt><dd>{{ joinList(card.senses) }}</dd></div>
+      <div v-if="card.auras.length"><dt>Aura</dt><dd>{{ joinList(card.auras) }}</dd></div>
+    </dl>
+
+    <!-- DEFENSE -->
+    <section class="sb-sec">
+      <h4 class="sb-h">Defense</h4>
+      <div class="sb-tiles">
+        <div class="sb-tile">
+          <span>AC</span><b>{{ card.ac ?? '—' }}</b>
+                    <small>touch {{ card.touch ?? '—' }}</small>
+          <small>flat-footed {{ card.flatFooted ?? '—' }}</small>
+        </div>
+        <div class="sb-tile sb-tile-hp">
+          <span>HP</span><b>{{ card.hp ?? '—' }}</b>
+          <small v-if="card.hpLong">{{ card.hpLong }}</small>
+        </div>
+        <div class="sb-tile"><span>Fort</span><b>{{ signed(card.saves.fort) }}</b></div>
+        <div class="sb-tile"><span>Ref</span><b>{{ signed(card.saves.ref) }}</b></div>
+        <div class="sb-tile"><span>Will</span><b>{{ signed(card.saves.will) }}</b></div>
+      </div>
+      <dl v-if="hasDefense(card)" class="sb-lines">
+        <div v-if="card.dr.length"><dt>DR</dt><dd>{{ joinList(card.dr) }}</dd></div>
+        <div v-if="card.immunities.length"><dt>Immune</dt><dd>{{ joinList(card.immunities) }}</dd></div>
+        <div v-if="card.resistances.length"><dt>Resist</dt><dd>{{ joinList(card.resistances) }}</dd></div>
+        <div v-if="card.sr != null"><dt>SR</dt><dd>{{ card.sr }}</dd></div>
+        <div v-if="card.weaknesses.length"><dt>Weaknesses</dt><dd>{{ joinList(card.weaknesses) }}</dd></div>
+        <div v-if="card.defensiveAbilities.length"><dt>Defensive Abilities</dt><dd>{{ joinList(card.defensiveAbilities) }}</dd></div>
+      </dl>
+    </section>
+
+    <!-- OFFENSE -->
+    <section class="sb-sec">
+      <h4 class="sb-h">Offense</h4>
+      <dl class="sb-lines">
+        <div><dt>Speed</dt><dd>{{ card.speeds || '—' }}</dd></div>
+        <div><dt>Space / Reach</dt><dd>{{ card.reachText }}</dd></div>
+      </dl>
+
+      <div v-for="g in card.attacks" :key="g.kind" class="sb-atk">
+        <h5 class="sb-atk-kind">{{ kindLabel(g.kind) }}</h5>
+        <ul>
           <li v-for="(line, i) in g.lines" :key="i">{{ line }}</li>
         </ul>
       </div>
-      <p class="cc-move">
-        <b>Speed</b> {{ card.speeds || '—' }} · <b>Space/Reach</b> {{ card.reachText }}
-      </p>
-    </section>
+      <p v-if="!card.attacks.length" class="sb-none">No attacks listed.</p>
 
-    <!-- Spells and spell-like abilities -->
-    <section v-if="card.sla" class="cc-block">
-      <h3>Spell-Like Abilities<template v-if="card.sla.cl"> (CL {{ card.sla.cl }})</template></h3>
-      <ul class="cc-lines">
-        <li v-for="g in card.sla.groups" :key="g.freq"><b>{{ g.freq }}</b>—{{ g.items }}</li>
-      </ul>
-    </section>
+      <div v-if="card.sla" class="sb-spells">
+        <h5 class="sb-atk-kind">Spell-Like Abilities<template v-if="card.sla.cl"> (CL {{ card.sla.cl }})</template></h5>
+        <ul>
+          <li v-for="g in card.sla.groups" :key="g.freq"><b>{{ g.freq }}</b> {{ g.items }}</li>
+        </ul>
+      </div>
 
-    <section v-if="card.spells" class="cc-block">
-      <h3>Spells Known<template v-if="card.spells.cl"> (CL {{ card.spells.cl }})</template></h3>
-      <ul class="cc-lines">
-        <li v-for="r in card.spells.rows" :key="r.head"><b>{{ r.head }}</b>—{{ r.items }}</li>
-      </ul>
-    </section>
-
-    <!-- Special abilities (text) -->
-    <section v-if="card.specialAbilities.length" class="cc-block">
-      <h3>Special Abilities</h3>
-      <div v-for="a in card.specialAbilities" :key="a.name" class="cc-special">
-        <b>{{ a.name }}</b>
-        <p class="mute">{{ a.text }}</p>
+      <div v-if="card.spells" class="sb-spells">
+        <h5 class="sb-atk-kind">Spells Known<template v-if="card.spells.cl"> (CL {{ card.spells.cl }})</template></h5>
+        <ul>
+          <li v-for="r in card.spells.rows" :key="r.head"><b>{{ r.head }}</b> {{ r.items }}</li>
+        </ul>
       </div>
     </section>
 
-    <!-- Defence (saves and CMB are already in the key numbers above) -->
-    <section
-      v-if="card.dr.length || card.immunities.length || card.resistances.length || card.weaknesses.length || card.defensiveAbilities.length || card.sr != null"
-      class="cc-block"
-    >
-      <h3>Defense</h3>
-      <ul class="cc-lines">
-        <li v-if="card.dr.length"><b>DR</b> {{ card.dr.join(', ') }}</li>
-        <li v-if="card.immunities.length"><b>Immune</b> {{ card.immunities.join(', ') }}</li>
-        <li v-if="card.resistances.length"><b>Resist</b> {{ card.resistances.join(', ') }}</li>
-        <li v-if="card.weaknesses.length"><b>Weaknesses</b> {{ card.weaknesses.join(', ') }}</li>
-        <li v-if="card.sr != null"><b>SR</b> {{ card.sr }}</li>
-        <li v-if="card.defensiveAbilities.length"><b>Defensive Abilities</b> {{ card.defensiveAbilities.join(', ') }}</li>
-      </ul>
-    </section>
-
-    <!-- Statistics -->
-    <section class="cc-block">
-      <h3>Statistics</h3>
-      <div class="cc-abil">
+    <!-- STATISTICS -->
+    <section class="sb-sec">
+      <h4 class="sb-h">Statistics</h4>
+      <div class="sb-abil">
         <div v-for="[k, v] in card.abilities" :key="k">
           <span>{{ k }}</span>
           <b>{{ v }}</b>
           <small>{{ signed(abilityMod(v)) }}</small>
         </div>
       </div>
-      <ul class="cc-lines">
-        <li><b>Base Atk</b> {{ signed(card.bab) }}</li>
-        <li v-if="card.feats.length"><b>Feats</b> {{ card.feats.join(', ') }}</li>
-        <li v-if="card.skills.length"><b>Skills</b> {{ card.skills.join(', ') }}</li>
-        <li v-if="card.senses.length"><b>Senses</b> {{ card.senses.join(', ') }}</li>
-        <li v-if="card.languages.length"><b>Languages</b> {{ card.languages.join(', ') }}</li>
-      </ul>
+      <div class="sb-tiles sb-tiles-combat">
+        <div class="sb-tile"><span>Base Atk</span><b>{{ signed(card.bab) }}</b></div>
+        <div class="sb-tile">
+          <span>CMB</span><b>{{ signed(card.cmb) }}</b>
+          <small v-if="card.cmbOther">{{ card.cmbOther }}</small>
+        </div>
+        <div class="sb-tile">
+          <span>CMD</span><b>{{ card.cmd ?? '—' }}</b>
+          <small v-if="card.cmdOther">{{ card.cmdOther }}</small>
+        </div>
+      </div>
+      <dl class="sb-lines">
+        <div v-if="card.feats.length"><dt>Feats</dt><dd>{{ joinList(card.feats) }}</dd></div>
+        <div v-if="card.skills.length"><dt>Skills</dt><dd>{{ joinList(card.skills) }}</dd></div>
+        <div v-if="card.languages.length"><dt>Languages</dt><dd>{{ joinList(card.languages) }}</dd></div>
+        <div v-if="card.specialQualities.length"><dt>Special Qualities</dt><dd>{{ joinList(card.specialQualities) }}</dd></div>
+      </dl>
     </section>
 
-        <!-- Gear -->
-    <section v-if="card.combatGear || card.otherGear" class="cc-block">
-      <h3>Gear</h3>
-      <ul class="cc-lines">
-        <li v-if="card.combatGear"><b>Combat Gear</b> {{ card.combatGear }}</li>
-        <li v-if="card.otherGear"><b>Other Gear</b> {{ card.otherGear }}</li>
-      </ul>
-    </section>
-    
-    <!-- Special -->
-    <section v-if="card.auras.length || card.specialQualities.length" class="cc-block">
-      <h3>Special</h3>
-      <ul class="cc-lines">
-        <li v-if="card.auras.length"><b>Aura</b> {{ card.auras.join(', ') }}</li>
-        <li v-if="card.specialQualities.length"><b>Special Qualities</b> {{ card.specialQualities.join(', ') }}</li>
-      </ul>
+    <!-- SPECIAL ABILITIES -->
+    <section v-if="card.specialAbilities.length" class="sb-sec">
+      <h4 class="sb-h">Special Abilities</h4>
+      <div v-for="a in card.specialAbilities" :key="a.name" class="sb-special">
+        <h5>{{ a.name }}</h5>
+        <p>{{ a.text }}</p>
+      </div>
     </section>
 
-    <p v-if="card.source" class="mute cc-source">Source: {{ card.source }}</p>
+    <!-- GEAR AND SOURCE -->
+    <section v-if="card.combatGear || card.otherGear" class="sb-sec">
+      <h4 class="sb-h">Gear</h4>
+      <dl class="sb-lines">
+        <div v-if="card.combatGear"><dt>Combat Gear</dt><dd>{{ card.combatGear }}</dd></div>
+        <div v-if="card.otherGear"><dt>Other Gear</dt><dd>{{ card.otherGear }}</dd></div>
+      </dl>
+    </section>
 
-    <details v-if="card.descLong" class="cc-desc">
+    <p v-if="card.source" class="sb-source">Source: {{ card.source }}</p>
+
+    <details v-if="card.descLong" class="sb-desc">
       <summary>Description</summary>
-      <p class="mute">{{ card.descShort }}</p>
-      <p class="mute">{{ card.descLong }}</p>
+      <p v-if="card.descShort">{{ card.descShort }}</p>
+      <p>{{ card.descLong }}</p>
     </details>
-  </div>
+  </article>
 </template>
 
 <style scoped>
-.cc-sub {
-  margin: 0 0 10px;
+.sb {
+  color: var(--ink, #e8f4f1);
+  font-size: 15px;
+  line-height: 1.5;
 }
 
-.cc-key {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
-  gap: 8px;
-  margin-bottom: 14px;
+/* ---------- header ---------- */
+.sb-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
 }
-
-.cc-key > div {
-  display: grid;
-  gap: 2px;
-  padding: 8px 10px;
-  border-radius: 12px;
-  background: var(--raise, rgba(255,255,255,.05));
+.sb-name {
+  margin: 0;
+  font-family: var(--disp);
+  font-size: 30px;
+  line-height: 1.05;
+  color: var(--acc, #a99bff);
 }
-
-.cc-key span {
-  font-size: 12px;
+.sb-sub {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  margin: 4px 0 0;
+  font-size: 14px;
   color: var(--mute, #93b6ba);
 }
-
-.cc-key b {
+.sb-sub span + span::before { content: "·"; margin-right: 10px; opacity: .6; }
+.sb-cr {
+  flex: none;
+  display: grid;
+  justify-items: center;
+  min-width: 58px;
+  padding: 6px 10px;
+  border: 1px solid var(--line, #264452);
+  border-radius: 14px 10px 15px 11px;
+  font-family: var(--disp);
   font-size: 24px;
-  line-height: 1.1;
+  line-height: 1;
+  background: var(--raise, #172e3b);
 }
-
-.cc-key small {
+.sb-cr small {
+  font-family: var(--body);
+  font-size: 11px;
   color: var(--mute, #93b6ba);
-  font-size: 12px;
+  letter-spacing: 0;
+}
+.sb-intro {
+  margin: 10px 0 0;
+  font-style: italic;
+  color: var(--mute, #93b6ba);
 }
 
-.cc-attacks h3 {
-  margin-bottom: 8px;
+/* ---------- facts (init, senses, aura) ---------- */
+.sb-facts {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--raise, #172e3b);
+  display: grid;
+  gap: 4px;
+}
+.sb-facts > div { display: grid; grid-template-columns: 76px 1fr; gap: 8px; }
+
+/* ---------- sections ---------- */
+.sb-sec { margin-top: 18px; }
+.sb-h {
+  margin: 0 0 10px;
+  padding-bottom: 4px;
+  border-bottom: 2px solid var(--acc, #a99bff);
+  font-family: var(--disp);
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1.1;
   color: var(--acc, #a99bff);
 }
 
-.cc-atk-group {
+/* Label / value lines: the label column keeps every row lined up. */
+.sb-lines {
+  margin: 8px 0 0;
   display: grid;
   gap: 6px;
-  margin-bottom: 10px;
-  padding: 10px 12px;
-  border-left: 3px solid var(--acc, #a99bff);
-  border-radius: 12px;
-  background: var(--raise, rgba(255,255,255,.05));
 }
-
-.cc-pill {
-  justify-self: start;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--spent, #2a4755);
-  font-size: 12px;
+.sb-lines > div {
+  display: grid;
+  grid-template-columns: minmax(96px, max-content) 1fr;
+  gap: 4px 12px;
+}
+.sb-lines dt {
+  color: var(--mute, #93b6ba);
+  font-size: 14px;
   font-weight: 700;
-  letter-spacing: .04em;
-  text-transform: uppercase;
+}
+.sb-lines dd {
+  margin: 0;
 }
 
-.cc-atk {
+/* ---------- key numbers as tiles ---------- */
+.sb-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+  gap: 8px;
+}
+.sb-tile {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 2px;
+  padding: 10px 6px;
+  border-radius: 14px;
+  background: var(--raise, #172e3b);
+  border: 1px solid var(--line, #264452);
+  text-align: center;
+}
+.sb-tile span {
+  font-size: 12px;
+  color: var(--mute, #93b6ba);
+}
+.sb-tile b {
+  font-family: var(--disp);
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.sb-tile small {
+  font-size: 12px;
+  color: var(--mute, #93b6ba);
+}
+.sb-tile-hp { border-color: color-mix(in srgb, var(--acc, #a99bff) 40%, var(--line, #264452)); }
+.sb-tiles-combat { margin-top: 12px; }
+
+/* ---------- attacks and spells ---------- */
+.sb-atk, .sb-spells {
+  margin-top: 12px;
+  padding-left: 12px;
+  border-left: 3px solid var(--acc, #a99bff);
+}
+.sb-atk-kind {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--acc, #a99bff);
+}
+.sb-atk ul, .sb-spells ul {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
   gap: 6px;
 }
+.sb-atk li { font-weight: 600; }
+.sb-spells li { font-size: 14px; }
+.sb-none { margin: 10px 0 0; color: var(--mute, #93b6ba); }
 
-.cc-atk li {
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 1.4;
-}
-
-.cc-move {
-  margin: 8px 0 0;
-  font-size: 14px;
-}
-
-.cc-block {
-  margin-top: 16px;
-}
-
-.cc-block h3 {
-  margin-bottom: 6px;
-}
-
-.cc-lines {
-  list-style: none;
-  margin: 6px 0;
-  padding: 0;
+/* ---------- abilities ---------- */
+.sb-abil {
   display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(68px, 1fr));
   gap: 6px;
-  font-size: 15px;
-  line-height: 1.45;
 }
-
-.cc-special {
-  margin-bottom: 8px;
-}
-
-.cc-special p {
-  margin: 2px 0 0;
-}
-
-.cc-abil {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(66px, 1fr));
-  gap: 6px;
-  margin: 6px 0 10px;
-}
-
-.cc-abil > div {
+.sb-abil > div {
   display: grid;
   justify-items: center;
-  padding: 6px 4px;
-  border-radius: 10px;
-  background: var(--raise, rgba(255,255,255,.05));
+  padding: 8px 4px;
+  border-radius: 12px;
+  background: var(--raise, #172e3b);
+}
+.sb-abil span { font-size: 12px; color: var(--mute, #93b6ba); }
+.sb-abil b { font-family: var(--disp); font-size: 22px; font-weight: 400; line-height: 1.1; }
+.sb-abil small { font-size: 12px; color: var(--mute, #93b6ba); }
+
+/* ---------- special abilities ---------- */
+.sb-special { margin-bottom: 12px; }
+.sb-special h5 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+.sb-special p {
+  margin: 3px 0 0;
+  color: var(--ink, #e8f4f1);
 }
 
-.cc-abil span {
-  font-size: 12px;
+.sb-source {
+  margin: 18px 0 0;
+  font-size: 13px;
   color: var(--mute, #93b6ba);
 }
+.sb-desc { margin-top: 10px; }
+.sb-desc summary { cursor: pointer; color: var(--mute, #93b6ba); }
+.sb-desc p { color: var(--mute, #93b6ba); }
 
-.cc-abil b {
-  font-size: 18px;
-}
-
-.cc-abil small {
-  color: var(--mute, #93b6ba);
-  font-size: 12px;
-}
-
-.cc-source {
-  margin-top: 14px;
-}
-
-.cc-desc {
-  margin-top: 12px;
+@media (max-width: 480px) {
+  .sb-name { font-size: 26px; }
+  .sb-lines > div { grid-template-columns: 1fr; gap: 0; }
 }
 </style>
