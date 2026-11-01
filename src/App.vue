@@ -27,6 +27,7 @@ import SetupView from './views/SetupView.vue'
 import SkillsView from './views/SkillsView.vue'
 import SpellsView from './views/SpellsView.vue'
 import UmrView from './views/UmrView.vue'
+  import GuideMascot from './components/Guide/GuideMascot.vue'
 
 const app = useAppStore()
 const cloud = useCloudStore()
@@ -88,5 +89,6 @@ const title = computed(() => titles[app.ui.tab] || (app.viewer ? app.ui.tab : ''
     <CombatTray />
     <InitiativeRail />
     <ConfirmDialog />
+          <GuideMascot />
   </template>
 </template>
