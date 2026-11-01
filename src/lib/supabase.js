@@ -410,3 +410,19 @@ export async function fetchEquipmentDetail(baseId, signal) {
   const bySeq = (list) => (list || []).slice().sort((a, b) => a.seq - b.seq)
   return { stats: bySeq(row?.item_stat), effects: bySeq(row?.item_effect) }
 }
+
+/** Catalog items whose text refers to a spell (item_reference, ref_kind = spell). Unique and sorted by name. */
+export async function fetchItemsUsingSpell(slug, signal) {
+  const p = new URLSearchParams({
+    select: 'item(id,name,category,price_gp)',
+    ref_kind: 'eq.spell',
+    target_slug: `eq.${slug}`,
+    limit: '300',
+  })
+  const rows = await (await getJson(`${SB_URL}/rest/v1/item_reference?${p}`, signal)).json()
+  const byId = new Map()
+  for (const r of rows) {
+    if (r.item && !byId.has(r.item.id)) byId.set(r.item.id, r.item)
+  }
+  return [...byId.values()].sort((a, b) => String(a.name).localeCompare(String(b.name)))
+}

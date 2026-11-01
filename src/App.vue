@@ -28,6 +28,7 @@ import SkillsView from './views/SkillsView.vue'
 import SpellsView from './views/SpellsView.vue'
 import UmrView from './views/UmrView.vue'
   import GuideMascot from './components/Guide/GuideMascot.vue'
+import PeekSheet from './components/Refs/PeekSheet.vue'
 
 const app = useAppStore()
 const cloud = useCloudStore()
@@ -90,5 +91,6 @@ const title = computed(() => titles[app.ui.tab] || (app.viewer ? app.ui.tab : ''
     <InitiativeRail />
     <ConfirmDialog />
           <GuideMascot />
+          <PeekSheet />
   </template>
 </template>

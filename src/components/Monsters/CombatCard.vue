@@ -3,6 +3,9 @@
 // header and CR, Defense, Offense, Statistics, Special Abilities. Each section is a column of label/value
 // lines, and the numbers that are used most in combat (HP, AC, saves) are large tiles.
 import { abilityMod, signed } from '../../lib/monsters'
+import RefLink from '../Refs/RefLink.vue'
+import SpellNames from '../Refs/SpellNames.vue'
+import LinkedText from '../Refs/LinkedText.vue'
 
 const props = defineProps({ card: { type: Object, required: true } })
 
@@ -80,14 +83,14 @@ const hasDefense = (c) => c.dr.length || c.immunities.length || c.resistances.le
       <div v-if="card.sla" class="sb-spells">
         <h5 class="sb-atk-kind">Spell-Like Abilities<template v-if="card.sla.cl"> (CL {{ card.sla.cl }})</template></h5>
         <ul>
-          <li v-for="g in card.sla.groups" :key="g.freq"><b>{{ g.freq }}</b> {{ g.items }}</li>
+          <li v-for="g in card.sla.groups" :key="g.freq"><b>{{ g.freq }}</b> <SpellNames :list="g.items" /></li>
         </ul>
       </div>
 
       <div v-if="card.spells" class="sb-spells">
         <h5 class="sb-atk-kind">Spells Known<template v-if="card.spells.cl"> (CL {{ card.spells.cl }})</template></h5>
         <ul>
-          <li v-for="r in card.spells.rows" :key="r.head"><b>{{ r.head }}</b> {{ r.items }}</li>
+          <li v-for="r in card.spells.rows" :key="r.head"><b>{{ r.head }}</b> <SpellNames :list="r.items" /></li>
         </ul>
       </div>
     </section>
@@ -126,7 +129,7 @@ const hasDefense = (c) => c.dr.length || c.immunities.length || c.resistances.le
       <h4 class="sb-h">Special Abilities</h4>
       <div v-for="a in card.specialAbilities" :key="a.name" class="sb-special">
         <h5>{{ a.name }}</h5>
-        <p>{{ a.text }}</p>
+        <p><LinkedText :text="a.text" /></p>
       </div>
     </section>
 

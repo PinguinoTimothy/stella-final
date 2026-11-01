@@ -2,6 +2,7 @@
 // Spell facts block (school, cast, range, save, components…) + description + Archives of Nethys link.
 // Shared by Active effects and, later, the Spells and Cast screens.
 import { computed } from 'vue'
+import LinkedText from './Refs/LinkedText.vue'
 const props = defineProps({ spell: { type: Object, required: true } })
 
 const join = (a) => a.filter(Boolean).join(' · ')
@@ -19,6 +20,6 @@ const url = computed(() => 'https://aonprd.com/SpellDisplay.aspx?ItemName=' + en
 
 <template>
   <div class="mute"><template v-for="(l, i) in lines" :key="i"><br v-if="i">{{ l }}</template></div>
-  <div>{{ spell.d }}</div>
+  <div><LinkedText :text="spell.d" /></div>
   <a :href="url" target="_blank" rel="noopener">Open on Archives of Nethys</a>
 </template>

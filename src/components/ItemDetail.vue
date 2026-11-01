@@ -13,6 +13,7 @@ import {
   qtyOf,
 } from "../lib/items";
 import { useInventory } from "../stores/inventory";
+import RefLink from "./Refs/RefLink.vue";
 
 const props = defineProps({
   item: { type: Object, required: true },
@@ -116,7 +117,10 @@ function copy() {
     <dl v-if="rows.length" class="ic-d">
       <template v-for="[k, v] in rows" :key="k">
         <dt>{{ k }}</dt>
-        <dd>{{ v }}</dd>
+        <dd v-if="k === 'Spell' && it.spellName">
+          <RefLink kind="spell" :name="it.spellName" /><span v-if="it.cl"> (CL {{ it.cl }})</span>
+        </dd>
+        <dd v-else>{{ v }}</dd>
       </template>
     </dl>
     <div v-if="it.o" class="item-card-note">{{ it.o }}</div>
