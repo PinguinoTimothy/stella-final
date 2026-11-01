@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useAppStore } from '../stores/app'
 import { useCloudStore } from '../stores/cloud'
+import { nextTick } from 'vue'
 
 const emit = defineEmits<{
   openInventory: []
@@ -13,12 +14,12 @@ const emit = defineEmits<{
 const app = useAppStore()
 const cloud = useCloudStore()
 
-function openTab(tab: 'party' | 'setup' | 'magicCatalog' | 'equipmentCatalog' | 'skills' | 'umr' | 'grapple' | 'conditions' | 'history' | 'monsters') {
-    if (app.viewer && tab === 'setup') return
-
+function openTab(tab: 'party' | 'setup' | 'magicCatalog' | 'equipmentCatalog' | 'maps' | 'skills' | 'umr' | 'grapple' | 'conditions' | 'history' | 'monsters') {
+  if (app.viewer && tab === 'setup') return
   app.ui.tab = tab
-  window.scrollTo(0, 0)
+  nextTick(() => window.scrollTo(0, 0))
 }
+
 </script>
 
 <template>
@@ -92,6 +93,14 @@ function openTab(tab: 'party' | 'setup' | 'magicCatalog' | 'equipmentCatalog' | 
     </span>
     <span aria-hidden="true">›</span>
   </button>
+
+      <button v-if="!app.viewer" class="more-row setup-link" @click="openTab('maps')">
+      <span>
+        <b>Maps</b>
+        <small>Your adventure PDFs, on this device</small>
+      </span>
+      <span aria-hidden="true">›</span>
+    </button>
 
   <button class="more-row setup-link" @click="openTab('equipmentCatalog')">
     <span>

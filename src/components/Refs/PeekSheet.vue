@@ -1,12 +1,16 @@
 <script setup>
 // The one popup for linked names. Mounted once in App.vue, so it opens above any screen.
-// A spell shows its facts, then the items that use it: from the catalog, and from your own inventory.
+// Spell: its facts and the items that use it. Condition: its text. Monster: its stat block and
+// the rooms of your adventure books where it appears.
 import { computed, ref, watch } from 'vue'
 import Sheet from '../Sheet.vue'
 import SpellInfo from '../SpellInfo.vue'
+import CombatCard from '../Monsters/CombatCard.vue'
 import LinkedText from './LinkedText.vue'
 import { conditionNamed, spellSlug } from '../../lib/refs'
 import { fetchItemsUsingSpell } from '../../lib/supabase'
+import { combatSummary, fetchMonsterDetail, findMonsterByName } from '../../lib/bestiaryLookup'
+import { listMaps } from '../../lib/mapsDb'
 import { fmtGp } from '../../lib/format'
 import { usePeek } from '../../stores/peek'
 import { useAppStore } from '../../stores/app'
@@ -20,6 +24,10 @@ const loading = ref(false)
 const catalogItems = ref([])
 const usesLoading = ref(false)
 let usesRequest = 0
+
+const card = ref(null)
+const monsterState = ref('')     // '', 'loading', 'missing', 'ready'
+const appearsIn = ref([])
 
 const condition = computed(() => (peek.current?.kind === 'condition' ? conditionNamed(peek.current.name) : null))
 
@@ -44,11 +52,46 @@ async function loadUses(name) {
   }
 }
 
+async function loadMonster(name) {
+  monsterState.value = 'loading'
+  card.value = null
+  appearsIn.value = await roomsWith(name)
+  try {
+    const row = await findMonsterByName(name)
+    if (!row) { monsterState.value = 'missing'; return }
+    const data = await fetchMonsterDetail(row.url)
+    if (!data) { monsterState.value = 'missing'; return }
+    card.value = combatSummary(data)
+    monsterState.value = 'ready'
+  } catch {
+    monsterState.value = 'missing'
+  }
+}
+
+/** Rooms of your adventure books where this creature appears. */
+async function roomsWith(name) {
+  const key = name.toLowerCase()
+  const found = []
+  for (const m of await listMaps()) {
+    if (!m.encounters) continue
+    for (const room of Object.values(m.encounters)) {
+      if ((room.creatures || []).some((c) => c.name.toLowerCase() === key)) {
+        found.push({ book: m.name, code: room.code, title: room.title })
+      }
+    }
+  }
+  return found
+}
+
 watch(() => peek.current, async (cur) => {
   spell.value = null
   catalogItems.value = []
+  card.value = null
+  monsterState.value = ''
   usesRequest++
-  if (!cur || cur.kind !== 'spell') return
+  if (!cur) return
+  if (cur.kind === 'monster') { loadMonster(cur.name); return }
+  if (cur.kind !== 'spell') return
   loading.value = true
   await spells.ensure([cur.name])
   const sp = spells.find(cur.name)
@@ -64,6 +107,20 @@ watch(() => peek.current, async (cur) => {
       <p v-if="condition"><LinkedText :text="condition.text" /></p>
       <p v-else class="mute">No entry for this condition.</p>
     </template>
+
+    <template v-else-if="peek.current.kind === 'monster'">
+      <CombatCard v-if="card" :card="card" />
+      <p v-else-if="monsterState === 'loading'" class="mute">Loading…</p>
+      <p v-else class="mute">Not found in the bestiary.</p>
+
+      <section v-if="appearsIn.length" class="peek-uses">
+        <h3>Appears in</h3>
+        <ul class="peek-list">
+          <li v-for="(r, i) in appearsIn" :key="i">{{ r.code }} · {{ r.title }} <span class="mute">({{ r.book }})</span></li>
+        </ul>
+      </section>
+    </template>
+
     <p v-else-if="loading" class="mute">Loading…</p>
     <template v-else-if="spell">
       <SpellInfo :spell="spell" />

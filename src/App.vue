@@ -29,6 +29,9 @@ import SpellsView from './views/SpellsView.vue'
 import UmrView from './views/UmrView.vue'
   import GuideMascot from './components/Guide/GuideMascot.vue'
 import PeekSheet from './components/Refs/PeekSheet.vue'
+import MapsView from './views/MapsView.vue'
+
+
 
 const app = useAppStore()
 const cloud = useCloudStore()
@@ -54,6 +57,7 @@ const editorViews = {
   grapple: GrappleView,
   conditions: ConditionsView,
   history: HistoryView,
+  maps: MapsView
 }
 
 const playerViews = {
