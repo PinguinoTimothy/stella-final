@@ -31,6 +31,8 @@ import UmrView from './views/UmrView.vue'
 import PeekSheet from './components/Refs/PeekSheet.vue'
 import MapsView from './views/MapsView.vue'
   import DmLoginView from './views/DmLoginView.vue'
+  import ReferenceSearch from './components/Reference/ReferenceSearch.vue'
+
 
 const app = useAppStore()
 const cloud = useCloudStore()
@@ -105,6 +107,7 @@ const title = computed(() => titles[app.ui.tab] || (app.viewer ? app.ui.tab : ''
       <InitiativeRail />
     </template>
     <ConfirmDialog />
+    <ReferenceSearch />
           <GuideMascot />
           <PeekSheet />
   </template>

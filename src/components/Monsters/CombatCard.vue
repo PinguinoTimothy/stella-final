@@ -2,10 +2,10 @@
 // Monster stat block. Same reading order as the classic printed stat block, so it is quick to scan:
 // header and CR, Defense, Offense, Statistics, Special Abilities. Each section is a column of label/value
 // lines, and the numbers that are used most in combat (HP, AC, saves) are large tiles.
-import { abilityMod, signed } from '../../lib/monsters'
-import RefLink from '../Refs/RefLink.vue'
+import { abilityMod, signed, monsterArtUrl } from '../../lib/monsters'
 import SpellNames from '../Refs/SpellNames.vue'
 import LinkedText from '../Refs/LinkedText.vue'
+import { ref, watch } from 'vue'
 
 const props = defineProps({ card: { type: Object, required: true } })
 
@@ -13,6 +13,9 @@ const xpText = (xp) => `XP ${Number(xp).toLocaleString('en-US')}`
 const kindLabel = (k) => ({ melee: 'Melee', ranged: 'Ranged' }[k] || String(k).charAt(0).toUpperCase() + String(k).slice(1))
 const joinList = (list) => (list || []).join(', ')
 const hasDefense = (c) => c.dr.length || c.immunities.length || c.resistances.length || c.weaknesses.length || c.sr != null || c.defensiveAbilities.length
+
+const broken = ref(false)
+watch(() => props.card.name, () => { broken.value = false })
 </script>
 
 <template>
@@ -20,6 +23,14 @@ const hasDefense = (c) => c.dr.length || c.immunities.length || c.resistances.le
     <header class="sb-head">
       <div class="sb-title">
         <h3 class="sb-name">{{ card.name }}</h3>
+            <img
+      v-if="!broken && card.name"
+      class="cc-art"
+      :src="monsterArtUrl(card.name)"
+      :alt="card.name"
+      loading="lazy"
+      @error="broken = true"
+    >
         <p class="sb-sub">
           <span>{{ [card.size, card.type].filter(Boolean).join(' ') }}</span>
           <span v-if="card.alignment">{{ card.alignment }}</span>
@@ -350,5 +361,15 @@ const hasDefense = (c) => c.dr.length || c.immunities.length || c.resistances.le
 @media (max-width: 480px) {
   .sb-name { font-size: 26px; }
   .sb-lines > div { grid-template-columns: 1fr; gap: 0; }
+}
+
+.cc-art {
+  display: block;
+  width: 100%;
+  max-height: 240px;
+  margin-bottom: 12px;
+  object-fit: contain;
+  border-radius: 14px;
+  background: var(--raise, rgba(255,255,255,.05));
 }
 </style>

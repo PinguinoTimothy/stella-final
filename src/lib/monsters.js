@@ -245,3 +245,18 @@ export function combatSummary(d) {
     otherGear: gearText(d).other,
   }
 }
+
+/** Same rule as slug() in scripts/upload_monster_art.py. Keep both in sync. */
+export function monsterSlug(name) {
+  return String(name || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/['\u2019]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+/** Public URL of a monster's picture. It may not exist; the card hides it then. */
+export const monsterArtUrl = (name) =>
+  `${SB_URL}/storage/v1/object/public/monster-art/${monsterSlug(name)}.webp`
