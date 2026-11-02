@@ -189,6 +189,10 @@ async function clearAll() {
         <p v-if="detail.loading" class="mute">Loading…</p>
         <p v-else-if="detail.error" class="mute" role="alert">{{ detail.error }}</p>
         <CombatCard v-else-if="detail.card" :card="detail.card" />
+        <div v-else-if="detail.custom" class="ct-custom-detail">
+          <b>{{ detail.name }}</b>
+          <span>HP {{ detail.hp }}/{{ detail.maxHp }}</span>
+        </div>
       </div>
     </section>
   </template>
@@ -419,6 +423,7 @@ async function clearAll() {
   min-height: 36px;
 }
 
+.ct-custom-detail { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; }
 .ct-pop-body {
   overflow-y: auto;
   overscroll-behavior: contain;
