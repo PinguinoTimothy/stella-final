@@ -199,8 +199,12 @@ onBeforeUnmount(() => {
         </div>
       </div>
       <section v-if="showText" class="mv-text">
-        <EncounterPanel :encounters="encounters" :page="bookPage" :art="art" @show-room="showRoom" />
-        <BookPages :key="book.id" :book-id="book.id" :page="textPage" @page="bookPage = $event" />
+        <div class="mv-book">
+          <BookPages :key="book.id" :book-id="book.id" :page="textPage" @page="bookPage = $event" />
+          <div class="mv-encounters">
+            <EncounterPanel :encounters="encounters" :page="bookPage" :art="art" @show-room="showRoom" />
+          </div>
+        </div>
       </section>
 
     </div>
@@ -255,6 +259,26 @@ onBeforeUnmount(() => {
   padding: 12px 14px;
   border-left: 1px solid var(--line);
   background: var(--surface);
+}
+.mv-book {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+.mv-encounters {
+  position: absolute;
+  z-index: 5;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  max-height: 48%;
+  overflow: auto;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .35);
 }
 .mv-map {
   flex: 1;
