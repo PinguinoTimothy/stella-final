@@ -157,7 +157,7 @@ async function removeMember(member) {
     <template v-if="!selected">
       <header class="page-head">
         <h1>Grupo</h1>
-<button v-if="!props.readonly" class="cast" @click="showAdd = !showAdd">          {{ showAdd ? 'Cancelar' : '+ Personaje' }}
+<button data-write v-if="!props.readonly" class="cast" @click="showAdd = !showAdd">          {{ showAdd ? 'Cancelar' : '+ Personaje' }}
         </button>
       </header>
 
@@ -225,7 +225,7 @@ async function removeMember(member) {
       <section class="panel">
         <div class="row">
           <h2>Inventario</h2>
-<button v-if="!props.readonly" class="cast" style="margin: 1rem;" @click="openPicker">
+<button data-write v-if="!props.readonly" class="cast" style="margin: 1rem;" @click="openPicker">
   + Añadir objeto
 </button>
         </div>
@@ -269,7 +269,7 @@ async function removeMember(member) {
         </article>
       </section>
 
-<button
+<button data-write
   v-if="!props.readonly"
   class="danger wide"
   @click="removeMember(selected)"
@@ -319,7 +319,7 @@ async function removeMember(member) {
               <span v-if="it.slot && it.slot !== it.k" class="tag">{{ it.slot }}</span>
             </small>
           </span>
-          <button @click="assign(it)">Asignar</button>
+          <button data-write @click="assign(it)">Asignar</button>
         </article>
       </section>
 
@@ -333,7 +333,7 @@ async function removeMember(member) {
               <span class="tag">con {{ it.owner }}</span>
             </small>
           </span>
-          <button @click="assign(it)">Quitar</button>
+          <button data-write @click="assign(it)">Quitar</button>
         </article>
       </section>
     </Sheet>

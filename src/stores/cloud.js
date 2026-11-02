@@ -9,6 +9,7 @@ import { buildRows, buildState, diff, fullChanges, snapOf } from '../lib/mapping
 
 // Same keys as the single-file version, so both share the session and sync bookkeeping on one origin.
 const SESS = 'pf1e-sb-session', META = 'pf1e-cloud-meta2', SNAP = 'pf1e-cloud-snap2'
+  const DMPIN = 'stella-dm-pin-v1'
 const read = (k) => { try { return JSON.parse(localStorage.getItem(k) || 'null') } catch { return null } }
 const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)) } catch { /* quota */ } }
 
@@ -16,6 +17,7 @@ export const useCloudStore = defineStore('cloud', () => {
   const app = useAppStore()
   const meta0 = read(META) || {}
   const session = ref(read(SESS))
+    const dmPin = ref(read(DMPIN) || '')
   const state = ref('')            // '' | sync | ok | err | conflict
   const code = ref('')
   const at = ref('')
@@ -89,6 +91,7 @@ export const useCloudStore = defineStore('cloud', () => {
   }
 
   async function sync() {
+        if (app.mode === 'dm') return dmPull()
     if (!session.value || busy) return
     state.value = 'sync'
     try {
@@ -113,6 +116,30 @@ export const useCloudStore = defineStore('cloud', () => {
     } catch (e) { fail(e) }
   }
 
+    // DM: the database checks the code and returns the campaign. The device keeps the code to read again.
+  async function dmPull() {
+    if (!dmPin.value) return false
+    try {
+      const r = await sb.dmRead(dmPin.value)
+      if (r.error) {
+        state.value = 'err'
+        code.value = r.error
+        if (r.error === 'wrong') { dmPin.value = ''; try { localStorage.removeItem(DMPIN) } catch { /* ignore */ } }
+        return false
+      }
+      if (+r.rev !== rev) adopt(+r.rev, r.tables)
+      state.value = 'ok'
+      return true
+    } catch (e) { fail(e); return false }
+  }
+
+  async function dmUnlock(pin) {
+    dmPin.value = pin
+    const ok = await dmPull()
+    if (ok) write(DMPIN, pin)
+    return ok
+  }
+
   async function force() {
     try { const row = await sb.fetchRev(await token()); rev = row ? +row.rev : null; state.value = ''; await push(true) } catch (e) { fail(e) }
   }
@@ -129,6 +156,12 @@ export const useCloudStore = defineStore('cloud', () => {
   }
 
   function init() {
+      if (app.mode === 'dm') {                 // the DM reads the campaign and never writes it
+    if (dmPin.value) dmPull()
+    setInterval(() => { if (!document.hidden && dmPin.value) dmPull() }, 10000)
+    document.addEventListener('visibilitychange', () => { if (!document.hidden && dmPin.value) dmPull() })
+    return
+  }
     if (app.viewer) return
     if (!snap && !dirty.value) { snap = snapOf(rows()); saveSnap() }
     watch(() => [app.S, app.party], schedule, { deep: true })
@@ -137,5 +170,5 @@ export const useCloudStore = defineStore('cloud', () => {
     if (session.value) sync()
   }
 
-  return { session, state, status, dirty, signIn, signOut, sync, pull, force, init }
+  return { session, state, status, dirty, signIn, signOut, sync, pull, force, init, dmPin, dmUnlock, dmPull, code }
 })

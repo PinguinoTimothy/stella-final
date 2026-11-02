@@ -27,7 +27,7 @@ const time = computed(() => e.value.rem === null ? 'no limit' : expired.value ? 
         <span v-else-if="e.tg" class="tag">{{ e.tg }}</span>
       </button>
       <span class="fxt">{{ time }}</span>
-      <button class="danger fx-end" :aria-label="'End ' + e.n" @click="fx.end(e)">×</button>
+      <button data-write class="danger fx-end" :aria-label="'End ' + e.n" @click="fx.end(e)">×</button>
     </div>
     <div class="bar"><i :style="{ width: fxPct(e) + '%' }" /></div>
 
@@ -38,21 +38,21 @@ const time = computed(() => e.value.rem === null ? 'no limit' : expired.value ? 
           <div class="mute">Targets</div>
           <div class="grid"><div v-for="t in e.targets" :key="t" class="tag">{{ t }}</div></div>
         </template>
-        <input v-else v-model="e.tg" placeholder="Target" aria-label="Target">
+        <input data-write v-else v-model="e.tg" placeholder="Target" aria-label="Target">
 
-        <textarea v-model="e.note" rows="2" placeholder="Notes" aria-label="Notes" />
+        <textarea data-write v-model="e.note" rows="2" placeholder="Notes" aria-label="Notes" />
 
         <div v-if="e.rem !== null" class="row">
           <span>Adjust time (rounds)</span>
           <span class="step">
-            <button aria-label="Minus 1 round" @click="fx.adjust(e, -1)">−1</button>
-            <button aria-label="Plus 1 round" @click="fx.adjust(e, 1)">+1</button>
-            <button aria-label="Plus 1 minute" @click="fx.adjust(e, 10)">+10</button>
+            <button data-write aria-label="Minus 1 round" @click="fx.adjust(e, -1)">−1</button>
+            <button data-write aria-label="Plus 1 round" @click="fx.adjust(e, 1)">+1</button>
+            <button data-write aria-label="Plus 1 minute" @click="fx.adjust(e, 10)">+10</button>
           </span>
         </div>
         <div class="row">
           <span class="mute">Cast at CL {{ e.cl || 1 }}</span>
-          <button @click="fx.toggleKind(e)">Move to {{ e.k === 'buff' ? 'debuffs' : 'buffs' }}</button>
+          <button data-write @click="fx.toggleKind(e)">Move to {{ e.k === 'buff' ? 'debuffs' : 'buffs' }}</button>
         </div>
       </div>
     </template>

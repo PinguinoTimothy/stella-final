@@ -1,11 +1,18 @@
 // Global state: the character data (same shape and localStorage keys as the single-file version),
 // UI state, undo snapshots, the toast and the confirm dialog.
 import { defineStore } from 'pinia'
-import { reactive, ref, watch } from 'vue'
-import { fetchLiveView } from '../lib/viewer'
+  import { computed, reactive, ref, watch } from 'vue'
+  import { fetchLiveView } from '../lib/viewer'
 
 export const KEY = 'pf1e-spells-v2'
 export const PARTY_KEY = 'pf1e-party-v1'
+// 'player' for the shared read-only view, 'dm' for the desktop DM, 'dev' otherwise (the default).
+function detectMode() {
+  const p = new URLSearchParams(window.location.search)
+  if (p.has('view') || p.has('src')) return 'player'
+  if (p.get('mode') === 'dm') return 'dm'
+  return 'dev'
+}
 const blank = () => ({ name: '', cl: [], items: [], db: [], rate: {}, fx: [], money: {}, log: [], cond: [] })
 
 export const useAppStore = defineStore('app', () => {
@@ -16,10 +23,35 @@ export const useAppStore = defineStore('app', () => {
   const toast = ref(null)
   const dialog = ref(null)
   let undoSnap = null, toastTimer = 0, saveTimer = 0
-const viewer = ref(
-  new URLSearchParams(window.location.search).has('view') ||
-  new URLSearchParams(window.location.search).has('src')
-)
+const mode = ref(detectMode())
+const viewer = ref(mode.value === 'player')
+  // Read-only modes (dm, player): the campaign can be read but not changed, from any screen.
+  // Every change goes through app.S or app.party, so refusing them here covers all screens.
+  // Local tools (combat, initiative) live in their own stores and keep working.
+  const readOnly = mode.value !== 'dev'
+  let lastDeny = 0
+  function deny() {
+    const now = Date.now()
+    if (now - lastDeny < 1500) return
+    lastDeny = now
+    notify('Solo lectura: los cambios los hace el dev.')
+  }
+  const guarded = new WeakMap()
+  function guard(target) {
+    if (!guarded.has(target)) {
+      guarded.set(target, new Proxy(target, {
+        get: (t, k, r) => {
+          const v = Reflect.get(t, k, r)
+          return v && typeof v === 'object' ? guard(v) : v
+        },
+        set: () => { deny(); return true },
+        deleteProperty: () => { deny(); return true },
+      }))
+    }
+    return guarded.get(target)
+  }
+  const SView = readOnly ? guard(S) : S
+  const partyView = readOnly ? computed(() => guard(party.value)) : party
 const viewerStatus = ref('idle')
 const viewerUpdatedAt = ref('')
 const viewerError = ref('')
@@ -47,8 +79,8 @@ const viewerRevision = ref(null)
 
   function writeLocal() {
     try {
-      if (viewer.value) return
-      localStorage.setItem(KEY, JSON.stringify(S))
+      if (viewer.value || mode.value === 'dm') return
+            localStorage.setItem(KEY, JSON.stringify(S))
       localStorage.setItem(PARTY_KEY, JSON.stringify(party.value))
     } catch { /* storage full or blocked */ }
   }
@@ -112,8 +144,8 @@ async function loadViewer() {
   }
 }
   return {
-  S, party, ui, toast, dialog, viewer,
-  replace, load, startPersisting, snapshot, undo,
+    S: SView, party: partyView, ui, toast, dialog, viewer, mode,
+      replace, load, startPersisting, snapshot, undo,
   notify, notifyUndo, closeToast, ask, log, viewer,
 viewerStatus,
 viewerUpdatedAt,

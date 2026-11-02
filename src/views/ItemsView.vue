@@ -138,7 +138,7 @@ function edit(it) {
       </section>
     </template>
 
-    <button
+    <button data-write
       v-if="!readonly"
       class="fab"
       aria-label="Add item"

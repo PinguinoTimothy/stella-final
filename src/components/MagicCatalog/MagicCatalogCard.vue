@@ -22,6 +22,6 @@ const glyph = (kind: string) => paths[kind] || '<path d="M12 3l1.8 5.2L19 10l-5.
         <span class="ic-tx"><span class="ic-t"><span>{{ item.n }}</span></span><span class="ic-m"><span>{{ item.group || 'Magic item' }}</span><span v-if="item.slot && !/^(none|—|-)$/i.test(item.slot)" class="tag">{{ item.slot }}</span></span><span v-if="item.d" class="ic-n">{{ item.d }}</span></span>
       </button>
     </div>
-    <div class="ic-use"><span class="ic-l cat-price">{{ item.price || 'No price' }}</span><button v-if="!readOnly" class="cast" type="button" @click="emit('add')">Add</button></div>
+    <div class="ic-use"><span class="ic-l cat-price">{{ item.price || 'No price' }}</span><button data-write v-if="!readOnly" class="cast" type="button" @click="emit('add')">Add</button></div>
   </article>
 </template>

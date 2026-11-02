@@ -189,10 +189,10 @@ function spendMoney() {
       </div>
 
       <div class="grid g2" v-if="!readonly">
-        <button class="cast" type="button" @click="addMoney">
+        <button data-write class="cast" type="button" @click="addMoney">
           Add
         </button>
-        <button type="button" @click="spendMoney">
+        <button data-write type="button" @click="spendMoney">
           Spend
         </button>
       </div>

@@ -40,7 +40,7 @@ const classTheme = computed(() => {
     <ClassSummary />
     <FxStrip />
     <LevelPanel v-for="level in cast.levelsToShow" :key="`${cast.classIndex}-${level}`" :level="level" />
-    <button class="rest" @click="cast.rest()">Descansar y recuperar</button>
+    <button data-write class="rest" @click="cast.rest()">Descansar y recuperar</button>
   </div>
 </template>
 

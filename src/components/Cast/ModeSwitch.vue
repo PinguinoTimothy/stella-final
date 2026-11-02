@@ -9,7 +9,7 @@ const cast = useCast()
     <div class="modebar">
       <span class="seg">
         <button :aria-pressed="!cast.prepareMode" @click="cast.setMode(false)">Lanzar</button>
-        <button :aria-pressed="cast.prepareMode" @click="cast.setMode(true)">Preparar</button>
+        <button data-write :aria-pressed="cast.prepareMode" @click="cast.setMode(true)">Preparar</button>
       </span>
     </div>
   </section>

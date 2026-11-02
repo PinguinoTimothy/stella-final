@@ -31,3 +31,7 @@
 /* Magic catalog: the old page stays visible, dimmed, while the next one loads */
 .magic-stale { opacity: .55; transition: opacity .15s; pointer-events: none; }
 .magic-retry { margin-left: 8px; }
+
+body.ro-mode [data-write] {
+  display: none !important;
+}

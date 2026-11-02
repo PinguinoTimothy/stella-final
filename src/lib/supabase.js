@@ -426,3 +426,15 @@ export async function fetchItemsUsingSpell(slug, signal) {
   }
   return [...byId.values()].sort((a, b) => String(a.name).localeCompare(String(b.name)))
 }
+
+/** DM read: the whole campaign, if the 4-digit code is right. Otherwise { error: 'wrong' | 'locked' }. */
+export async function dmRead(pin) {
+  const r = await fetch(SB_URL + '/rest/v1/rpc/dm_read', {
+    method: 'POST',
+    headers: { apikey: SB_ANON, Authorization: 'Bearer ' + SB_ANON, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pin }),
+    cache: 'no-store',
+  })
+  if (!r.ok) throw new Error('dm_read ' + r.status)
+  return r.json()
+}

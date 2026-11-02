@@ -35,6 +35,6 @@ async function clear() {
       <HistoryEntry v-for="(e, i) in g.entries" :key="e.t + ':' + i" :entry="e" />
     </template>
     <p class="mute">Showing the latest {{ Math.min(HISTORY_SHOWN, list.length) }} of {{ app.S.log.length }} (the app keeps the last 300).</p>
-    <button v-if="!app.viewer" class="danger" @click="clear">Clear history</button>
+    <button data-write v-if="!app.viewer" class="danger" @click="clear">Clear history</button>
   </template>
 </template>

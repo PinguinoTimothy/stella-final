@@ -126,7 +126,7 @@ onMounted(refresh)
       <h2 class="pg">Adventure</h2>
       <label class="btn-like">
         Import PDF
-        <input type="file" accept="application/pdf,.pdf" multiple hidden @change="importFiles">
+        <input data-write type="file" accept="application/pdf,.pdf" multiple hidden @change="importFiles">
       </label>
     </header>
 
@@ -156,9 +156,9 @@ onMounted(refresh)
             <span class="maps-name">{{ m.name }}</span>
             <span class="mute">Book · {{ Object.keys(m.encounters).length }} rooms · {{ fmtMb(m.size) }}</span>
           </div>
-          <button v-if="!m.encounters && !m.sections && m.pages" type="button" class="maps-act" @click="attachIndex(m)">Index</button>
-          <button type="button" class="maps-act" aria-label="Rename" @click="rename(m)">Rename</button>
-          <button type="button" class="maps-act maps-del" aria-label="Delete" @click="remove(m)">Delete</button>
+          <button data-write v-if="!m.encounters && !m.sections && m.pages" type="button" class="maps-act" @click="attachIndex(m)">Index</button>
+          <button data-write type="button" class="maps-act" aria-label="Rename" @click="rename(m)">Rename</button>
+          <button data-write type="button" class="maps-act maps-del" aria-label="Delete" @click="remove(m)">Delete</button>
         </div>
 
         <ul v-if="m.sections?.length" class="maps-sections">

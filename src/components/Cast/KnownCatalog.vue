@@ -46,7 +46,7 @@ watch(() => catalog.scrollReset, async () => { await nextTick(); if (list.value)
             <span class="known-catalog-name">{{ spell.n }}</span>
             <span v-if="spell.s" class="known-catalog-school">{{ spell.s }}</span>
           </div>
-          <button type="button" class="known-catalog-add" @click="cast.addSpell(c, level, spell)">+</button>
+          <button data-write type="button" class="known-catalog-add" @click="cast.addSpell(c, level, spell)">+</button>
         </div>
 
         <p v-if="!results.length" class="mute">No hay más conjuros disponibles.</p>

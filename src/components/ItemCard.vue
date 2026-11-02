@@ -71,7 +71,7 @@ const glyph = computed(() => IGLYPH[it.value.k] || IGLYPH._);
         role="group"
         aria-label="Charges"
       >
-        <button
+        <button data-write
           :disabled="cur <= 0"
           aria-label="Use one charge"
           @click="inv.useCharge(it, -1)"
@@ -96,11 +96,11 @@ const glyph = computed(() => IGLYPH[it.value.k] || IGLYPH._);
         role="group"
         aria-label="Quantity"
       >
-        <button aria-label="Use one" @click="inv.adjustQty(it, -1)">−</button>
+        <button data-write aria-label="Use one" @click="inv.adjustQty(it, -1)">−</button>
         <span
           ><b>{{ qty }}</b></span
         >
-        <button aria-label="Add one" @click="inv.adjustQty(it, 1)">+</button>
+        <button data-write aria-label="Add one" @click="inv.adjustQty(it, 1)">+</button>
       </span>
 
     </div>

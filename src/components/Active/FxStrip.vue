@@ -13,7 +13,7 @@ const open = () => { app.ui.tab = 'fx'; window.scrollTo(0, 0) }
 
 <template>
   <div v-if="sorted.length" class="fxs">
-    <button v-if="fx.running()" class="fc tk" @click="fx.tick()">Nueva ronda</button>
+    <button data-write v-if="fx.running()" class="fc tk" @click="fx.tick()">Nueva ronda</button>
     <button v-for="e in sorted" :key="e.id" class="fc" :class="[e.k, { x: e.rem === 0 }]" :aria-label="e.n + ', ' + fmtR(e.rem)" @click="open">
       {{ e.n }} <b>{{ shR(e.rem) }}</b>
     </button>

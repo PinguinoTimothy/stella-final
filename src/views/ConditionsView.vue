@@ -41,7 +41,7 @@ async function clearAll() {
     <article v-for="c in list" :key="c.name" class="cond" :class="{ on: on.has(c.name) }">
       <div class="row">
         <b>{{ c.name }}</b>
-        <button
+        <button data-write
           v-if="!readOnly"
           class="ic-eq"
           type="button"
@@ -57,7 +57,7 @@ async function clearAll() {
     <section v-if="!list.length" class="panel item-empty">No condition matches.</section>
   </div>
 
-  <button v-if="!readOnly && active.length" type="button" @click="clearAll">
+  <button data-write v-if="!readOnly && active.length" type="button" @click="clearAll">
     Clear all active conditions
   </button>
 </template>

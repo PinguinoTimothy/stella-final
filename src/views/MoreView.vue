@@ -25,8 +25,8 @@ function openTab(tab: 'party' | 'setup' | 'magicCatalog' | 'equipmentCatalog' | 
 <template>
   <h2 class="pg">More</h2>
 
-  <details v-if="!app.viewer" class="panel fold" data-k="share" open>
-    <summary>Cloud save</summary>
+<details v-if="app.mode === 'dev'" class="panel fold" data-k="share" open>
+      <summary>Cloud save</summary>
 
     <div class="grid">
       <template v-if="cloud.session">
@@ -67,8 +67,8 @@ function openTab(tab: 'party' | 'setup' | 'magicCatalog' | 'equipmentCatalog' | 
       Character configuration
     </h2>
 
-    <button class="more-row setup-link" @click="openTab('setup')">
-      <span>
+<button v-if="app.mode !== 'player'" class="more-row setup-link" @click="openTab('monsters')">
+        <span>
         <b>Setup</b>
         <small>
           Character, spellcasting classes, slots, domains and DC bonuses

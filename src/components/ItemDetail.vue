@@ -82,7 +82,7 @@ function copy() {
     <div v-if="isCharged(it) && !props.readonly" class="det-use">
       <span class="ic-l">Charges</span>
       <span class="step" role="group" aria-label="Charges">
-        <button
+        <button data-write
           :disabled="curOf(it) <= 0"
           aria-label="Use one charge"
           @click="inv.useCharge(it, -1)"
@@ -101,16 +101,16 @@ function copy() {
           +
         </button>
       </span>
-      <button v-if="curOf(it) < maxOf(it)" @click="inv.refill(it)">Full</button>
+      <button data-write v-if="curOf(it) < maxOf(it)" @click="inv.refill(it)">Full</button>
     </div>
     <div v-else-if="isStack(it) && !props.readonly" class="det-use">
       <span class="ic-l">Quantity</span>
       <span class="step" role="group" aria-label="Quantity">
-        <button aria-label="Use one" @click="inv.adjustQty(it, -1)">−</button>
+        <button data-write aria-label="Use one" @click="inv.adjustQty(it, -1)">−</button>
         <span class="ic-nn"
           ><b>{{ qty }}</b></span
         >
-        <button aria-label="Add one" @click="inv.adjustQty(it, 1)">+</button>
+        <button data-write aria-label="Add one" @click="inv.adjustQty(it, 1)">+</button>
       </span>
     </div>
 
@@ -126,9 +126,9 @@ function copy() {
     <div v-if="it.o" class="item-card-note">{{ it.o }}</div>
 
     <div v-if="!props.readonly" class="det-actions">
-      <button @click="emit('edit', it)">Edit</button>
-      <button @click="copy">Duplicate</button>
-      <button class="danger" @click="del">Delete</button>
+      <button data-write @click="emit('edit', it)">Edit</button>
+      <button data-write @click="copy">Duplicate</button>
+      <button data-write class="danger" @click="del">Delete</button>
     </div>
   </Sheet>
 </template>
