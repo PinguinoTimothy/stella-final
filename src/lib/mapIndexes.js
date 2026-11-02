@@ -15,5 +15,5 @@ export function knownSectionsFor(name, pages) {
 
 /** Every room of an index as one flat list, each with the page it is on. Used by "All rooms". */
 export function allRooms(sections = []) {
-  return sections.flatMap((s) => s.rooms.map((r) => ({ ...r, page: s.page })))
+  return sections.flatMap((s) => s.rooms.map((r) => ({ ...r, page: s.page, section: s.title })))
 }

@@ -93,7 +93,7 @@ onUnmounted(() => document.body.classList.remove('has-rail'))
   top: 0;
   left: 0;
   bottom: 0;
-  z-index: 30;
+  z-index: 60;
   width: var(--rail-w, 260px);
   display: flex;
   flex-direction: column;
@@ -196,7 +196,7 @@ onUnmounted(() => document.body.classList.remove('has-rail'))
 /* Hidden: a tab on the left edge. */
 .ir-tab {
   position: fixed;
-  z-index: 30;
+  z-index: 60;
   top: 50%;
   left: 0;
   transform: translateY(-50%);

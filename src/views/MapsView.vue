@@ -6,13 +6,14 @@ import MapViewer from '../components/Maps/MapViewer.vue'
 import { allRooms, knownSectionsFor } from '../lib/mapIndexes'
 import { openPdf } from '../lib/pdfRender'
 import { readBook, parseRooms } from '../lib/bookIndex'
-import { addMap, listMaps, removeMap, renameMap, setPages, setSections, updateMap } from '../lib/mapsDb'
+import { addMap, getFile, listMaps, removeMap, renameMap, setPages, setSections, updateMap } from '../lib/mapsDb'
 
 const maps = ref([])
 const opened = ref(null)     // { map, title, page, rooms, encounters }
 const busy = ref('')
 const error = ref('')
 const usage = ref(null)
+const report = ref(null)     // reading report of the last imported book
 
 const totalMb = computed(() => {
   const bytes = maps.value.reduce((acc, m) => acc + (m.size || 0), 0)
@@ -31,8 +32,8 @@ async function refresh() {
   }
 }
 
-/** The encounters of the book that shares the most room codes with this map. {} if none does. */
-function encountersFor(m) {
+/** The book that shares the most room codes with this map, or null. */
+function bookFor(m) {
   const codes = new Set(allRooms(m.sections || []).map((r) => r.code))
   let best = null
   let score = 0
@@ -40,7 +41,37 @@ function encountersFor(m) {
     const s = Object.keys(b.encounters).filter((c) => codes.has(c)).length
     if (s > score) { best = b; score = s }
   }
-  return best ? best.encounters : {}
+  return best
+}
+
+function encountersFor(m) {
+  return bookFor(m)?.encounters || {}
+}
+
+/**
+ * Corrections for a book, from a JSON file: { art: {…} } attaches the monster pictures,
+ * { corrections: [...] } re-reads the book with the AI corrections, and both can be in one file.
+ */
+async function improveBook(book, event) {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  if (!file) return
+  error.value = ''
+  busy.value = `Applying ${file.name}…`
+  try {
+    const data = JSON.parse(await file.text())
+    if (data.art) await updateMap(book.id, { art: data.art })
+    if (data.corrections) {
+      const doc = await openPdf(await getFile(book.id))
+      const { rooms } = parseRooms(await readBook(doc), data.corrections)
+      doc.destroy()
+      await updateMap(book.id, { encounters: Object.fromEntries(rooms.map((r) => [r.code, r])) })
+    }
+  } catch {
+    error.value = `Could not apply ${file.name}. Check that it is the JSON from the scripts.`
+  }
+  busy.value = ''
+  await refresh()
 }
 
 async function importFiles(event) {
@@ -60,11 +91,11 @@ async function importFiles(event) {
       } else {
         // Not a known map: read it as a book. A book has rooms with encounters; a map PDF has none.
         busy.value = `Reading ${file.name}…`
-        const { rooms, warnings } = parseRooms(await readBook(doc))
+        const { rooms, warnings, diagnostics } = parseRooms(await readBook(doc))
+        report.value = { file: file.name, rooms: rooms.length, warnings, ...diagnostics }
         if (rooms.length) {
           const encounters = Object.fromEntries(rooms.map((r) => [r.code, r]))
           await updateMap(meta.id, { encounters })
-          if (warnings.length) error.value = `${rooms.length} rooms read from ${file.name}. ${warnings.length} notes to check.`
         }
       }
       doc.destroy()
@@ -85,18 +116,22 @@ async function attachIndex(map) {
 }
 
 function openMap(map, section) {
-  const encounters = encountersFor(map)
-  if (section) {
-    opened.value = {
-      map,
-      title: section.title,
-      page: section.page,
-      rooms: section.rooms.map((r) => ({ ...r, page: section.page })),
-      encounters,
-    }
-  } else {
-    opened.value = { map, title: '', page: 1, rooms: allRooms(map.sections || []), encounters }
+  // Always every room of the map, so "Go to room" can reach any of them; the area only sets the page.
+  const book = bookFor(map)
+  opened.value = {
+    map,
+    title: section ? section.title : '',
+    page: section ? section.page : 1,
+    rooms: allRooms(map.sections || []),
+    encounters: book?.encounters || {},
+    art: book?.art || {},
+    book: book || null,
   }
+}
+
+/** The book itself, page by page. Its rooms are read from the map view, so there is no room list here. */
+function openBook(book) {
+  opened.value = { map: book, title: '', page: 1, rooms: [], encounters: book.encounters, art: book.art || {}, book }
 }
 
 async function rename(map) {
@@ -140,6 +175,14 @@ onMounted(refresh)
     <p v-if="busy" class="mute" role="status">{{ busy }}</p>
     <p v-if="error" class="warn" role="alert">{{ error }}</p>
 
+    <details v-if="report" class="maps-report" open>
+      <summary>Reading report: {{ report.file }} · {{ report.rooms }} rooms</summary>
+      <p class="mute">Areas with no rooms: {{ report.emptyAreas.length ? report.emptyAreas.join(', ') : 'none' }}</p>
+      <p class="mute">Lines that look like rooms but were not read ({{ report.unread.length }}):</p>
+      <pre class="maps-pre">{{ report.unread.length ? report.unread.join('\n') : 'none' }}</pre>
+      <p v-if="report.warnings.length" class="mute">Notes: {{ report.warnings.join('; ') }}</p>
+    </details>
+
     <section v-if="!maps.length && !busy" class="panel item-empty">
       <p>No PDFs yet.</p>
       <p class="mute">Import the maps and the adventure book. They stay on this device and work offline.</p>
@@ -152,11 +195,15 @@ onMounted(refresh)
             <span class="maps-name">{{ m.name }}</span>
             <span class="mute">{{ m.pages ? m.pages + ' pages' : 'PDF' }} · {{ fmtMb(m.size) }}</span>
           </button>
-          <div v-else class="maps-open">
+          <button v-else type="button" class="maps-open" @click="openBook(m)">
             <span class="maps-name">{{ m.name }}</span>
             <span class="mute">Book · {{ Object.keys(m.encounters).length }} rooms · {{ fmtMb(m.size) }}</span>
-          </div>
+          </button>
           <button v-if="!m.encounters && !m.sections && m.pages" type="button" class="maps-act" @click="attachIndex(m)">Index</button>
+          <label v-if="m.encounters" class="maps-act maps-improve">
+            Improve
+            <input type="file" accept="application/json,.json" hidden @change="improveBook(m, $event)">
+          </label>
           <button type="button" class="maps-act" aria-label="Rename" @click="rename(m)">Rename</button>
           <button type="button" class="maps-act maps-del" aria-label="Delete" @click="remove(m)">Delete</button>
         </div>
@@ -173,12 +220,14 @@ onMounted(refresh)
     </ul>
 
     <MapViewer
-      v-if="opened && opened.rooms.length"
+      v-if="opened"
       :map="opened.map"
       :title="opened.title"
       :page="opened.page"
       :rooms="opened.rooms"
       :encounters="opened.encounters"
+      :art="opened.art"
+      :book="opened.book"
       @close="opened = null"
     />
   </main>
@@ -225,6 +274,10 @@ onMounted(refresh)
 .maps-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .maps-act { min-height: 36px; padding: 0 10px; border-radius: 10px; font-size: 13px; }
 .maps-del { color: var(--warn); }
+.maps-improve { display: inline-flex; align-items: center; cursor: pointer; }
+.maps-report { margin-top: 10px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 12px; font-size: 13px; }
+.maps-report summary { cursor: pointer; font-weight: 700; }
+.maps-pre { white-space: pre-wrap; word-break: break-word; margin: 6px 0; padding: 8px; border-radius: 8px; background: var(--raise); user-select: text; }
 
 .maps-sections {
   list-style: none;

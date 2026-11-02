@@ -162,7 +162,7 @@ async function clearAll() {
   top: 0;
   right: 0;
   bottom: 0;
-  z-index: 40;
+  z-index: 60;
   width: var(--tray-w, 340px);
   display: flex;
   flex-direction: column;
@@ -307,7 +307,7 @@ async function clearAll() {
 /* Hidden: a tab on the right edge (on phones, above the bottom navigation). */
 .ct-tab {
   position: fixed;
-  z-index: 40;
+  z-index: 60;
   top: 50%;
   right: 0;
   transform: translateY(-50%);
@@ -343,13 +343,13 @@ async function clearAll() {
 .ct-pop-bg {
   position: fixed;
   inset: 0;
-  z-index: 45;
+  z-index: 61;
   background: transparent;
 }
 
 .ct-pop {
   position: fixed;
-  z-index: 50;
+  z-index: 62;
   top: 72px;
   right: calc(var(--tray-w, 340px) + 12px);
   width: min(440px, calc(100vw - var(--tray-w, 340px) - 40px));
