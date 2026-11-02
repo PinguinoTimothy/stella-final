@@ -140,6 +140,17 @@ function formatSpellsKnown(spells) {
 const textList = (v) =>
   list(v).map((x) => (typeof x === 'string' ? x : x?.name || '')).filter(Boolean)
 
+/** Mythic status is explicit in subtypes; MR is a backwards-compatible fallback. */
+export function isMythicMonster(data) {
+  const rawSubtypes = data?.subtypes
+  const subtypes = Array.isArray(rawSubtypes) ? rawSubtypes : list(rawSubtypes)
+  const hasMythicSubtype = subtypes.some(
+    (subtype) => String(subtype).toLowerCase() === 'mythic',
+  )
+  const mythicRank = Number(data?.MR)
+  return hasMythicSubtype || (Number.isFinite(mythicRank) && mythicRank > 0)
+}
+
 // Gear comes as { combat, other } or as flat fields; either a string or a list.
 function gearText(d) {
   const g = d.gear || {}
@@ -192,6 +203,11 @@ export function combatSummary(d) {
 
   return {
     name: d.title1 || d.title2 || '',
+    displayName: d.title2 || d.title1 || '',
+    title1: d.title1 || '',
+    title2: d.title2 || '',
+    isMythic: isMythicMonster(d),
+    mythicRank: Number.isFinite(Number(d.MR)) && Number(d.MR) > 0 ? Number(d.MR) : null,
     cr: crLabel(d.CR ?? 0),
     xp: d.XP ?? null,
     type: d.type || '',
@@ -226,7 +242,12 @@ export function combatSummary(d) {
 
     // statistics
     abilities: Object.entries(d.ability_scores || {}),
-    feats: list(d.feats).map((f) => f.name).filter(Boolean),
+    feats: list(d.feats)
+      .map((f) => (typeof f === 'string' ? { name: f, isMythic: false } : {
+        name: f?.name || '',
+        isMythic: f?.is_mythic === true,
+      }))
+      .filter((f) => f.name),
     skills,
     languages: list(d.languages),
     senses,
