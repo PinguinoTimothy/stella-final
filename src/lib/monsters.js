@@ -2,7 +2,7 @@
 // Read-only from the app; the anon key can read the table, writes go through the admin script.
 import { SB_ANON, SB_URL } from './supabase'
 
-const LIST_COLUMNS = 'url,name,cr,type,size,hp,ac,touch,flat_footed,cmb,cmd'
+const LIST_COLUMNS = 'url,name,cr,type,size,hp,ac,touch,flat_footed,cmb,cmd,subtypes:data->subtypes,MR:data->MR'
 
 export const CR_OPTIONS = [0, 0.125, 0.25, 0.5, ...Array.from({ length: 30 }, (_, i) => i + 1)]
 
@@ -25,7 +25,7 @@ async function get(path, params, extra = {}) {
 const cleanQuery = (q) => String(q || '').replace(/[*(),"\\]/g, '').trim()
 
 /** One page of the bestiary, sorted by name. Returns { rows, total }. */
-export async function fetchMonsterPage({ query = '', type = '', cr = '', offset = 0, limit = 40 } = {}) {
+export async function fetchMonsterPage({ query = '', type = '', cr = '', mythic = '', offset = 0, limit = 40 } = {}) {
   const p = new URLSearchParams({
     select: LIST_COLUMNS,
     order: 'name.asc',
@@ -36,9 +36,14 @@ export async function fetchMonsterPage({ query = '', type = '', cr = '', offset 
   if (q) p.set('name', `ilike.*${q}*`)
   if (type) p.set('type', `eq.${type}`)
   if (cr !== '') p.set('cr', `eq.${cr}`)
+  // JSONB predicates keep filtering server-side without downloading full monster records.
+  if (mythic === 'mythic') p.set('or', '(data->subtypes.cs.["mythic"],data->MR.gt.0)')
 
   const r = await get('monsters', p, { Prefer: 'count=exact' })
-  const rows = await r.json()
+  const rows = (await r.json()).map((row) => ({
+    ...row,
+    isMythic: isMythicMonster({ subtypes: row.subtypes, MR: row.MR }),
+  }))
   const total = Number((r.headers.get('Content-Range') || '').split('/')[1])
   return { rows, total: Number.isFinite(total) ? total : rows.length }
 }
