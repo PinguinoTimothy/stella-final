@@ -35,13 +35,14 @@ export const useMonsterFights = defineStore('monsterFights', () => {
   function make(data) {
     return reactive({
       uid: ++seq,
-      url: data.url,
+      url: data.url || null,
+      custom: data.custom === true,
       name: data.name || 'Monster',
       hp: Number(data.hp) || 0,
       maxHp: Number(data.maxHp) || 0,
       card: null,
       error: '',
-      loading: true,
+      loading: data.custom === true ? false : true,
       open: false,
     })
   }
@@ -79,14 +80,31 @@ export const useMonsterFights = defineStore('monsterFights', () => {
     return entry
   }
 
+  /** Adds a creature absent from the bestiary. It intentionally has only a name and HP. */
+  function addCustom(name, hp) {
+    const cleanName = String(name || '').trim()
+    const hitPoints = Number(hp)
+    if (!cleanName || !Number.isFinite(hitPoints) || hitPoints < 0) return null
+    const copies = fights.value.filter((f) => f.custom && f.name === cleanName).length
+    const entry = make({
+      custom: true,
+      name: copies ? `${cleanName} ${copies + 1}` : cleanName,
+      hp: hitPoints,
+      maxHp: hitPoints,
+    })
+    fights.value.push(entry)
+    activeUid.value = entry.uid
+    return entry
+  }
+
   /** Brings back the fights saved in this browser. */
   function restore() {
     readSaved()
-      .filter((s) => s && s.url)
+      .filter((s) => s && (s.url || s.custom === true))
       .forEach((s) => {
         const entry = make(s)
         fights.value.push(entry)
-        fetchCard(entry, false)
+        if (!entry.custom) fetchCard(entry, false)
       })
     if (fights.value.length) activeUid.value = fights.value[0].uid
   }
@@ -94,7 +112,7 @@ export const useMonsterFights = defineStore('monsterFights', () => {
 
   watch(
     fights,
-    (list) => writeSaved(list.map((f) => ({ url: f.url, name: f.name, hp: f.hp, maxHp: f.maxHp }))),
+    (list) => writeSaved(list.map((f) => ({ url: f.url, custom: f.custom, name: f.name, hp: f.hp, maxHp: f.maxHp }))),
     { deep: true },
   )
 
@@ -146,5 +164,5 @@ export const useMonsterFights = defineStore('monsterFights', () => {
     activeUid.value = null
   }
 
-  return { fights, active, activeIndex, add, show, step, remove, setHp, change, reset, toggle, clearAll }
+  return { fights, active, activeIndex, add, addCustom, show, step, remove, setHp, change, reset, toggle, clearAll }
 })
