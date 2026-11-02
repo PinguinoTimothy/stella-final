@@ -88,7 +88,14 @@ onUnmounted(() => {
   <article class="sb">
     <header class="sb-head">
       <div class="sb-title">
-        <h3 class="sb-name">{{ card.name }}</h3>
+        <div class="sb-name-wrap">
+          <h3 class="sb-name">{{ card.displayName || card.name }}</h3>
+          <p v-if="card.isMythic" class="sb-mythic-meta">
+            <span class="sb-mythic-badge">Mythic</span>
+            <span v-if="card.mythicRank != null">MR {{ card.mythicRank }}</span>
+            <span v-if="card.title1 && card.title2 && card.title1 !== card.title2">Base: {{ card.title1 }}</span>
+          </p>
+        </div>
 
         <button
           v-if="!broken && card.name"
@@ -203,7 +210,7 @@ onUnmounted(() => {
         </div>
       </div>
       <dl class="sb-lines">
-        <div v-if="card.feats.length"><dt>Feats</dt><dd>{{ joinList(card.feats) }}</dd></div>
+        <div v-if="card.feats.length"><dt>Feats</dt><dd class="sb-feats"><template v-for="(feat, i) in card.feats" :key="`${feat.name}-${i}`"><span>{{ feat.name }}<small v-if="feat.isMythic" class="sb-feat-mythic">Mythic</small></span><span v-if="i < card.feats.length - 1">, </span></template></dd></div>
         <div v-if="card.skills.length"><dt>Skills</dt><dd>{{ joinList(card.skills) }}</dd></div>
         <div v-if="card.languages.length"><dt>Languages</dt><dd>{{ joinList(card.languages) }}</dd></div>
         <div v-if="card.specialQualities.length"><dt>Special Qualities</dt><dd>{{ joinList(card.specialQualities) }}</dd></div>
@@ -289,6 +296,7 @@ onUnmounted(() => {
   justify-content: space-between;
   gap: 12px;
 }
+.sb-name-wrap { min-width: 0; }
 .sb-name {
   margin: 0;
   font-family: var(--disp);
@@ -296,6 +304,27 @@ onUnmounted(() => {
   line-height: 1.05;
   color: var(--acc, #a99bff);
 }
+.sb-mythic-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px 8px;
+  margin: 6px 0 0;
+  color: var(--mute, #93b6ba);
+  font-size: 12px;
+}
+.sb-mythic-badge, .sb-feat-mythic {
+  display: inline-block;
+  padding: 1px 7px;
+  border: 1px solid color-mix(in srgb, var(--acc, #a99bff) 65%, transparent);
+  border-radius: 999px;
+  color: var(--acc, #a99bff);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.sb-feat-mythic { margin-left: 5px; vertical-align: middle; }
 .sb-sub {
   display: flex;
   flex-wrap: wrap;
