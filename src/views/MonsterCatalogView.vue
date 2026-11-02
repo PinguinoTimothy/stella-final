@@ -22,6 +22,7 @@ const fights = useMonsterFights()
 const query = ref('')
 const type = ref('')
 const cr = ref('')
+const mythic = ref('')
 const types = ref([])
 const rows = ref([])
 const total = ref(0)
@@ -41,6 +42,7 @@ async function load(reset = true) {
       query: query.value,
       type: type.value,
       cr: cr.value,
+      mythic: mythic.value,
       offset: reset ? 0 : rows.value.length,
     })
     if (id !== reqId) return
@@ -57,7 +59,7 @@ watch(query, () => {
   clearTimeout(debounce)
   debounce = setTimeout(() => load(true), 300)
 })
-watch([type, cr], () => load(true))
+watch([type, cr, mythic], () => load(true))
 
 onMounted(async () => {
   load(true)
@@ -132,6 +134,10 @@ function addFromStats() {
         <option value="">Any CR</option>
         <option v-for="c in CR_OPTIONS" :key="c" :value="String(c)">CR {{ crLabel(c) }}</option>
       </select>
+      <select v-model="mythic" aria-label="Mythic status">
+        <option value="">All monsters</option>
+        <option value="mythic">Mythic only</option>
+      </select>
     </div>
   </div>
 
@@ -142,7 +148,7 @@ function addFromStats() {
     <div v-for="m in rows" :key="m.url" class="cat-row">
       <button class="more-row cat-main" @click="openStats(m)">
         <span>
-          <b>{{ m.name }}</b>
+          <b>{{ m.name }} <span v-if="m.isMythic" class="mythic-tag">Mythic · MR {{ m.MR || '—' }}</span></b>
           <small>CR {{ crLabel(m.cr) }} · {{ m.size }} {{ m.type }} · HP {{ m.hp }} · AC {{ m.ac }}</small>
         </span>
         <i aria-hidden="true">›</i>
@@ -188,6 +194,19 @@ function addFromStats() {
   display: flex;
   gap: 6px;
   align-items: center;
+}
+
+.mythic-tag {
+  display: inline-block;
+  margin-left: 5px;
+  padding: 1px 6px;
+  border: 1px solid var(--acc, #a99bff);
+  border-radius: 999px;
+  color: var(--acc, #a99bff);
+  font-size: 10px;
+  font-weight: 700;
+  vertical-align: middle;
+  text-transform: uppercase;
 }
 
 .cat-main {

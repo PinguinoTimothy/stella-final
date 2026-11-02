@@ -2,7 +2,7 @@
 // Read-only from the app; the anon key can read the table, writes go through the admin script.
 import { SB_ANON, SB_URL } from './supabase'
 
-const LIST_COLUMNS = 'url,name,cr,type,size,hp,ac,touch,flat_footed,cmb,cmd'
+const LIST_COLUMNS = 'url,name,cr,type,size,hp,ac,touch,flat_footed,cmb,cmd,subtypes:data->subtypes,MR:data->MR'
 
 export const CR_OPTIONS = [0, 0.125, 0.25, 0.5, ...Array.from({ length: 30 }, (_, i) => i + 1)]
 
@@ -25,7 +25,7 @@ async function get(path, params, extra = {}) {
 const cleanQuery = (q) => String(q || '').replace(/[*(),"\\]/g, '').trim()
 
 /** One page of the bestiary, sorted by name. Returns { rows, total }. */
-export async function fetchMonsterPage({ query = '', type = '', cr = '', offset = 0, limit = 40 } = {}) {
+export async function fetchMonsterPage({ query = '', type = '', cr = '', mythic = '', offset = 0, limit = 40 } = {}) {
   const p = new URLSearchParams({
     select: LIST_COLUMNS,
     order: 'name.asc',
@@ -36,9 +36,14 @@ export async function fetchMonsterPage({ query = '', type = '', cr = '', offset 
   if (q) p.set('name', `ilike.*${q}*`)
   if (type) p.set('type', `eq.${type}`)
   if (cr !== '') p.set('cr', `eq.${cr}`)
+  // JSONB predicates keep filtering server-side without downloading full monster records.
+  if (mythic === 'mythic') p.set('or', '(data->subtypes.cs.["mythic"],data->MR.gt.0)')
 
   const r = await get('monsters', p, { Prefer: 'count=exact' })
-  const rows = await r.json()
+  const rows = (await r.json()).map((row) => ({
+    ...row,
+    isMythic: isMythicMonster({ subtypes: row.subtypes, MR: row.MR }),
+  }))
   const total = Number((r.headers.get('Content-Range') || '').split('/')[1])
   return { rows, total: Number.isFinite(total) ? total : rows.length }
 }
@@ -140,6 +145,17 @@ function formatSpellsKnown(spells) {
 const textList = (v) =>
   list(v).map((x) => (typeof x === 'string' ? x : x?.name || '')).filter(Boolean)
 
+/** Mythic status is explicit in subtypes; MR is a backwards-compatible fallback. */
+export function isMythicMonster(data) {
+  const rawSubtypes = data?.subtypes
+  const subtypes = Array.isArray(rawSubtypes) ? rawSubtypes : list(rawSubtypes)
+  const hasMythicSubtype = subtypes.some(
+    (subtype) => String(subtype).toLowerCase() === 'mythic',
+  )
+  const mythicRank = Number(data?.MR)
+  return hasMythicSubtype || (Number.isFinite(mythicRank) && mythicRank > 0)
+}
+
 // Gear comes as { combat, other } or as flat fields; either a string or a list.
 function gearText(d) {
   const g = d.gear || {}
@@ -192,6 +208,11 @@ export function combatSummary(d) {
 
   return {
     name: d.title1 || d.title2 || '',
+    displayName: d.title2 || d.title1 || '',
+    title1: d.title1 || '',
+    title2: d.title2 || '',
+    isMythic: isMythicMonster(d),
+    mythicRank: Number.isFinite(Number(d.MR)) && Number(d.MR) > 0 ? Number(d.MR) : null,
     cr: crLabel(d.CR ?? 0),
     xp: d.XP ?? null,
     type: d.type || '',
@@ -226,7 +247,12 @@ export function combatSummary(d) {
 
     // statistics
     abilities: Object.entries(d.ability_scores || {}),
-    feats: list(d.feats).map((f) => f.name).filter(Boolean),
+    feats: list(d.feats)
+      .map((f) => (typeof f === 'string' ? { name: f, isMythic: false } : {
+        name: f?.name || '',
+        isMythic: f?.is_mythic === true,
+      }))
+      .filter((f) => f.name),
     skills,
     languages: list(d.languages),
     senses,
