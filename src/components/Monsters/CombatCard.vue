@@ -5,7 +5,7 @@
 import { abilityMod, signed, monsterArtUrl } from '../../lib/monsters'
 import SpellNames from '../Refs/SpellNames.vue'
 import LinkedText from '../Refs/LinkedText.vue'
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 
 const props = defineProps({ card: { type: Object, required: true } })
 
@@ -14,8 +14,74 @@ const kindLabel = (k) => ({ melee: 'Melee', ranged: 'Ranged' }[k] || String(k).c
 const joinList = (list) => (list || []).join(', ')
 const hasDefense = (c) => c.dr.length || c.immunities.length || c.resistances.length || c.weaknesses.length || c.sr != null || c.defensiveAbilities.length
 
+// ---------- art ----------
 const broken = ref(false)
-watch(() => props.card.name, () => { broken.value = false })
+
+// ---------- zoom ----------
+const zoom = ref(false)
+const scale = ref(1)
+const MIN = 1
+const MAX = 4
+const imgEl = ref(null)   // imagen ampliada dentro del overlay
+const baseW = ref(0)      // ancho real de la imagen en modo "ajustar" (100 %)
+
+const setScale = (v) => {
+  const next = Math.min(MAX, Math.max(MIN, v))
+  // Al salir del modo "ajustar", guardar el ancho real que tiene la imagen en pantalla
+  if (scale.value === 1 && next > 1 && imgEl.value) {
+    baseW.value = imgEl.value.clientWidth
+  }
+  scale.value = next
+}
+const zoomIn = () => setScale(scale.value * 1.5)
+const zoomOut = () => setScale(scale.value / 1.5)
+const reset = () => setScale(1)
+const toggleZoom = () => setScale(scale.value > 1 ? 1 : 2.5)
+// Cerrar al pulsar el fondo solo si no estamos ampliados, para no cerrar mientras se navega
+const onBackdrop = () => { if (scale.value === 1) zoom.value = false }
+
+function onWheel(e) {
+  setScale(scale.value * (e.deltaY < 0 ? 1.15 : 1 / 1.15))
+}
+
+// Pellizco con dos dedos
+let pinchDist = 0
+const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY)
+function onTouchStart(e) {
+  if (e.touches.length === 2) pinchDist = dist(e.touches)
+}
+function onTouchMove(e) {
+  if (e.touches.length !== 2 || !pinchDist) return
+  e.preventDefault()
+  const d = dist(e.touches)
+  setScale(scale.value * (d / pinchDist))
+  pinchDist = d
+}
+function onTouchEnd() { pinchDist = 0 }
+
+// Al cerrar: volver a 100 % y restaurar el scroll de la página
+watch(zoom, (open) => {
+  document.body.style.overflow = open ? 'hidden' : ''
+  if (!open) reset()
+})
+
+// Al cambiar de monstruo: reiniciar imagen y zoom
+watch(() => props.card.name, () => {
+  broken.value = false
+  zoom.value = false
+})
+
+const onKey = (e) => {
+  if (!zoom.value) return
+  if (e.key === 'Escape') zoom.value = false
+  if (e.key === '+' || e.key === '=') zoomIn()
+  if (e.key === '-') zoomOut()
+}
+onMounted(() => window.addEventListener('keydown', onKey))
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKey)
+  document.body.style.overflow = ''
+})
 </script>
 
 <template>
@@ -23,14 +89,23 @@ watch(() => props.card.name, () => { broken.value = false })
     <header class="sb-head">
       <div class="sb-title">
         <h3 class="sb-name">{{ card.name }}</h3>
-            <img
-      v-if="!broken && card.name"
-      class="cc-art"
-      :src="monsterArtUrl(card.name)"
-      :alt="card.name"
-      loading="lazy"
-      @error="broken = true"
-    >
+
+        <button
+          v-if="!broken && card.name"
+          type="button"
+          class="cc-art-btn"
+          :aria-label="`Ver ${card.name} a pantalla completa`"
+          @click="zoom = true"
+        >
+          <img
+            class="cc-art"
+            :src="monsterArtUrl(card.name)"
+            :alt="card.name"
+            loading="lazy"
+            @error="broken = true"
+          >
+        </button>
+
         <p class="sb-sub">
           <span>{{ [card.size, card.type].filter(Boolean).join(' ') }}</span>
           <span v-if="card.alignment">{{ card.alignment }}</span>
@@ -54,7 +129,7 @@ watch(() => props.card.name, () => { broken.value = false })
       <div class="sb-tiles">
         <div class="sb-tile">
           <span>AC</span><b>{{ card.ac ?? '—' }}</b>
-                    <small>touch {{ card.touch ?? '—' }}</small>
+          <small>touch {{ card.touch ?? '—' }}</small>
           <small>flat-footed {{ card.flatFooted ?? '—' }}</small>
         </div>
         <div class="sb-tile sb-tile-hp">
@@ -160,6 +235,43 @@ watch(() => props.card.name, () => { broken.value = false })
       <p v-if="card.descShort">{{ card.descShort }}</p>
       <p>{{ card.descLong }}</p>
     </details>
+
+    <!-- Overlay de la imagen a pantalla completa, fuera del flujo del artículo -->
+    <Teleport to="body">
+      <div
+        v-if="zoom"
+        class="art-zoom"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="card.name"
+        @click.self="onBackdrop"
+        @wheel.prevent="onWheel"
+        @touchstart="onTouchStart"
+        @touchmove="onTouchMove"
+        @touchend="onTouchEnd"
+      >
+        <button type="button" class="art-zoom-close" aria-label="Cerrar" @click="zoom = false">×</button>
+
+        <div class="art-zoom-scroll" @click.self="onBackdrop">
+          <img
+            ref="imgEl"
+            class="art-zoom-img"
+            :style="scale > 1 ? { width: `${baseW * scale}px` } : null"
+            :src="monsterArtUrl(card.name)"
+            :alt="card.name"
+            draggable="false"
+            @click.stop
+            @dblclick="toggleZoom"
+          >
+        </div>
+
+        <div class="art-zoom-bar">
+          <button type="button" aria-label="Alejar" :disabled="scale <= MIN" @click="zoomOut">−</button>
+          <button type="button" class="art-zoom-pct" @click="reset">{{ Math.round(scale * 100) }}%</button>
+          <button type="button" aria-label="Acercar" :disabled="scale >= MAX" @click="zoomIn">+</button>
+        </div>
+      </div>
+    </Teleport>
   </article>
 </template>
 
@@ -363,6 +475,7 @@ watch(() => props.card.name, () => { broken.value = false })
   .sb-lines > div { grid-template-columns: 1fr; gap: 0; }
 }
 
+/* ---------- miniatura en la ficha ---------- */
 .cc-art {
   display: block;
   width: 100%;
@@ -370,6 +483,86 @@ watch(() => props.card.name, () => { broken.value = false })
   margin-bottom: 12px;
   object-fit: contain;
   border-radius: 14px;
-  background: var(--raise, rgba(255,255,255,.05));
+  background: var(--raise, rgba(255, 255, 255, .05));
 }
+.cc-art-btn {
+  all: unset;
+  display: block;
+  width: 100%;
+  cursor: zoom-in;
+  border-radius: 14px;
+}
+.cc-art-btn:focus-visible { outline: 2px solid var(--acc, #a99bff); outline-offset: 2px; }
+
+/* ---------- overlay a pantalla completa ---------- */
+.art-zoom {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  display: flex;
+  flex-direction: column;
+  padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  background: rgba(0, 0, 0, .92);
+  touch-action: pan-x pan-y; /* desactiva el zoom nativo; el pellizco lo gestiona el script */
+}
+.art-zoom-scroll {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.art-zoom-img {
+  flex: none;              /* que flex no encoja la imagen cuando está ampliada */
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  margin: auto;            /* centra sin recortar cuando la imagen es más grande */
+  object-fit: contain;
+  border-radius: 10px;
+  user-select: none;
+  -webkit-user-drag: none;
+  cursor: zoom-in;
+}
+.art-zoom-img[style] {
+  max-width: none;
+  max-height: none;
+  cursor: zoom-out;
+}
+.art-zoom-close {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 8px);
+  right: 12px;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .15);
+  color: #fff;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+}
+.art-zoom-bar {
+  flex: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px 16px;
+}
+.art-zoom-bar button {
+  min-width: 44px;
+  height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, .15);
+  color: #fff;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+.art-zoom-bar button:disabled { opacity: .35; cursor: default; }
+.art-zoom-bar .art-zoom-pct { min-width: 72px; font-size: 15px; }
 </style>
