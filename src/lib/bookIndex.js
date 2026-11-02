@@ -203,27 +203,28 @@ export function parseRooms(lines, overrides = []) {
     // a stfunction-number line on its own (page or decoration) is not text
     if (/^\d{1,2}$/.test(l.s)) continue
 
-    // stat block: a name line ("OSTOVITE CR 1", or the name with "CR 1" below it), followed within
-    // three lines by its "XP" line and its "hp" line. The name line may be split off from the rest.
-    let name = null, cr = null, xpAt = -1, hpAt = -1
+    // stat block: a name line ("OSTOVITE CR 1", or the name with "CR 1" below it). Its "XP" and "hp"
+    // lines are looked for in the next lines of the same page: they may sit in the other column.
+    let name = null, cr = null
     const sn = l.s.match(STAT_NAME_CR)
     if (sn) { name = sn[1]; cr = sn[2] }
-    else if (STAT_NAME.test(l.s) && next && CR_LINE.test(next.s)) { name = l.s; cr = next.s.match(CR_LINE)[1]; xpAt = i + 2 }
-    else if (STAT_NAME.test(l.s)) {
-      const k = [1, 2, 3].find((d) => lines[i + d] && lines[i + d].page === l.page && XP_LINE.test(lines[i + d].s))
-      if (k) { name = l.s; xpAt = i + k }
-    }
+    else if (STAT_NAME.test(l.s) && next && CR_LINE.test(next.s)) { name = l.s; cr = next.s.match(CR_LINE)[1] }
+    else if (STAT_NAME.test(l.s)) name = l.s
     if (name && current) {
-      if (xpAt < 0 && next && CR_LINE.test(next.s)) xpAt = i + 2
-      if (xpAt < 0 && next && XP_LINE.test(next.s)) xpAt = i + 1
-      const xp = xpAt >= 0 ? lines[xpAt]?.s.match(XP_LINE) : null
-      // the hp line follows the XP line, possibly after a line of its own
-      const hpI = [0, 1, 2].map((d) => (xpAt >= 0 ? xpAt + d : -1)).find((j) => j >= 0 && lines[j] && HP_LINE.test(lines[j].s))
-      const hp = hpI !== undefined ? lines[hpI].s.match(HP_LINE) : null
-      current.creatures.push({ name: toTitle(name), cr, xp: xp ? Number(xp[1].replace(/,/g, '')) : null, hp: hp ? Number(hp[1]) : null, bestiary: hp?.[2] || null })
-      inStat = true
-      i = Math.max(i, hpI !== undefined ? hpI : xpAt >= 0 ? xpAt : i)
-      continue
+      const ahead = []
+      for (let d = 1; d <= 8 && i + d < lines.length; d++) {
+        const n = lines[i + d]
+        if (n.page === l.page) ahead.push(n.s)
+      }
+      const xp = ahead.map((t) => t.match(XP_LINE)).find(Boolean)
+      const hp = ahead.map((t) => t.match(HP_LINE)).find(Boolean)
+      // a plain uppercase line is a creature only when its stat lines follow
+      if (xp || hp) {
+        const creature = { name: toTitle(name), cr, xp: xp ? Number(xp[1].replace(/,/g, '')) : null, hp: hp ? Number(hp[1]) : null, bestiary: hp?.[2] || null }
+        if (!current.creatures.some((c) => c.name === creature.name)) current.creatures.push(creature)
+        inStat = true
+        continue
+      }
     }
 
     if (!current) continue

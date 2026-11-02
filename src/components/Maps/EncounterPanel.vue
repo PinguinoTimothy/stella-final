@@ -56,17 +56,23 @@ async function addList(list, label) {
 </script>
 
 <template>
-  <section class="enc">
+  <details class="enc" open>
+    <summary class="enc-summary">
+      Creatures on this page
+      <span class="mute">({{ pageCreatures.length }})</span>
+    </summary>
+
     <p v-if="!shown.length" class="enc-none">No room starts on this page.</p>
     <p v-else-if="continuing" class="enc-note">Continues from {{ continuing.code }} · {{ continuing.title }}</p>
 
-    <div v-for="r in shown" :key="r.code + r.page" class="enc-room">
-      <header class="enc-head">
+    <details v-for="r in shown" :key="r.code + r.page" class="enc-room" open>
+      <summary class="enc-head">
         <span class="enc-code">{{ r.code }}</span>
         <strong class="enc-title">{{ r.title }}</strong>
         <span v-if="r.cr" class="enc-cr">CR {{ r.cr }}</span>
-        <button type="button" class="enc-map" @click="emit('show-room', r.code)">Map</button>
-      </header>
+        <span class="mute enc-count">{{ r.creatures?.length || 0 }}</span>
+        <button type="button" class="enc-map" @click.stop.prevent="emit('show-room', r.code)">Map</button>
+      </summary>
 
       <div v-if="r.creatures?.length" class="enc-creatures">
         <div v-for="c in r.creatures" :key="c.name" class="enc-creature">
@@ -80,19 +86,28 @@ async function addList(list, label) {
         </button>
       </div>
       <p v-else class="enc-none">No creatures in this room.</p>
-    </div>
+    </details>
 
     <div v-if="pageCreatures.length > 1" class="enc-page">
       <button type="button" class="enc-start" :disabled="busy" @click="addList(pageCreatures, 'creatures')">
         Start combat with this page ({{ pageCreatures.length }})
       </button>
     </div>
-  </section>
+  </details>
 </template>
 
 <style scoped>
-.enc { color: var(--ink); font-size: 14px; line-height: 1.4; }
-.enc-room { padding: 0 0 12px; margin-bottom: 12px; border-bottom: 1px solid var(--line); }
+.enc { color: var(--ink); font-size: 14px; line-height: 1.4; margin-bottom: 10px; }
+.enc-summary { cursor: pointer; font-family: var(--disp); font-size: 20px; padding: 2px 0 8px; list-style: none; }
+.enc-summary::-webkit-details-marker { display: none; }
+.enc-summary::before { content: '▾ '; color: var(--acc); }
+.enc[open] > .enc-summary::before { content: '▾ '; }
+.enc:not([open]) > .enc-summary::before { content: '▸ '; }
+.enc-room summary { list-style: none; }
+.enc-room summary::-webkit-details-marker { display: none; }
+.enc-count { font-size: 12px; }
+.enc-room { padding: 0 0 10px; margin-bottom: 10px; border-bottom: 1px solid var(--line); }
+.enc-room > summary { cursor: pointer; }
 .enc-room:last-of-type { border-bottom: 0; }
 .enc-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; margin-bottom: 6px; }
 .enc-code { padding: 1px 9px; border-radius: 8px; background: var(--acc); color: #111; font-weight: 800; }
