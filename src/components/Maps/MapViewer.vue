@@ -65,9 +65,12 @@ const roomGroups = computed(() => {
 
 function measure() {
   if (!stage.value) return
+  // Never larger than the window: a stage that grows with its content would otherwise feed back into itself.
+  const w = Math.min(stage.value.clientWidth - 16, window.innerWidth)
+  const h = Math.min(stage.value.clientHeight - 16, window.innerHeight)
   box.value = {
-    w: Math.max(200, stage.value.clientWidth - 16),
-    h: Math.max(200, stage.value.clientHeight - 16),
+    w: Number.isFinite(w) ? Math.max(200, w) : 600,
+    h: Number.isFinite(h) ? Math.max(200, h) : 500,
   }
 }
 
@@ -94,6 +97,7 @@ async function draw() {
   const ratio = (x1 - x0) / (y1 - y0)
   const fitWidth = Math.min(box.value.w, box.value.h * ratio)
   const css = fitWidth * ZOOMS[zoomIdx.value]
+  if (!Number.isFinite(css) || css <= 0) return
   cancelDraw = drawPage(
     doc.value, page.value, canvas.value, css,
     (e) => {
@@ -199,12 +203,8 @@ onBeforeUnmount(() => {
         </div>
       </div>
       <section v-if="showText" class="mv-text">
-        <div class="mv-book">
-          <BookPages :key="book.id" :book-id="book.id" :page="textPage" @page="bookPage = $event" />
-          <div class="mv-encounters">
-            <EncounterPanel :encounters="encounters" :page="bookPage" :art="art" @show-room="showRoom" />
-          </div>
-        </div>
+        <EncounterPanel :encounters="encounters" :page="bookPage" :art="art" @show-room="showRoom" />
+        <BookPages :key="book.id" :book-id="book.id" :page="textPage" @page="bookPage = $event" />
       </section>
 
     </div>
@@ -259,26 +259,6 @@ onBeforeUnmount(() => {
   padding: 12px 14px;
   border-left: 1px solid var(--line);
   background: var(--surface);
-}
-.mv-book {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-  display: flex;
-}
-.mv-encounters {
-  position: absolute;
-  z-index: 5;
-  left: 12px;
-  right: 12px;
-  bottom: 12px;
-  max-height: 48%;
-  overflow: auto;
-  padding: 8px 12px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--surface);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, .35);
 }
 .mv-map {
   flex: 1;
