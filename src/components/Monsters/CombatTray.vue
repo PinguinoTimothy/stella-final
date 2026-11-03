@@ -134,7 +134,7 @@ async function clearAll() {
     <div v-if="!readonly" class="ct-add">
       <input v-model="addQuery" type="search" placeholder="Add a monster…" aria-label="Add a monster to combat">
       <details class="ct-custom">
-        <summary>Not in the bestiary? Add by name and HP</summary>
+        <summary class="ct-custom-btn">+ Add creature not in the bestiary</summary>
         <div class="ct-custom-row">
           <input v-model="customName" type="text" placeholder="Name" aria-label="Creature name">
           <input v-model.number="customHp" type="number" min="1" inputmode="numeric" placeholder="HP" aria-label="Creature HP">
@@ -504,7 +504,10 @@ async function clearAll() {
 .ct-add { padding: 6px 10px; border-bottom: 1px solid var(--line); }
 .ct-add input { width: 100%; min-height: 36px; border-radius: 10px; }
 .ct-custom { margin-top: 6px; font-size: 13px; }
-.ct-custom summary { cursor: pointer; color: var(--mute); min-height: 30px; display: flex; align-items: center; }
+.ct-custom summary { cursor: pointer; list-style: none; }
+.ct-custom summary::-webkit-details-marker { display: none; }
+.ct-custom-btn { min-height: 42px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--acc); color: var(--acc); font-weight: 700; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+.ct-custom[open] .ct-custom-btn { background: var(--raise); }
 .ct-custom-row { display: grid; grid-template-columns: 1fr 72px auto; gap: 6px; margin-top: 6px; }
 .ct-custom-row input { min-height: 34px; border-radius: 8px; min-width: 0; }
 .ct-add-list { list-style: none; margin: 6px 0 0; padding: 0; max-height: 220px; overflow-y: auto; display: grid; gap: 2px; }

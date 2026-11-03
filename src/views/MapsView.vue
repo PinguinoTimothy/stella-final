@@ -1,58 +1,75 @@
 <script setup>
-// Adventure library (DM only). Import the maps PDFs and the adventure book PDF once; they stay on this device.
-// Maps with an index open by map and room. A book adds the encounter of each room to the maps it belongs to.
+// Adventures (DM only). Import the book and the maps of an adventure; files with the same name are one
+// adventure, and the map opens inside the adventure, so the list only has adventures.
 import { computed, onMounted, ref } from 'vue'
 import MapViewer from '../components/Maps/MapViewer.vue'
-import { allRooms, knownSectionsFor } from '../lib/mapIndexes'
 import { openPdf } from '../lib/pdfRender'
 import { readBook, parseRooms } from '../lib/bookIndex'
-import { addMap, getFile, listMaps, removeMap, renameMap, setPages, setSections, updateMap } from '../lib/mapsDb'
+import { addMap, listMaps, removeMap, renameMap, updateMap } from '../lib/mapsDb'
+import { adventureKey, adventureName } from '../lib/adventures'
 
-const maps = ref([])
-const opened = ref(null)     // { map, title, page, rooms, encounters }
+const parts = ref([])        // every stored PDF
+const opened = ref(null)     // { title, book, map }
 const busy = ref('')
 const error = ref('')
-const usage = ref(null)
-const report = ref(null)     // reading report of the last imported book
 
-const totalMb = computed(() => {
-  const bytes = maps.value.reduce((acc, m) => acc + (m.size || 0), 0)
-  return (bytes / (1024 * 1024)).toFixed(1)
+/** One entry per adventure: its book and its map, the newest of each if there are several. */
+const adventures = computed(() => {
+  const groups = new Map()
+  for (const m of parts.value) {
+    const key = m.adventureKey || m.id
+    if (!groups.has(key)) groups.set(key, { key, name: m.adventureName || m.name, book: null, map: null })
+    const g = groups.get(key)
+    const role = m.role || (m.encounters ? 'book' : 'map')
+    if (role === 'map') { if (!g.map || m.addedAt > g.map.addedAt) g.map = m }
+    else if (!g.book || m.addedAt > g.book.addedAt) g.book = m
+  }
+  return [...groups.values()].sort((a, b) => a.name.localeCompare(b.name))
 })
-const mapsOnly = computed(() => maps.value.filter((m) => !m.encounters))
-const books = computed(() => maps.value.filter((m) => m.encounters))
 
 async function refresh() {
-  maps.value = await listMaps()
-  try {
-    const est = await navigator.storage?.estimate?.()
-    usage.value = est ? { used: est.usage, quota: est.quota } : null
-  } catch {
-    usage.value = null
+  parts.value = await listMaps()
+}
+
+async function importFiles(event) {
+  const files = [...(event.target.files || [])].filter((f) => /pdf$/i.test(f.name) || f.type === 'application/pdf')
+  event.target.value = ''
+  if (!files.length) return
+  error.value = ''
+  for (const file of files) {
+    busy.value = `Importing ${file.name}…`
+    try {
+      // "Maps" in the file name is the map PDF; anything else is the book
+      const role = /maps?/i.test(file.name) ? 'map' : 'book'
+      const meta = await addMap(file)
+      const doc = await openPdf(file)
+      const fields = {
+        role,
+        pages: doc.numPages,
+        adventureKey: adventureKey(file.name),
+        adventureName: adventureName(file.name),
+      }
+      if (role === 'book') {
+        // the rooms of the book, for "Appears in" on a creature
+        const { rooms } = parseRooms(await readBook(doc))
+        if (rooms.length) fields.encounters = Object.fromEntries(rooms.map((r) => [r.code, r]))
+      }
+      await updateMap(meta.id, fields)
+      doc.destroy()
+    } catch {
+      error.value = `Could not import ${file.name}.`
+    }
   }
+  busy.value = ''
+  await refresh()
 }
 
-/** The book that shares the most room codes with this map, or null. */
-function bookFor(m) {
-  const codes = new Set(allRooms(m.sections || []).map((r) => r.code))
-  let best = null
-  let score = 0
-  for (const b of books.value) {
-    const s = Object.keys(b.encounters).filter((c) => codes.has(c)).length
-    if (s > score) { best = b; score = s }
-  }
-  return best
+function open(a) {
+  opened.value = { title: a.name, book: a.book, map: a.map }
 }
 
-function encountersFor(m) {
-  return bookFor(m)?.encounters || {}
-}
-
-/**
- * Corrections for a book, from a JSON file: { art: {…} } attaches the monster pictures,
- * { corrections: [...] } re-reads the book with the AI corrections, and both can be in one file.
- */
-async function improveBook(book, event) {
+/** Corrections for the book, from a JSON file: monster pictures ({ art }) or AI corrections. */
+async function improve(book, event) {
   const file = event.target.files?.[0]
   event.target.value = ''
   if (!file) return
@@ -62,7 +79,7 @@ async function improveBook(book, event) {
     const data = JSON.parse(await file.text())
     if (data.art) await updateMap(book.id, { art: data.art })
     if (data.corrections) {
-      const doc = await openPdf(await getFile(book.id))
+      const doc = await openPdf(await (await import('../lib/mapsDb')).getFile(book.id))
       const { rooms } = parseRooms(await readBook(doc), data.corrections)
       doc.destroy()
       await updateMap(book.id, { encounters: Object.fromEntries(rooms.map((r) => [r.code, r])) })
@@ -74,82 +91,17 @@ async function improveBook(book, event) {
   await refresh()
 }
 
-async function importFiles(event) {
-  const files = [...(event.target.files || [])].filter((f) => /pdf$/i.test(f.name) || f.type === 'application/pdf')
-  event.target.value = ''
-  if (!files.length) return
-  error.value = ''
-  for (const file of files) {
-    busy.value = `Importing ${file.name}…`
-    try {
-      const meta = await addMap(file)
-      const doc = await openPdf(file)
-      await setPages(meta.id, doc.numPages)
-      const sections = knownSectionsFor(meta.name, doc.numPages)
-      if (sections) {
-        await setSections(meta.id, sections)
-      } else {
-        // Not a known map: read it as a book. A book has rooms with encounters; a map PDF has none.
-        busy.value = `Reading ${file.name}…`
-        const { rooms, warnings, diagnostics } = parseRooms(await readBook(doc))
-        report.value = { file: file.name, rooms: rooms.length, warnings, ...diagnostics }
-        if (rooms.length) {
-          const encounters = Object.fromEntries(rooms.map((r) => [r.code, r]))
-          await updateMap(meta.id, { encounters })
-        }
-      }
-      doc.destroy()
-    } catch {
-      error.value = `Could not import ${file.name}.`
-    }
-  }
-  busy.value = ''
+async function rename(a) {
+  const name = window.prompt('Name for this adventure', a.name)
+  if (!name || !name.trim() || name.trim() === a.name) return
+  for (const part of [a.book, a.map].filter(Boolean)) await renameMap(part.id, name.trim())
   await refresh()
 }
 
-/** For maps imported before the index existed: attach it now if there is one for this PDF. */
-async function attachIndex(map) {
-  const sections = knownSectionsFor(map.name, map.pages)
-  if (sections) await setSections(map.id, sections)
-  else error.value = `No index is available for "${map.name}".`
+async function remove(a) {
+  if (!window.confirm(`Delete "${a.name}" (book and map) from this device?`)) return
+  for (const part of [a.book, a.map].filter(Boolean)) await removeMap(part.id)
   await refresh()
-}
-
-function openMap(map, section) {
-  // Always every room of the map, so "Go to room" can reach any of them; the area only sets the page.
-  const book = bookFor(map)
-  opened.value = {
-    map,
-    title: section ? section.title : '',
-    page: section ? section.page : 1,
-    rooms: allRooms(map.sections || []),
-    encounters: book?.encounters || {},
-    art: book?.art || {},
-    book: book || null,
-  }
-}
-
-/** The book itself, page by page. Its rooms are read from the map view, so there is no room list here. */
-function openBook(book) {
-  opened.value = { map: book, title: '', page: 1, rooms: [], encounters: book.encounters, art: book.art || {}, book }
-}
-
-async function rename(map) {
-  const name = window.prompt('Name for this map', map.name)
-  if (name && name.trim() && name.trim() !== map.name) {
-    await renameMap(map.id, name.trim())
-    await refresh()
-  }
-}
-
-async function remove(map) {
-  if (!window.confirm(`Delete "${map.name}" from this device?`)) return
-  await removeMap(map.id)
-  await refresh()
-}
-
-function fmtMb(bytes) {
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
 }
 
 onMounted(refresh)
@@ -158,76 +110,44 @@ onMounted(refresh)
 <template>
   <main class="page maps-page">
     <header class="maps-head">
-      <h2 class="pg">Adventure</h2>
+      <h2 class="pg">Adventures</h2>
       <label class="btn-like">
         Import PDF
-        <input data-write type="file" accept="application/pdf,.pdf" multiple hidden @change="importFiles">
+        <input type="file" accept="application/pdf,.pdf" multiple hidden @change="importFiles">
       </label>
     </header>
-
-    <p class="isum">
-      <span><b>{{ mapsOnly.length }}</b> {{ mapsOnly.length === 1 ? 'map PDF' : 'map PDFs' }}</span>
-      <span><b>{{ books.length }}</b> {{ books.length === 1 ? 'book' : 'books' }}</span>
-      <span><b>{{ totalMb }}</b> MB stored</span>
-      <span v-if="usage">of {{ fmtMb(usage.quota) }} available on this device</span>
-    </p>
 
     <p v-if="busy" class="mute" role="status">{{ busy }}</p>
     <p v-if="error" class="warn" role="alert">{{ error }}</p>
 
-    <details v-if="report" class="maps-report" open>
-      <summary>Reading report: {{ report.file }} · {{ report.rooms }} rooms</summary>
-      <p class="mute">Areas with no rooms: {{ report.emptyAreas.length ? report.emptyAreas.join(', ') : 'none' }}</p>
-      <p class="mute">Lines that look like rooms but were not read ({{ report.unread.length }}):</p>
-      <pre class="maps-pre">{{ report.unread.length ? report.unread.join('\n') : 'none' }}</pre>
-      <p v-if="report.warnings.length" class="mute">Notes: {{ report.warnings.join('; ') }}</p>
-    </details>
-
-    <section v-if="!maps.length && !busy" class="panel item-empty">
-      <p>No PDFs yet.</p>
-      <p class="mute">Import the maps and the adventure book. They stay on this device and work offline.</p>
+    <section v-if="!adventures.length && !busy" class="panel item-empty">
+      <p>No adventures yet.</p>
+      <p class="mute">Import the book and the maps of an adventure together. Files with the same name are one adventure.</p>
     </section>
 
-    <ul v-else class="maps-list">
-      <li v-for="m in maps" :key="m.id" class="maps-row">
-        <div class="maps-top">
-          <button v-if="!m.encounters" type="button" class="maps-open" @click="openMap(m, null)">
-            <span class="maps-name">{{ m.name }}</span>
-            <span class="mute">{{ m.pages ? m.pages + ' pages' : 'PDF' }} · {{ fmtMb(m.size) }}</span>
-          </button>
-          <button v-else type="button" class="maps-open" @click="openBook(m)">
-            <span class="maps-name">{{ m.name }}</span>
-            <span class="mute">Book · {{ Object.keys(m.encounters).length }} rooms · {{ fmtMb(m.size) }}</span>
-          </button>
-          <button v-if="!m.encounters && !m.sections && m.pages" type="button" class="maps-act" @click="attachIndex(m)">Index</button>
-          <label v-if="m.encounters" class="maps-act maps-improve">
-            Improve
-            <input type="file" accept="application/json,.json" hidden @change="improveBook(m, $event)">
-          </label>
-          <button type="button" class="maps-act" aria-label="Rename" @click="rename(m)">Rename</button>
-          <button type="button" class="maps-act maps-del" aria-label="Delete" @click="remove(m)">Delete</button>
-        </div>
-
-        <ul v-if="m.sections?.length" class="maps-sections">
-          <li v-for="(s, i) in m.sections" :key="i">
-            <button type="button" class="maps-section" @click="openMap(m, s)">
-              <span>{{ s.title }}</span>
-              <span class="mute">{{ s.rooms.length }} rooms</span>
-            </button>
-          </li>
-        </ul>
+    <ul v-else class="adv-list">
+      <li v-for="a in adventures" :key="a.key" class="adv-row">
+        <button type="button" class="adv-open" :disabled="!a.book && !a.map" @click="open(a)">
+          <span class="adv-name">{{ a.name }}</span>
+          <span class="adv-parts">
+            <span :class="{ ok: a.book }">Book{{ a.book ? '' : ' missing' }}</span>
+            <span :class="{ ok: a.map }">Maps{{ a.map ? '' : ' missing' }}</span>
+          </span>
+        </button>
+        <label v-if="a.book" class="adv-act">
+          Improve
+          <input type="file" accept="application/json,.json" hidden @change="improve(a.book, $event)">
+        </label>
+        <button type="button" class="adv-act" aria-label="Rename adventure" @click="rename(a)">Rename</button>
+        <button type="button" class="adv-act adv-del" aria-label="Delete adventure" @click="remove(a)">Delete</button>
       </li>
     </ul>
 
     <MapViewer
       v-if="opened"
-      :map="opened.map"
       :title="opened.title"
-      :page="opened.page"
-      :rooms="opened.rooms"
-      :encounters="opened.encounters"
-      :art="opened.art"
       :book="opened.book"
+      :map="opened.map"
       @close="opened = null"
     />
   </main>
@@ -245,24 +165,22 @@ onMounted(refresh)
   color: var(--acc);
   cursor: pointer;
 }
-.maps-list { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
-.maps-row {
+.adv-list { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
+.adv-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  align-items: center;
+  gap: 8px;
   padding: 10px 12px;
   border: 1px solid var(--line);
   border-radius: 14px;
   background: var(--surface);
 }
-.maps-top {
+.adv-open {
   display: grid;
-  grid-template-columns: 1fr auto auto auto;
-  align-items: center;
-  gap: 8px;
-}
-.maps-open {
-  display: grid;
-  gap: 2px;
+  gap: 4px;
   min-width: 0;
-  padding: 4px 0;
+  padding: 6px 0;
   background: none;
   border: 0;
   border-radius: 0;
@@ -271,38 +189,10 @@ onMounted(refresh)
   text-align: left;
   cursor: pointer;
 }
-.maps-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.maps-act { min-height: 36px; padding: 0 10px; border-radius: 10px; font-size: 13px; }
-.maps-del { color: var(--warn); }
-.maps-improve { display: inline-flex; align-items: center; cursor: pointer; }
-.maps-report { margin-top: 10px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 12px; font-size: 13px; }
-.maps-report summary { cursor: pointer; font-weight: 700; }
-.maps-pre { white-space: pre-wrap; word-break: break-word; margin: 6px 0; padding: 8px; border-radius: 8px; background: var(--raise); user-select: text; }
-
-.maps-sections {
-  list-style: none;
-  margin: 10px 0 0;
-  padding: 0 0 0 10px;
-  display: grid;
-  gap: 4px;
-  border-left: 2px solid var(--acc);
-}
-.maps-section {
-  width: 100%;
-  min-height: 40px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 8px;
-  background: none;
-  border: 0;
-  border-radius: 8px;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.maps-section:hover, .maps-section:focus-visible { background: var(--raise); outline: none; }
-.maps-section span:first-child { font-weight: 600; }
+.adv-open:disabled { opacity: .5; cursor: default; }
+.adv-name { font-weight: 700; font-size: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.adv-parts { display: flex; gap: 12px; font-size: 13px; color: var(--mute); }
+.adv-parts .ok { color: var(--dom, var(--acc)); }
+.adv-act { min-height: 36px; padding: 0 10px; border-radius: 10px; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; }
+.adv-del { color: var(--warn); }
 </style>

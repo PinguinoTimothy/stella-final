@@ -29,7 +29,9 @@ export function drawPage(doc, pageNo, canvas, cssWidth, onError, onDone) {
     if (cancelled) return
     const base = page.getViewport({ scale: 1 })
     if (!(base.width > 0 && base.height > 0)) return
-    const dpr = Math.min(window.devicePixelRatio || 1, 2.5)
+    // Draw at least twice the on-screen size and let the browser scale it down: text stays sharp.
+    // The size caps above still apply, so large pages cannot exhaust memory.
+    const dpr = Math.min(Math.max(window.devicePixelRatio || 1, 2), 3)
     let scale = (shownWidth / base.width) * dpr
     const w = base.width * scale
     const h = base.height * scale

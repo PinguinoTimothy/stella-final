@@ -38,29 +38,19 @@ const pageCreatures = computed(() => {
   return out
 })
 
-/** Bestiary creatures get their full stat block; absent creatures get only their book name and HP. */
-async function addOne(creature) {
-  const row = await findMonsterByName(creature.name)
-  if (row) {
-    await fights.add(row.url, row.name)
-    return true
-  }
-  if (creature.hp != null && Number.isFinite(Number(creature.hp)) && Number(creature.hp) >= 0) {
-    const added = fights.addCustom(creature.name, creature.hp)
-    if (added) return true
-  }
-  app.notify(`${creature.name}: not in the bestiary and no valid HP was found in the book.`)
-  return false
+/** Adds one creature to the combat tracker. False if it is not in the bestiary. */
+async function addOne(name) {
+  const row = await findMonsterByName(name)
+  if (!row) { app.notify(`${name} is not in the bestiary.`); return false }
+  await fights.add(row.url, row.name)
+  return true
 }
 
 async function addList(list, label) {
   busy.value = true
   let added = 0
-  try {
-    for (const c of list) if (await addOne(c)) added++
-  } finally {
-    busy.value = false
-  }
+  for (const c of list) if (await addOne(c.name)) added++
+  busy.value = false
   if (added) app.notify(`${added} ${label} added to combat.`)
 }
 </script>
@@ -89,7 +79,7 @@ async function addList(list, label) {
           <img v-if="art[c.name]" :src="art[c.name]" :alt="c.name" class="enc-art" />
           <RefLink kind="monster" :name="c.name" />
           <span class="enc-meta">CR {{ c.cr || '—' }}<template v-if="c.xp"> · XP {{ c.xp.toLocaleString('en-US') }}</template></span>
-          <button type="button" class="enc-add" :disabled="busy" @click="addOne(c)">+ Combat</button>
+          <button type="button" class="enc-add" :disabled="busy" @click="addOne(c.name)">+ Combat</button>
         </div>
         <button v-if="r.creatures.length > 1" type="button" class="enc-start" :disabled="busy" @click="addList(r.creatures, 'creatures')">
           Start combat with this room ({{ r.creatures.length }})
@@ -107,8 +97,8 @@ async function addList(list, label) {
 </template>
 
 <style scoped>
-.enc { color: var(--ink); font-size: 14px; line-height: 1.4; margin: 0; }
-.enc-summary { cursor: pointer; font-family: var(--disp); font-size: 16px; padding: 3px 0; list-style: none; }
+.enc { color: var(--ink); font-size: 14px; line-height: 1.4; margin-bottom: 10px; }
+.enc-summary { cursor: pointer; font-family: var(--disp); font-size: 20px; padding: 2px 0 8px; list-style: none; }
 .enc-summary::-webkit-details-marker { display: none; }
 .enc-summary::before { content: '▾ '; color: var(--acc); }
 .enc[open] > .enc-summary::before { content: '▾ '; }
