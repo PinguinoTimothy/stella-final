@@ -31,7 +31,7 @@ import PeekSheet from './components/Refs/PeekSheet.vue'
 import MapsView from './views/MapsView.vue'
   import DmLoginView from './views/DmLoginView.vue'
   import ReferenceSearch from './components/Reference/ReferenceSearch.vue'
-
+import FeatsView from './views/FeatsView.vue'
 
 const app = useAppStore()
 const cloud = useCloudStore()
@@ -60,7 +60,8 @@ const editorViews = {
   grapple: GrappleView,
   conditions: ConditionsView,
   history: HistoryView,
-  maps: MapsView
+  maps: MapsView,
+  feats: FeatsView
 }
 
 const playerViews = {
@@ -75,6 +76,7 @@ const playerViews = {
   grapple: GrappleView,
   conditions: ConditionsView,
   history: HistoryView,
+  feats: FeatsView
 }
 
 const titles = { cast: 'Cast', fx: 'Active effects', db: 'Spells' }

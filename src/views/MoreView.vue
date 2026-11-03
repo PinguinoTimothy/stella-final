@@ -14,7 +14,7 @@ const emit = defineEmits<{
 const app = useAppStore()
 const cloud = useCloudStore()
 
-function openTab(tab: 'party' | 'setup' | 'magicCatalog' | 'equipmentCatalog' | 'maps' | 'skills' | 'umr' | 'grapple' | 'conditions' | 'history' | 'monsters') {
+function openTab(tab: 'party' | 'setup' | 'magicCatalog' | 'equipmentCatalog' | 'maps' | 'skills' | 'umr' | 'grapple' | 'conditions' | 'history' | 'monsters' | 'feats') {
   if (app.viewer && tab === 'setup') return
   app.ui.tab = tab
   nextTick(() => window.scrollTo(0, 0))
@@ -106,6 +106,14 @@ function openTab(tab: 'party' | 'setup' | 'magicCatalog' | 'equipmentCatalog' | 
     <span>
       <b>Equipment catalog</b>
       <small>Weapons, armor, tools and alchemical goods</small>
+    </span>
+    <span aria-hidden="true">›</span>
+  </button>
+
+    <button class="more-row setup-link" @click="openTab('feats')">
+    <span>
+      <b>Feats</b>
+      <small>Search feats and see what they require and unlock</small>
     </span>
     <span aria-hidden="true">›</span>
   </button>
