@@ -106,7 +106,7 @@ onUnmounted(() => {
         >
           <img
             class="cc-art"
-            :src="monsterArtUrl(card.name)"
+:src="monsterArtUrl(card.title2 || card.name)"
             :alt="card.name"
             loading="lazy"
             @error="broken = true"
@@ -264,7 +264,7 @@ onUnmounted(() => {
             ref="imgEl"
             class="art-zoom-img"
             :style="scale > 1 ? { width: `${baseW * scale}px` } : null"
-            :src="monsterArtUrl(card.name)"
+:src="monsterArtUrl(card.title2 || card.name)"
             :alt="card.name"
             draggable="false"
             @click.stop
