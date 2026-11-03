@@ -79,6 +79,17 @@ export const useMonsterFights = defineStore('monsterFights', () => {
     return entry
   }
 
+  /** A creature that is not in the bestiary: a name and its hit points. It has no stat block. */
+  function addCustom(name, hp) {
+    const clean = String(name || '').trim() || 'Creature'
+    const max = Math.max(1, Math.round(Number(hp) || 0))
+    const entry = make({ url: null, name: clean, hp: max, maxHp: max })
+    entry.loading = false
+    fights.value.push(entry)
+    activeUid.value = entry.uid
+    return entry
+  }
+
   /** Brings back the fights saved in this browser. */
   function restore() {
     readSaved()
@@ -146,5 +157,5 @@ export const useMonsterFights = defineStore('monsterFights', () => {
     activeUid.value = null
   }
 
-  return { fights, active, activeIndex, add, show, step, remove, setHp, change, reset, toggle, clearAll }
+  return { fights, active, activeIndex, add, addCustom, show, step, remove, setHp, change, reset, toggle, clearAll }
 })

@@ -5,9 +5,44 @@ import { computed, onUnmounted, ref, watch } from 'vue'
 import { useAppStore } from '../../stores/app'
 import { useMonsterFights } from '../../stores/monsterFights'
 import CombatCard from './CombatCard.vue'
+import { fetchMonsterPage } from '../../lib/monsters'
 
 const app = useAppStore()
 const fights = useMonsterFights()
+
+// Add any creature from the bestiary: the original of a variant, or one not in the room.
+const addQuery = ref('')
+const addRows = ref([])
+const addBusy = ref(false)
+let addTimer = 0
+watch(addQuery, (q) => {
+  clearTimeout(addTimer)
+  const term = q.trim()
+  if (term.length < 2) { addRows.value = []; return }
+  addTimer = setTimeout(async () => {
+    try {
+      addRows.value = (await fetchMonsterPage({ query: term, limit: 8 })).rows
+    } catch {
+      addRows.value = []
+    }
+  }, 250)
+})
+// A creature that is not in the bestiary: its name and hit points.
+const customName = ref('')
+const customHp = ref(10)
+function addCustomCreature() {
+  if (!customName.value.trim() || !(Number(customHp.value) > 0)) return
+  fights.addCustom(customName.value, customHp.value)
+  customName.value = ''
+  customHp.value = 10
+}
+async function addMonster(row) {
+  addBusy.value = true
+  await fights.add(row.url, row.name)
+  addBusy.value = false
+  addQuery.value = ''
+  addRows.value = []
+}
 
 const HIDE_KEY = 'stella-combat-hidden-v1'
 function readHidden() {
@@ -94,6 +129,26 @@ async function clearAll() {
       <input v-model.number="amount" type="number" min="1" inputmode="numeric" aria-label="Amount">
       <button class="danger" :disabled="!fights.active" @click="applyToActive(-1)">Damage</button>
       <button class="cast" :disabled="!fights.active" @click="applyToActive(1)">Heal</button>
+    </div>
+
+    <div v-if="!readonly" class="ct-add">
+      <input v-model="addQuery" type="search" placeholder="Add a monster…" aria-label="Add a monster to combat">
+      <details class="ct-custom">
+        <summary class="ct-custom-btn">+ Add creature not in the bestiary</summary>
+        <div class="ct-custom-row">
+          <input v-model="customName" type="text" placeholder="Name" aria-label="Creature name">
+          <input v-model.number="customHp" type="number" min="1" inputmode="numeric" placeholder="HP" aria-label="Creature HP">
+          <button type="button" class="cast" :disabled="!customName.trim() || !(customHp > 0)" @click="addCustomCreature">Add</button>
+        </div>
+      </details>
+      <ul v-if="addRows.length" class="ct-add-list">
+        <li v-for="row in addRows" :key="row.name + row.url">
+          <button type="button" :disabled="addBusy" @click="addMonster(row)">
+            <span>{{ row.name }}</span>
+            <span class="mute">CR {{ row.cr }}</span>
+          </button>
+        </li>
+      </ul>
     </div>
 
     <div class="ct-body">
@@ -446,6 +501,18 @@ async function clearAll() {
     max-height: 60vh;
   }
 }
+.ct-add { padding: 6px 10px; border-bottom: 1px solid var(--line); }
+.ct-add input { width: 100%; min-height: 36px; border-radius: 10px; }
+.ct-custom { margin-top: 6px; font-size: 13px; }
+.ct-custom summary { cursor: pointer; list-style: none; }
+.ct-custom summary::-webkit-details-marker { display: none; }
+.ct-custom-btn { min-height: 42px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--acc); color: var(--acc); font-weight: 700; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+.ct-custom[open] .ct-custom-btn { background: var(--raise); }
+.ct-custom-row { display: grid; grid-template-columns: 1fr 72px auto; gap: 6px; margin-top: 6px; }
+.ct-custom-row input { min-height: 34px; border-radius: 8px; min-width: 0; }
+.ct-add-list { list-style: none; margin: 6px 0 0; padding: 0; max-height: 220px; overflow-y: auto; display: grid; gap: 2px; }
+.ct-add-list button { width: 100%; display: flex; justify-content: space-between; gap: 8px; min-height: 34px; padding: 4px 8px; background: none; border: 0; border-radius: 8px; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.ct-add-list button:hover, .ct-add-list button:focus-visible { background: var(--raise); outline: none; }
 </style>
 
 <style>

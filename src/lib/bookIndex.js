@@ -30,6 +30,7 @@ async function pageLines(page, pageNo) {
       s: i.str.trim(),
       w: i.width,
       x: (i.transform[4] - x0) / w,
+      x1: (i.transform[4] - x0 + (i.width || 0)) / w,
       y: (y1 - i.transform[5]) / h,
       font: (page.commonObjs.get(i.fontName)?.name || '').replace(/^[A-Z]{6}\+/, ''),
     }))
@@ -60,12 +61,14 @@ function columnLines(items) {
     const last = lines[lines.length - 1]
     if (last && Math.abs(last.y - it.y) < 0.004) {
       last.s += ' ' + it.s
+      last.x0 = Math.min(last.x0, it.x)
+      last.x1 = Math.max(last.x1, it.x1 ?? it.x)
       if (it.s.length > last.fontLen) { last.font = it.font; last.fontLen = it.s.length }
     } else {
-      lines.push({ y: it.y, s: it.s, font: it.font, fontLen: it.s.length })
+      lines.push({ y: it.y, s: it.s, font: it.font, fontLen: it.s.length, x0: it.x, x1: it.x1 ?? it.x })
     }
   }
-  return lines.map((l) => ({ y: l.y, font: l.font, s: l.s.replace(/\s+/g, ' ').trim() }))
+  return lines.map((l) => ({ y: l.y, font: l.font, s: l.s.replace(/\s+/g, ' ').trim(), x0: l.x0, x1: l.x1 }))
 }
 
 /** All the lines of the book in reading order: page by page, left column then right column. */
@@ -203,27 +206,28 @@ export function parseRooms(lines, overrides = []) {
     // a stfunction-number line on its own (page or decoration) is not text
     if (/^\d{1,2}$/.test(l.s)) continue
 
-    // stat block: a name line ("OSTOVITE CR 1", or the name with "CR 1" below it), followed within
-    // three lines by its "XP" line and its "hp" line. The name line may be split off from the rest.
-    let name = null, cr = null, xpAt = -1, hpAt = -1
+    // stat block: a name line ("OSTOVITE CR 1", or the name with "CR 1" below it). Its "XP" and "hp"
+    // lines are looked for in the next lines of the same page: they may sit in the other column.
+    let name = null, cr = null
     const sn = l.s.match(STAT_NAME_CR)
     if (sn) { name = sn[1]; cr = sn[2] }
-    else if (STAT_NAME.test(l.s) && next && CR_LINE.test(next.s)) { name = l.s; cr = next.s.match(CR_LINE)[1]; xpAt = i + 2 }
-    else if (STAT_NAME.test(l.s)) {
-      const k = [1, 2, 3].find((d) => lines[i + d] && lines[i + d].page === l.page && XP_LINE.test(lines[i + d].s))
-      if (k) { name = l.s; xpAt = i + k }
-    }
+    else if (STAT_NAME.test(l.s) && next && CR_LINE.test(next.s)) { name = l.s; cr = next.s.match(CR_LINE)[1] }
+    else if (STAT_NAME.test(l.s)) name = l.s
     if (name && current) {
-      if (xpAt < 0 && next && CR_LINE.test(next.s)) xpAt = i + 2
-      if (xpAt < 0 && next && XP_LINE.test(next.s)) xpAt = i + 1
-      const xp = xpAt >= 0 ? lines[xpAt]?.s.match(XP_LINE) : null
-      // the hp line follows the XP line, possibly after a line of its own
-      const hpI = [0, 1, 2].map((d) => (xpAt >= 0 ? xpAt + d : -1)).find((j) => j >= 0 && lines[j] && HP_LINE.test(lines[j].s))
-      const hp = hpI !== undefined ? lines[hpI].s.match(HP_LINE) : null
-      current.creatures.push({ name: toTitle(name), cr, xp: xp ? Number(xp[1].replace(/,/g, '')) : null, hp: hp ? Number(hp[1]) : null, bestiary: hp?.[2] || null })
-      inStat = true
-      i = Math.max(i, hpI !== undefined ? hpI : xpAt >= 0 ? xpAt : i)
-      continue
+      const ahead = []
+      for (let d = 1; d <= 8 && i + d < lines.length; d++) {
+        const n = lines[i + d]
+        if (n.page === l.page) ahead.push(n.s)
+      }
+      const xp = ahead.map((t) => t.match(XP_LINE)).find(Boolean)
+      const hp = ahead.map((t) => t.match(HP_LINE)).find(Boolean)
+      // a plain uppercase line is a creature only when its stat lines follow
+      if (xp || hp) {
+        const creature = { name: toTitle(name), cr, xp: xp ? Number(xp[1].replace(/,/g, '')) : null, hp: hp ? Number(hp[1]) : null, bestiary: hp?.[2] || null }
+        if (!current.creatures.some((c) => c.name === creature.name)) current.creatures.push(creature)
+        inStat = true
+        continue
+      }
     }
 
     if (!current) continue
@@ -245,7 +249,7 @@ export function parseRooms(lines, overrides = []) {
     const isAloud = kind ? kind === 'aloud' : (!inStat && l.font === READ_ALOUD_FONT)
     if (kind === 'note') { inNote = true; current.parts.push({ type: 'note', s: l.s }); continue }
     for (const m of l.s.matchAll(AREA_REF)) current.refs.add(m[1])
-    current.parts.push({ type: isAloud ? 'aloud' : 'text', s: l.s })
+    current.parts.push({ type: isAloud ? 'aloud' : 'text', s: l.s, page: l.page, col: l.col, y: l.y, x0: l.x0, x1: l.x1 })
   }
 
   const out = rooms.map((r) => {
@@ -256,6 +260,32 @@ export function parseRooms(lines, overrides = []) {
       creatures, refs: [...r.refs], blocks,
     }
   })
+
+  // Read-aloud boxes: consecutive read-aloud lines in one column, with their place on the page.
+  const boxes = []
+  for (const r of rooms) {
+    let cur = null
+    for (const p of r.parts) {
+      if (p.type === 'aloud' && cur && cur.page === p.page && cur.col === p.col) {
+        cur.lines.push(p.s)
+        cur.x0 = Math.min(cur.x0, p.x0)
+        cur.x1 = Math.max(cur.x1, p.x1)
+        cur.y1 = p.y
+      } else if (p.type === 'aloud') {
+        if (cur) boxes.push(cur)
+        cur = { page: p.page, col: p.col, code: r.code, lines: [p.s], x0: p.x0, x1: p.x1, y0: p.y, y1: p.y }
+      } else {
+        if (cur) boxes.push(cur)
+        cur = null
+      }
+    }
+    if (cur) boxes.push(cur)
+  }
+  const boxList = boxes.map((b) => ({
+    page: b.page, code: b.code,
+    x0: b.x0, x1: b.x1, y0: b.y0 - 0.012, y1: b.y1 + 0.02,
+    text: b.lines.join(' '),
+  }))
 
   // Diagnostics: what the reader could not place, so a book that reads badly can be checked.
   const looksLikeRoom = /^[A-F]\d{1,2}\b/
@@ -268,7 +298,7 @@ export function parseRooms(lines, overrides = []) {
     .map((a) => `${a.title} (p${a.page})`)
   const diagnostics = { lines: lines.length, unread: unread.slice(0, 12), emptyAreas }
 
-  return { rooms: out, areas, warnings, diagnostics }
+  return { rooms: out, areas, warnings, diagnostics, boxes: boxList }
 }
 
 const toTitle = (s) => s.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())

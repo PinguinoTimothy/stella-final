@@ -22,12 +22,17 @@ export async function openPdf(blob) {
 export function drawPage(doc, pageNo, canvas, cssWidth, onError, onDone) {
   let task = null
   let cancelled = false
+  // On-screen width: a finite number, never wider than a large screen. Anything else falls back to a safe size.
+  const shownWidth = Number.isFinite(cssWidth) ? Math.min(Math.max(cssWidth, 50), 4000) : 600
   const done = (async () => {
     const page = await doc.getPage(pageNo)
     if (cancelled) return
     const base = page.getViewport({ scale: 1 })
-    const dpr = Math.min(window.devicePixelRatio || 1, 2.5)
-    let scale = (cssWidth / base.width) * dpr
+    if (!(base.width > 0 && base.height > 0)) return
+    // Draw at least twice the on-screen size and let the browser scale it down: text stays sharp.
+    // The size caps above still apply, so large pages cannot exhaust memory.
+    const dpr = Math.min(Math.max(window.devicePixelRatio || 1, 2), 3)
+    let scale = (shownWidth / base.width) * dpr
     const w = base.width * scale
     const h = base.height * scale
     const fit = Math.min(1, MAX_SIDE / w, MAX_SIDE / h, Math.sqrt(MAX_AREA / (w * h)))
@@ -35,8 +40,8 @@ export function drawPage(doc, pageNo, canvas, cssWidth, onError, onDone) {
     const vp = page.getViewport({ scale })
     canvas.width = Math.floor(vp.width)
     canvas.height = Math.floor(vp.height)
-    canvas.style.width = cssWidth + 'px'
-    canvas.style.height = Math.round((cssWidth * base.height) / base.width) + 'px'
+    canvas.style.width = shownWidth + 'px'
+    canvas.style.height = Math.round((shownWidth * base.height) / base.width) + 'px'
     task = page.render({ canvasContext: canvas.getContext('2d'), viewport: vp })
     await task.promise
     if (!cancelled) onDone?.()
