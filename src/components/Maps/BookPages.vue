@@ -6,12 +6,16 @@ import { TextLayer } from 'pdfjs-dist'
 import 'pdfjs-dist/web/pdf_viewer.css'
 import { drawPage, openPdf } from '../../lib/pdfRender'
 import { getFile } from '../../lib/mapsDb'
+import Translator from './Translator.vue'
 
 const props = defineProps({
   bookId: { type: String, required: true },
   page: { type: Number, default: 1 },
+  boxes: { type: Array, default: () => [] },     // read-aloud boxes: { page, x0, x1, y0, y1, text }
 })
 const emit = defineEmits(['page'])
+const translator = ref(null)
+const boxesOn = (n) => props.boxes.filter((b) => b.page === n)
 
 const ZOOMS = [0.8, 1, 1.25, 1.5]
 const zoomIdx = ref(1)
@@ -63,6 +67,12 @@ async function drawText(n) {
   const page = await doc.value.getPage(n)
   const base = page.getViewport({ scale: 1 })
   const vp = page.getViewport({ scale: pageW.value / base.width })
+  // the layer must be exactly the size of the page, and the scale variables must be set,
+  // or every character is placed off the glyph and the selection lands in the wrong place
+  layer.style.width = Math.floor(vp.width) + 'px'
+  layer.style.height = Math.floor(vp.height) + 'px'
+  layer.style.setProperty('--scale-factor', vp.scale)
+  layer.style.setProperty('--total-scale-factor', vp.scale)
   const textLayer = new TextLayer({
     textContentSource: await page.getTextContent(),
     container: layer,
@@ -163,6 +173,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="rd">
+    <Translator ref="translator" :root="scroller" />
     <div class="rd-bar">
       <span class="rd-count">Page {{ current }}<template v-if="count"> of {{ count }}</template></span>
       <span class="rd-sep"></span>
@@ -181,6 +192,14 @@ onBeforeUnmount(() => {
       >
         <canvas class="rd-canvas"></canvas>
         <div class="textLayer"></div>
+        <button
+          v-for="(b, i) in boxesOn(n)"
+          :key="i"
+          type="button"
+          class="rd-tr"
+          :style="{ left: b.x1 * pageW + 'px', top: b.y0 * pageH + 'px' }"
+          @click="translator?.translateText(b.text)"
+        >Translate</button>
       </div>
     </div>
   </div>
@@ -213,5 +232,6 @@ onBeforeUnmount(() => {
   position: relative;
 }
 .rd-canvas { display: block; }
-.rd-page .textLayer { position: absolute; inset: 0; }
+.rd-page .textLayer { position: absolute; top: 0; left: 0; }
+.rd-tr { position: absolute; transform: translate(-100%, -100%); z-index: 3; min-height: 26px; padding: 0 10px; border-radius: 999px; border: 0; background: var(--acc); color: #111; font-size: 12px; font-weight: 700; box-shadow: 0 2px 8px rgba(0, 0, 0, .35); cursor: pointer; }
 </style>

@@ -136,7 +136,7 @@ onBeforeUnmount(() => {
 
     <div class="mv-body">
       <section v-if="hasBook" class="mv-reader">
-        <BookReader :key="book.id" :book-id="book.id" />
+        <BookReader :key="book.id" :book-id="book.id" :boxes="book.boxes || []" />
       </section>
 
       <div v-if="hasMap && (mapFull || showMap)" :class="mapFull ? 'mv-map-full' : 'mv-map-float'">

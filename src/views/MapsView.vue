@@ -51,8 +51,9 @@ async function importFiles(event) {
       }
       if (role === 'book') {
         // the rooms of the book, for "Appears in" on a creature
-        const { rooms } = parseRooms(await readBook(doc))
+        const { rooms, boxes } = parseRooms(await readBook(doc))
         if (rooms.length) fields.encounters = Object.fromEntries(rooms.map((r) => [r.code, r]))
+        fields.boxes = boxes
       }
       await updateMap(meta.id, fields)
       doc.destroy()
