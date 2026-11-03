@@ -27,7 +27,6 @@ import SetupView from './views/SetupView.vue'
 import SkillsView from './views/SkillsView.vue'
 import SpellsView from './views/SpellsView.vue'
 import UmrView from './views/UmrView.vue'
-  import GuideMascot from './components/Guide/GuideMascot.vue'
 import PeekSheet from './components/Refs/PeekSheet.vue'
 import MapsView from './views/MapsView.vue'
   import DmLoginView from './views/DmLoginView.vue'
@@ -108,7 +107,6 @@ const title = computed(() => titles[app.ui.tab] || (app.viewer ? app.ui.tab : ''
     </template>
     <ConfirmDialog />
     <ReferenceSearch />
-          <GuideMascot />
           <PeekSheet />
   </template>
 </template>
