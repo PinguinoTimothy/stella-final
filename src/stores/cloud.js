@@ -8,16 +8,22 @@ import * as sb from '../lib/supabase'
 import { buildRows, buildState, diff, fullChanges, snapOf } from '../lib/mapping'
 
 // Same keys as the single-file version, so both share the session and sync bookkeeping on one origin.
+const DM_PIN_KEY = 'stella-dm-pin-v1'
 const SESS = 'pf1e-sb-session', META = 'pf1e-cloud-meta2', SNAP = 'pf1e-cloud-snap2'
-  const DMPIN = 'stella-dm-pin-v1'
 const read = (k) => { try { return JSON.parse(localStorage.getItem(k) || 'null') } catch { return null } }
 const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)) } catch { /* quota */ } }
+// The DM code lives only as long as the tab: sessionStorage, not localStorage (which survives restarts).
+const pinGet = () => { try { return sessionStorage.getItem(DM_PIN_KEY) || '' } catch { return '' } }
+const pinSet = (v) => { try { sessionStorage.setItem(DM_PIN_KEY, v) } catch { /* storage off */ } }
+const pinClear = () => { try { sessionStorage.removeItem(DM_PIN_KEY) } catch { /* ignore */ } }
+// Older builds kept the code in localStorage; remove that copy.
+try { localStorage.removeItem(DM_PIN_KEY) } catch { /* ignore */ }
 
 export const useCloudStore = defineStore('cloud', () => {
   const app = useAppStore()
   const meta0 = read(META) || {}
   const session = ref(read(SESS))
-    const dmPin = ref(read(DMPIN) || '')
+    const dmPin = ref(pinGet())
   const state = ref('')            // '' | sync | ok | err | conflict
   const code = ref('')
   const at = ref('')
@@ -124,7 +130,7 @@ export const useCloudStore = defineStore('cloud', () => {
       if (r.error) {
         state.value = 'err'
         code.value = r.error
-        if (r.error === 'wrong') { dmPin.value = ''; try { localStorage.removeItem(DMPIN) } catch { /* ignore */ } }
+        if (r.error === 'wrong') { dmPin.value = ''; pinClear() }
         return false
       }
       if (+r.rev !== rev) adopt(+r.rev, r.tables)
@@ -136,7 +142,7 @@ export const useCloudStore = defineStore('cloud', () => {
   async function dmUnlock(pin) {
     dmPin.value = pin
     const ok = await dmPull()
-    if (ok) write(DMPIN, pin)
+    if (ok) pinSet(pin)
     return ok
   }
 

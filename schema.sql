@@ -141,13 +141,25 @@ begin
     execute format('grant select, insert, update, delete on public.%I to authenticated', t);
   end loop;
 
-  -- lectura pública (jugadores con la clave anon)
-  foreach t in array array['sync_state','settings','characters','wallets','items',
+  -- lectura pública (jugadores con la clave anon).
+  -- settings y wallets NO van aquí: tienen políticas más estrictas abajo.
+  foreach t in array array['sync_state','characters','items',
                            'spells','magic_items','catalog_ver'] loop
     execute format('create policy "lectura publica" on public.%I for select to anon using (true)', t);
     execute format('grant select on public.%I to anon', t);
   end loop;
 end $$;
+
+-- settings: los jugadores solo leen las claves que muestra la vista (name, history, conditions).
+-- La tasa de cambio (rate), funds_done y cualquier otra clave quedan solo para el admin.
+create policy "lectura publica" on public.settings for select to anon
+  using (key in ('name', 'history', 'conditions'));
+grant select on public.settings to anon;
+
+-- wallets: los jugadores solo ven el bote del grupo (owner = ''); el dinero de cada personaje es privado.
+create policy "lectura publica" on public.wallets for select to anon
+  using (owner = '');
+grant select on public.wallets to anon;
 
 -- efectos: los jugadores ven solo estas columnas (sin notas privadas)
 create policy "lectura publica" on public.effects for select to anon using (true);

@@ -8,8 +8,8 @@ const busy = ref(false)
 const error = ref('')
 
 async function unlock() {
-  if (!/^\d{4}$/.test(pin.value)) {
-    error.value = 'Enter the 4-digit code.'
+  if (!/^\d{6}$/.test(pin.value)) {
+    error.value = 'Enter the 6-digit code.'
     return
   }
   busy.value = true
@@ -19,7 +19,7 @@ async function unlock() {
   pin.value = ''
   if (!ok) {
     error.value = cloud.code === 'locked'
-      ? 'Too many wrong codes. Try again in 15 minutes.'
+      ? 'Too many wrong codes. Locked for a while; each lock lasts longer.'
       : 'Wrong code.'
   }
 }
@@ -28,13 +28,13 @@ async function unlock() {
 <template>
   <section class="dm-login">
     <h2 class="pg">Dungeon Master</h2>
-    <p class="mute">Enter the 4-digit code.</p>
+    <p class="mute">Enter the 6-digit code.</p>
     <form class="panel grid" data-ro-ok @submit.prevent="unlock">
               <input
         v-model="pin"
         type="password"
         inputmode="numeric"
-        maxlength="4"
+        maxlength="6"
         autocomplete="off"
         placeholder="····"
         aria-label="Code"
