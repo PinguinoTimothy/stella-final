@@ -86,11 +86,6 @@ onBeforeUnmount(() => observer?.disconnect());
       @update:group="catalog.changeGroup"
     />
 
-    <div class="magic-results-heading">
-      <span>{{ catalog.total }} items found</span>
-      <span v-if="catalog.rows.length && catalog.hasMore">Showing {{ catalog.rows.length }}</span>
-    </div>
-
     <p v-if="catalog.loading && !catalog.appending" class="mute magic-status">Loading magic catalog…</p>
 
     <p v-if="catalog.error" class="mute magic-status" role="status">

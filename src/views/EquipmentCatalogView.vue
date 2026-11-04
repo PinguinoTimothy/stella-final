@@ -49,11 +49,6 @@ onMounted(catalog.start);
       :categories="catalog.categories"
     />
 
-    <div class="magic-results-heading">
-      <span>{{ catalog.total }} items found</span>
-      <span v-if="catalog.totalPages > 1">{{ catalog.page + 1 }} / {{ catalog.totalPages }}</span>
-    </div>
-
     <p v-if="catalog.loading" class="mute magic-status">Loading equipment…</p>
 
     <p v-if="catalog.error" class="mute magic-status" role="status">
