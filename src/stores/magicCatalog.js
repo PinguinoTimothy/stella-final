@@ -1,5 +1,5 @@
-// Magic catalog screen: the filters, the current page and how it is fetched.
-// Only the visible page is downloaded. Filters run on the server; sorting by price uses a light id+price index.
+// Magic catalog screen: the filters, the items loaded so far, and how they are fetched.
+// Items arrive a page at a time as the list is scrolled. Filters run on the server; sorting by price uses a light id+price index.
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import { fetchMagicByIds, fetchMagicFacets, fetchMagicPage, fetchMagicPriceIndex } from '../lib/supabase';
@@ -15,22 +15,23 @@ export const useMagicCatalog = defineStore('magicCatalog', () => {
   const group = ref('');
   const slot = ref('');
   const sort = ref('default');
-  const page = ref(0);
 
-  const rows = ref([]);
+  const rows = ref([]); // every item loaded so far, in order
+  const page = ref(-1); // index of the last page loaded; -1 = none yet
   const total = ref(0);
   const loading = ref(false);
+  const appending = ref(false); // true while the next page is being added to the end of the list
   const error = ref('');
   const facets = ref({ groups: [], slots: [] });
 
-  const totalPages = computed(() => Math.max(1, Math.ceil(total.value / PAGE_SIZE)));
+  const hasMore = computed(() => rows.value.length < total.value);
 
   let controller = null,
     request = 0,
     timer = 0,
     started = false,
-    resetting = false;
-  const pages = new Map(); // filter+page → { rows, total }
+    appendFailed = false;
+  const pages = new Map(); // filter+sort+page → { rows, total }
   const priceIndexes = new Map(); // filter → { raw: [{ id, price }], sorted: { asc, desc } }; bounded below
 
   const filterKey = () => JSON.stringify([search.value.trim().toLowerCase(), group.value, slot.value]);
@@ -57,18 +58,18 @@ export const useMagicCatalog = defineStore('magicCatalog', () => {
     return entry.sorted[sort.value];
   }
 
-  async function fetchPage(signal) {
+  async function fetchPage(n, signal) {
     if (sort.value === 'default') {
       const r = await fetchMagicPage({
         ...filters(),
-        offset: page.value * PAGE_SIZE,
+        offset: n * PAGE_SIZE,
         limit: PAGE_SIZE,
         signal,
       });
       return { rows: r.rows.map(normalizeItem), total: r.total };
     }
     const index = await sortedIndex(signal);
-    const ids = index.slice(page.value * PAGE_SIZE, (page.value + 1) * PAGE_SIZE).map(x => x.id);
+    const ids = index.slice(n * PAGE_SIZE, (n + 1) * PAGE_SIZE).map(x => x.id);
     const byId = new Map((await fetchMagicByIds(ids, signal)).map(r => [r.id, r]));
     return {
       rows: ids
@@ -79,37 +80,54 @@ export const useMagicCatalog = defineStore('magicCatalog', () => {
     };
   }
 
-  /** Loads the page for the current filters. A newer call cancels the one still running. */
-  async function load() {
+  /**
+   * Loads a page for the current filters. Without `append` the list starts again from the first page;
+   * with it, the next page is added to the end. A newer call cancels the one still running.
+   */
+  async function load({ append = false } = {}) {
+    if (append && (loading.value || !hasMore.value)) return;
+    const target = append ? page.value + 1 : 0;
     const mine = ++request;
     controller?.abort();
     controller = new AbortController();
-    const key = `${filterKey()}|${sort.value}|${page.value}`;
+    const key = `${filterKey()}|${sort.value}|${target}`;
+
+    const show = result => {
+      rows.value = append ? [...rows.value, ...result.rows] : result.rows;
+      total.value = result.total;
+      page.value = target;
+    };
 
     if (pages.has(key)) {
-      const hit = pages.get(key);
-      rows.value = hit.rows;
-      total.value = hit.total;
+      show(pages.get(key));
       error.value = '';
       loading.value = false;
+      appending.value = false;
       return;
     }
 
     loading.value = true;
+    appending.value = append;
     error.value = '';
     try {
-      const result = await fetchPage(controller.signal);
+      const result = await fetchPage(target, controller.signal);
       if (mine !== request) return;
       remember(key, result);
-      rows.value = result.rows;
-      total.value = result.total;
+      show(result);
+      appendFailed = false;
     } catch (e) {
       if (mine !== request || e?.name === 'AbortError') return;
-      error.value = rows.value.length
-        ? 'Could not refresh the catalog. Showing the previous results.'
-        : 'Could not load the magic catalog. Check your connection.';
+      appendFailed = append;
+      error.value = append
+        ? 'Could not load more items. Check your connection.'
+        : rows.value.length
+          ? 'Could not refresh the catalog. Showing the previous results.'
+          : 'Could not load the magic catalog. Check your connection.';
     } finally {
-      if (mine === request) loading.value = false;
+      if (mine === request) {
+        loading.value = false;
+        appending.value = false;
+      }
     }
   }
 
@@ -137,22 +155,10 @@ export const useMagicCatalog = defineStore('magicCatalog', () => {
     started = true;
     load();
     loadFacets();
-    // A new filter goes back to page 1; typing waits for a pause so it doesn't send a request per key.
+    // A new filter starts the list again; typing waits for a pause so it doesn't send a request per key.
     watch([search, group, slot, sort], () => {
       clearTimeout(timer);
-      if (page.value !== 0) {
-        resetting = true;
-        page.value = 0;
-      }
-      timer = setTimeout(load, DEBOUNCE);
-    });
-    watch(page, () => {
-      if (resetting) {
-        resetting = false;
-        return;
-      } // already covered by the debounced load above
-      clearTimeout(timer);
-      load();
+      timer = setTimeout(() => load(), DEBOUNCE);
     });
   }
 
@@ -160,10 +166,15 @@ export const useMagicCatalog = defineStore('magicCatalog', () => {
     group.value = value;
     slot.value = '';
   }
+
+  function loadMore() {
+    return load({ append: true });
+  }
+
   function retry() {
     pages.clear();
     priceIndexes.clear();
-    load();
+    load({ append: appendFailed });
   }
 
   return {
@@ -171,15 +182,16 @@ export const useMagicCatalog = defineStore('magicCatalog', () => {
     group,
     slot,
     sort,
-    page,
     rows,
     total,
-    totalPages,
+    hasMore,
     loading,
+    appending,
     error,
     facets,
     start,
     changeGroup,
+    loadMore,
     retry,
   };
 });
