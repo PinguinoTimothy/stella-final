@@ -5,7 +5,7 @@ import { computed, onMounted, ref } from 'vue';
 import MapViewer from '../components/Maps/MapViewer.vue';
 import { openPdf } from '../lib/pdfRender';
 import { readBook, parseRooms } from '../lib/bookIndex';
-import { addMap, listMaps, removeMap, renameMap, updateMap } from '../lib/mapsDb';
+import { addMap, listMaps, removeMap, renameMap, updateMap, getFile } from '../lib/mapsDb';
 import { adventureKey, adventureName } from '../lib/adventures';
 
 const parts = ref([]); // every stored PDF
@@ -81,7 +81,7 @@ async function improve(book, event) {
     const data = JSON.parse(await file.text());
     if (data.art) await updateMap(book.id, { art: data.art });
     if (data.corrections) {
-      const doc = await openPdf(await (await import('../lib/mapsDb')).getFile(book.id));
+      const doc = await openPdf(await getFile(book.id));
       const { rooms } = parseRooms(await readBook(doc), data.corrections);
       doc.destroy();
       await updateMap(book.id, { encounters: Object.fromEntries(rooms.map(r => [r.code, r])) });
