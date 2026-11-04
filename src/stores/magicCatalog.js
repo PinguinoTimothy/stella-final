@@ -8,6 +8,7 @@ import { normalizeItem, PAGE_SIZE, sortByPrice } from '../lib/magic';
 
 const DEBOUNCE = 300;
 const MAX_CACHED = 40; // pages kept in memory so going back and forth is instant
+const MAX_PRICE_INDEXES = 8; // filters whose id+price list is kept; each is a few KB
 
 export const useMagicCatalog = defineStore('magicCatalog', () => {
   const search = ref('');
@@ -30,7 +31,7 @@ export const useMagicCatalog = defineStore('magicCatalog', () => {
     started = false,
     resetting = false;
   const pages = new Map(); // filter+page → { rows, total }
-  const priceIndexes = new Map(); // filter → [{ id, price }] sorted
+  const priceIndexes = new Map(); // filter → { raw: [{ id, price }], sorted: { asc, desc } }; bounded below
 
   const filterKey = () => JSON.stringify([search.value.trim().toLowerCase(), group.value, slot.value]);
   const filters = () => ({ query: search.value, group: group.value, slot: slot.value });
@@ -40,12 +41,20 @@ export const useMagicCatalog = defineStore('magicCatalog', () => {
     if (pages.size > MAX_CACHED) pages.delete(pages.keys().next().value);
   }
 
-  /** Sorted ids of everything that matches, by price. Fetched once per filter. */
+  /**
+   * Ids of everything that matches, sorted by price. The download happens once per filter, not per sort
+   * order: switching between low→high and high→low only re-sorts the list already in memory.
+   */
   async function sortedIndex(signal) {
-    const key = filterKey() + sort.value;
-    if (!priceIndexes.has(key))
-      priceIndexes.set(key, sortByPrice(await fetchMagicPriceIndex({ ...filters(), signal }), sort.value));
-    return priceIndexes.get(key);
+    const key = filterKey();
+    let entry = priceIndexes.get(key);
+    if (!entry) {
+      entry = { raw: await fetchMagicPriceIndex({ ...filters(), signal }), sorted: {} };
+      priceIndexes.set(key, entry);
+      if (priceIndexes.size > MAX_PRICE_INDEXES) priceIndexes.delete(priceIndexes.keys().next().value);
+    }
+    if (!entry.sorted[sort.value]) entry.sorted[sort.value] = sortByPrice(entry.raw, sort.value);
+    return entry.sorted[sort.value];
   }
 
   async function fetchPage(signal) {

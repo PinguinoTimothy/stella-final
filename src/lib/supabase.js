@@ -384,8 +384,32 @@ export async function fetchMagicByIds(ids, signal) {
   return (await getJson(`${SB_URL}/rest/v1/magic_items?${p}`, signal)).json();
 }
 
-/** The values of the Group and Slot selectors. Two small columns, nothing else. */
+/** Calls a database function (RPC). Returns the parsed JSON. */
+async function rpc(name, signal) {
+  const r = await fetch(`${SB_URL}/rest/v1/rpc/${name}`, {
+    method: 'POST',
+    headers: headers(SB_ANON),
+    body: '{}',
+    cache: 'no-store',
+    signal,
+  });
+  if (!r.ok) await fail(r);
+  return r.json();
+}
+
+/** The values of the Group and Slot selectors, computed by the database (migrations/003). */
 export async function fetchMagicFacets(signal) {
+  try {
+    const f = await rpc('magic_facets', signal);
+    return { groups: f.groups || [], slots: f.slots || [] };
+  } catch (e) {
+    if (e?.code !== 404) throw e;
+    return scanMagicFacets(signal); // function not deployed yet: read the column instead
+  }
+}
+
+/** Fallback for fetchMagicFacets: reads the two columns and computes the lists here. */
+async function scanMagicFacets(signal) {
   const groups = new Set(),
     slots = new Set();
   for (let offset = 0; ; offset += 1000) {
@@ -440,8 +464,18 @@ export async function fetchEquipmentPage({ offset = 0, limit = 50, sort = 'name'
   return { rows, total: Number.isFinite(total) ? total : rows.length };
 }
 
-/** Distinct categories of the catalog, for the filter. Reads one small column. */
+/** Distinct categories of the catalog, computed by the database (migrations/003). */
 export async function fetchEquipmentCategories(signal) {
+  try {
+    return await rpc('equipment_categories', signal);
+  } catch (e) {
+    if (e?.code !== 404) throw e;
+    return scanEquipmentCategories(signal); // function not deployed yet: read the column instead
+  }
+}
+
+/** Fallback for fetchEquipmentCategories: reads the column and deduplicates here. */
+async function scanEquipmentCategories(signal) {
   const set = new Set();
   for (let offset = 0; ; offset += 1000) {
     const p = new URLSearchParams({
