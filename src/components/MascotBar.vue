@@ -29,6 +29,7 @@ const face = ref(1);
 const bubble = ref('');
 const dragging = ref(false);
 const reduced = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const DRAG_OFFSET_Y = 60;
 
 let target = null;
 let pauseUntil = 0;
@@ -78,9 +79,14 @@ function onPointerDown(e) {
   holdTimer = setTimeout(startDrag, HOLD_MS);
 }
 
-function startDrag() {
+function startDrag(e) {
   dragging.value = true;
   setAnim('rage', DRAG_LINE);
+
+  grabX = x.value;
+  grabY = y.value;
+  startX = e.clientX;
+  startY = e.clientY;
 }
 
 function onPointerMove(e) {
@@ -93,7 +99,7 @@ function onPointerMove(e) {
   const maxX = window.innerWidth - CELL - 8;
   const minY = -(window.innerHeight - BASE_BOTTOM - CELL - 40);
   x.value = Math.min(maxX, Math.max(8, grabX + (e.clientX - startX)));
-  y.value = Math.min(0, Math.max(minY, grabY + (e.clientY - startY)));
+  y.value = Math.min(0, Math.max(minY, grabY + (e.clientY - startY) + DRAG_OFFSET_Y));
   face.value = e.clientX >= startX ? 1 : -1;
 }
 
