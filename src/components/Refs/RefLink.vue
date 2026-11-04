@@ -1,19 +1,15 @@
 <script setup>
 // A name that opens its popup when tapped.
-import { usePeek } from '../../stores/peek'
+import { usePeek } from '../../stores/peek';
 const props = defineProps({
-  kind: { type: String, required: true },   // 'spell' | 'condition'
+  kind: { type: String, required: true }, // 'spell' | 'condition'
   name: { type: String, required: true },
-})
-const peek = usePeek()
+});
+const peek = usePeek();
 </script>
 
 <template>
-  <button
-    type="button"
-    class="ref-link"
-    @click="peek.open(props.kind, props.name)"
-  >
+  <button type="button" class="ref-link" @click="peek.open(props.kind, props.name)">
     {{ name }}
   </button>
 </template>
@@ -31,5 +27,9 @@ const peek = usePeek()
   text-align: left;
   cursor: pointer;
 }
-.ref-link:focus-visible { outline: 2px solid var(--acc, #a99bff); outline-offset: 2px; border-radius: 4px; }
+.ref-link:focus-visible {
+  outline: 2px solid var(--acc, #a99bff);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
 </style>

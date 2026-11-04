@@ -1,10 +1,10 @@
 <script setup>
 // Class name, ability, modifier, and the 0–9 level bar with remaining slots.
-import { abilityModifier, remaining, slotInfo } from '../../lib/spellcasting'
-import { useCast } from '../../stores/cast'
+import { abilityModifier, remaining, slotInfo } from '../../lib/spellcasting';
+import { useCast } from '../../stores/cast';
 
-const cast = useCast()
-const label = (c, level) => (level === 0 ? '∞' : slotInfo(c, level) ? remaining(c, level) : '–')
+const cast = useCast();
+const label = (c, level) => (level === 0 ? '∞' : slotInfo(c, level) ? remaining(c, level) : '–');
 </script>
 
 <template>
@@ -16,7 +16,8 @@ const label = (c, level) => (level === 0 ? '∞' : slotInfo(c, level) ? remainin
           Nivel {{ cast.characterClass.lvl || '—' }} · Característica
           {{ String(cast.characterClass.ab || 'wis').toUpperCase() }}
           {{ cast.characterClass.score ?? 10 }}
-          · Modificador {{ abilityModifier(cast.characterClass) >= 0 ? '+' : '' }}{{ abilityModifier(cast.characterClass) }}
+          · Modificador {{ abilityModifier(cast.characterClass) >= 0 ? '+' : ''
+          }}{{ abilityModifier(cast.characterClass) }}
         </p>
       </div>
     </div>

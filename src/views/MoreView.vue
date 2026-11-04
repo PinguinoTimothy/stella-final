@@ -1,132 +1,76 @@
 <script setup lang="ts">
-import { useAppStore } from "../stores/app";
-import { useCloudStore } from "../stores/cloud";
-import { nextTick } from "vue";
-
-const emit = defineEmits<{
-  openInventory: [];
-  openCast: [];
-  openActive: [];
-  openSpells: [];
-  openMagicCatalog: [];
-}>();
+import { useAppStore } from '../stores/app';
+import { useCloudStore } from '../stores/cloud';
+import { nextTick } from 'vue';
 
 const app = useAppStore();
 const cloud = useCloudStore();
 
 function openTab(
   tab:
-    | "party"
-    | "setup"
-    | "magicCatalog"
-    | "equipmentCatalog"
-    | "maps"
-    | "skills"
-    | "umr"
-    | "grapple"
-    | "conditions"
-    | "history"
-    | "monsters"
-    | "feats"
-    | "rules",
+    | 'party'
+    | 'setup'
+    | 'magicCatalog'
+    | 'equipmentCatalog'
+    | 'maps'
+    | 'skills'
+    | 'umr'
+    | 'grapple'
+    | 'conditions'
+    | 'history'
+    | 'monsters'
+    | 'feats'
+    | 'rules',
 ) {
-  if (app.viewer && tab === "setup") return;
+  if (app.viewer && tab === 'setup') return;
   app.ui.tab = tab;
   nextTick(() => window.scrollTo(0, 0));
 }
 </script>
 
 <template>
-  <h2 class="pg">
-    More
-  </h2>
+  <h2 class="pg">More</h2>
 
-  <details
-    v-if="app.mode === 'dev'"
-    class="panel fold"
-    data-k="share"
-    open
-  >
+  <details v-if="app.mode === 'dev'" class="panel fold" data-k="share" open>
     <summary>Cloud save</summary>
 
     <div class="grid">
       <template v-if="cloud.session">
-        <p
-          class="mute"
-          style="margin: 0"
-        >
-          Signed in as <b>{{ cloud.session.email }}</b>. Changes are saved to your database automatically; this device keeps
-          a copy for offline use.
+        <p class="mute" style="margin: 0">
+          Signed in as <b>{{ cloud.session.email }}</b
+          >. Changes are saved to your database automatically; this device keeps a copy for offline use.
         </p>
 
-        <div
-          class="mute"
-          role="status"
-        >
+        <div class="mute" role="status">
           {{ cloud.status }}
         </div>
 
         <template v-if="cloud.state === 'conflict'">
-          <button
-            class="cast"
-            @click="cloud.pull()"
-          >
-            Use the cloud version
-          </button>
+          <button class="cast" @click="cloud.pull()">Use the cloud version</button>
 
-          <button
-            class="danger"
-            @click="cloud.force()"
-          >
-            Keep this device’s version
-          </button>
+          <button class="danger" @click="cloud.force()">Keep this device’s version</button>
         </template>
 
-        <button
-          v-else
-          class="cast"
-          @click="cloud.sync()"
-        >
-          Sync now
-        </button>
+        <button v-else class="cast" @click="cloud.sync()">Sync now</button>
 
-        <button
-          class="danger"
-          @click="cloud.signOut()"
-        >
-          Sign out
-        </button>
+        <button class="danger" @click="cloud.signOut()">Sign out</button>
       </template>
     </div>
   </details>
 
   <template v-if="!app.viewer">
-    <h2
-      class="pg"
-      style="font-size: 22px; margin-top: 18px"
-    >
-      Character configuration
-    </h2>
+    <h2 class="pg" style="font-size: 22px; margin-top: 18px">Character configuration</h2>
 
-    <button
-      v-if="app.mode !== 'player'"
-      class="more-row setup-link"
-      @click="openTab('monsters')"
-    >
+    <button v-if="app.mode !== 'player'" class="more-row setup-link" @click="openTab('monsters')">
       <span>
         <b>Setup</b>
-        <small>
-          Character, spellcasting classes, slots, domains and DC bonuses
-        </small>
+        <small> Character, spellcasting classes, slots, domains and DC bonuses </small>
       </span>
       <span aria-hidden="true">›</span>
     </button>
   </template>
 
-  <button
-    class="more-row setup-link"
-    @click="openTab('party')"
-  >
+  <button class="more-row setup-link" @click="openTab('party')">
     <span>
       <b>Party</b>
       <small>Characters and who carries what.</small>
@@ -134,10 +78,7 @@ function openTab(
     <span aria-hidden="true">›</span>
   </button>
 
-  <button
-    class="more-row setup-link"
-    @click="openTab('magicCatalog')"
-  >
+  <button class="more-row setup-link" @click="openTab('magicCatalog')">
     <span>
       <b>Magic catalog</b>
       <small>Browse magic items and add them to inventory</small>
@@ -145,11 +86,7 @@ function openTab(
     <span aria-hidden="true">›</span>
   </button>
 
-  <button
-    v-if="!app.viewer"
-    class="more-row setup-link"
-    @click="openTab('maps')"
-  >
+  <button v-if="!app.viewer" class="more-row setup-link" @click="openTab('maps')">
     <span>
       <b>Maps</b>
       <small>Your adventure PDFs, on this device</small>
@@ -157,10 +94,7 @@ function openTab(
     <span aria-hidden="true">›</span>
   </button>
 
-  <button
-    class="more-row setup-link"
-    @click="openTab('equipmentCatalog')"
-  >
+  <button class="more-row setup-link" @click="openTab('equipmentCatalog')">
     <span>
       <b>Equipment catalog</b>
       <small>Weapons, armor, tools and alchemical goods</small>
@@ -168,10 +102,7 @@ function openTab(
     <span aria-hidden="true">›</span>
   </button>
 
-  <button
-    class="more-row setup-link"
-    @click="openTab('feats')"
-  >
+  <button class="more-row setup-link" @click="openTab('feats')">
     <span>
       <b>Feats</b>
       <small>Search feats and see what they require and unlock</small>
@@ -179,10 +110,7 @@ function openTab(
     <span aria-hidden="true">›</span>
   </button>
 
-  <button
-    class="more-row setup-link"
-    @click="openTab('skills')"
-  >
+  <button class="more-row setup-link" @click="openTab('skills')">
     <span>
       <b>Skills</b>
       <small>Quick DCs for every skill</small>
@@ -190,20 +118,14 @@ function openTab(
     <span aria-hidden="true">›</span>
   </button>
 
-  <button
-    class="more-row setup-link"
-    @click="openTab('umr')"
-  >
+  <button class="more-row setup-link" @click="openTab('umr')">
     <span>
       <b>Monster rules</b>
       <small>Universal monster rules, auras, traits and abilities</small>
     </span>
     <span aria-hidden="true">›</span>
   </button>
-  <button
-    class="more-row setup-link"
-    @click="openTab('grapple')"
-  >
+  <button class="more-row setup-link" @click="openTab('grapple')">
     <span>
       <b>Grapple</b>
       <small>Start, hold, escape and pin, step by step</small>
@@ -211,10 +133,7 @@ function openTab(
     <span aria-hidden="true">›</span>
   </button>
 
-  <button
-    class="more-row setup-link"
-    @click="openTab('conditions')"
-  >
+  <button class="more-row setup-link" @click="openTab('conditions')">
     <span>
       <b>Conditions</b>
       <small>Rules reminders for blinded, shaken, fatigued…</small>
@@ -222,10 +141,7 @@ function openTab(
     <span aria-hidden="true">›</span>
   </button>
 
-  <button
-    class="more-row setup-link"
-    @click="openTab('history')"
-  >
+  <button class="more-row setup-link" @click="openTab('history')">
     <span>
       <b>History</b>
       <small>Casts, item uses, money and rests</small>
@@ -233,10 +149,7 @@ function openTab(
     <span aria-hidden="true">›</span>
   </button>
 
-  <button
-    class="more-row setup-link"
-    @click="openTab('monsters')"
-  >
+  <button class="more-row setup-link" @click="openTab('monsters')">
     <span>
       <b>Monsters</b>
       <small>Bestiary: quick combat stats</small>
@@ -244,10 +157,7 @@ function openTab(
     <span aria-hidden="true">›</span>
   </button>
 
-  <button
-    class="more-row setup-link"
-    @click="openTab('rules')"
-  >
+  <button class="more-row setup-link" @click="openTab('rules')">
     <span>
       <b>Rules</b>
       <small>Attacks of opportunity, concentration</small>

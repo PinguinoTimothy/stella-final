@@ -1,32 +1,35 @@
+import { defineStore } from 'pinia';
+import { computed, ref } from 'vue';
+import { useAppStore } from './app';
+import { fetchSpellCatalogPage, fetchSpellRatings, fetchSpellsByNames } from '../lib/supabase';
+import { SEED } from '../lib/spellSeed';
 
-import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
-import { useAppStore } from './app'
-import {
-  fetchSpellCatalogPage,
-  fetchSpellRatings,
-  fetchSpellsByNames,
-} from '../lib/supabase'
-import { SEED } from '../lib/spellSeed'
+const PAGE_SIZE = 50;
 
-const PAGE_SIZE = 50
-
-const seedSpells = () => SEED.map(a => ({
-  n: a[0], s: a[1], lv: a[2], ct: a[3], rng: a[4],
-  dur: a[5], sv: a[6], sr: a[7], d: a[8]
-}))
+const seedSpells = () =>
+  SEED.map(a => ({
+    n: a[0],
+    s: a[1],
+    lv: a[2],
+    ct: a[3],
+    rng: a[4],
+    dur: a[5],
+    sv: a[6],
+    sr: a[7],
+    d: a[8],
+  }));
 
 export const useSpells = defineStore('spells', () => {
-  const app = useAppStore()
+  const app = useAppStore();
 
-  const imported = ref([])
-  const loading = ref(false)
-  const loadingMore = ref(false)
-  const error = ref('')
+  const imported = ref([]);
+  const loading = ref(false);
+  const loadingMore = ref(false);
+  const error = ref('');
 
-  const total = ref(0)
-  const hasMore = ref(true)
-  const ratings = ref([])
+  const total = ref(0);
+  const hasMore = ref(true);
+  const ratings = ref([]);
 
   const filters = ref({
     query: '',
@@ -34,115 +37,116 @@ export const useSpells = defineStore('spells', () => {
     classAliases: [],
     level: '',
     rating: '',
-  })
+  });
 
-  let requestId = 0
+  let requestId = 0;
 
   // Spells fetched on demand by name (Cast, Active). Keyed by lowercase name.
-  const cache = ref({})
-  const pending = new Set()
-  const norm = (row) => ({ ...row, n: row.name, s: row.school, d: row.descr })
+  const cache = ref({});
+  const pending = new Set();
+  const norm = row => ({ ...row, n: row.name, s: row.school, d: row.descr });
 
   /** Makes sure the given spell names are in the cache (one request for all the missing ones). */
   async function ensure(names) {
-    const missing = [...new Set((names || []).map((n) => String(n || '').trim()).filter(Boolean))]
-      .filter((n) => {
-        const k = n.toLowerCase()
-        return !cache.value[k] && !pending.has(k) && !(app.S.db || []).some((d) => String(d.n || '').toLowerCase() === k)
-      })
-    if (!missing.length) return
-    missing.forEach((n) => pending.add(n.toLowerCase()))
+    const missing = [...new Set((names || []).map(n => String(n || '').trim()).filter(Boolean))].filter(n => {
+      const k = n.toLowerCase();
+      return !cache.value[k] && !pending.has(k) && !(app.S.db || []).some(d => String(d.n || '').toLowerCase() === k);
+    });
+    if (!missing.length) return;
+    missing.forEach(n => pending.add(n.toLowerCase()));
     try {
-      const rows = await fetchSpellsByNames(missing)
-      const next = { ...cache.value }
-      rows.forEach((r) => { next[String(r.name).toLowerCase()] = norm(r) })
+      const rows = await fetchSpellsByNames(missing);
+      const next = { ...cache.value };
+      rows.forEach(r => {
+        next[String(r.name).toLowerCase()] = norm(r);
+      });
       // Remember misses too so we don't ask again every render.
-      missing.forEach((n) => { if (!next[n.toLowerCase()]) next[n.toLowerCase()] = { n, miss: true } })
-      cache.value = next
+      missing.forEach(n => {
+        if (!next[n.toLowerCase()]) next[n.toLowerCase()] = { n, miss: true };
+      });
+      cache.value = next;
     } catch (e) {
-      console.error('Error loading spells by name:', e)
+      console.error('Error loading spells by name:', e);
     } finally {
-      missing.forEach((n) => pending.delete(n.toLowerCase()))
+      missing.forEach(n => pending.delete(n.toLowerCase()));
     }
   }
 
   const all = computed(() => {
-    const catalog = imported.value.length
-      ? imported.value
-      : seedSpells()
+    const catalog = imported.value.length ? imported.value : seedSpells();
 
-    return Object.values(cache.value).filter((x) => !x.miss).concat(catalog, app.S.db || [])
-  })
+    return Object.values(cache.value)
+      .filter(x => !x.miss)
+      .concat(catalog, app.S.db || []);
+  });
 
   const index = computed(() => {
-    const result = {}
+    const result = {};
 
     all.value.forEach(spell => {
-      const key = String(spell.n || '').toLowerCase()
-      if (key && !result[key]) result[key] = spell
-    })
+      const key = String(spell.n || '').toLowerCase();
+      if (key && !result[key]) result[key] = spell;
+    });
 
-    return result
-  })
+    return result;
+  });
 
   async function loadRatings() {
     try {
-      ratings.value = await fetchSpellRatings()
+      ratings.value = await fetchSpellRatings();
     } catch (e) {
-      console.error('Error loading spell ratings:', e)
+      console.error('Error loading spell ratings:', e);
     }
   }
 
   async function load(reset = true) {
-    if (loadingMore.value) return
+    if (loadingMore.value) return;
 
     if (reset) {
-      requestId++
-      imported.value = []
-      total.value = 0
-      hasMore.value = true
-      loading.value = true
-      error.value = ''
+      requestId++;
+      imported.value = [];
+      total.value = 0;
+      hasMore.value = true;
+      loading.value = true;
+      error.value = '';
     } else {
-      if (!hasMore.value || loading.value) return
-      loadingMore.value = true
+      if (!hasMore.value || loading.value) return;
+      loadingMore.value = true;
     }
 
-    const currentRequest = requestId
-    const offset = reset ? 0 : imported.value.length
+    const currentRequest = requestId;
+    const offset = reset ? 0 : imported.value.length;
 
     try {
       const result = await fetchSpellCatalogPage({
         offset,
         limit: PAGE_SIZE,
         ...filters.value,
-      })
+      });
 
       // Ignore results from an outdated filter request.
-      if (currentRequest !== requestId) return
+      if (currentRequest !== requestId) return;
 
       const rows = result.rows.map(spell => ({
         ...spell,
         n: spell.name,
         s: spell.school,
         d: spell.descr,
-      }))
+      }));
 
-      imported.value = reset
-        ? rows
-        : imported.value.concat(rows)
+      imported.value = reset ? rows : imported.value.concat(rows);
 
-      total.value = result.total
-      hasMore.value = result.hasMore
+      total.value = result.total;
+      hasMore.value = result.hasMore;
     } catch (e) {
       if (currentRequest === requestId) {
-        error.value = e?.msg || 'No se pudo cargar el catálogo'
-        console.error('Error loading spell catalog:', e)
+        error.value = e?.msg || 'No se pudo cargar el catálogo';
+        console.error('Error loading spell catalog:', e);
       }
     } finally {
       if (currentRequest === requestId) {
-        loading.value = false
-        loadingMore.value = false
+        loading.value = false;
+        loadingMore.value = false;
       }
     }
   }
@@ -151,163 +155,153 @@ export const useSpells = defineStore('spells', () => {
     filters.value = {
       ...filters.value,
       ...nextFilters,
-    }
+    };
 
-    return load(true)
+    return load(true);
   }
 
   function loadMore() {
-    return load(false)
+    return load(false);
   }
 
-  const find = name =>
-    index.value[String(name || '').toLowerCase()] || null
+  const find = name => index.value[String(name || '').toLowerCase()] || null;
 
   function suggest(query) {
-    const q = String(query || '').trim().toLowerCase()
-    if (q.length < 2) return []
+    const q = String(query || '')
+      .trim()
+      .toLowerCase();
+    if (q.length < 2) return [];
 
-    const result = []
+    const result = [];
 
     for (const spell of all.value) {
-      if (String(spell.n || '').toLowerCase().includes(q)) {
-        result.push(spell)
-        if (result.length >= 10) break
+      if (
+        String(spell.n || '')
+          .toLowerCase()
+          .includes(q)
+      ) {
+        result.push(spell);
+        if (result.length >= 10) break;
       }
     }
 
-    return result
+    return result;
   }
 
-async function loadForCast({
-  classAliases = [],
-  level = '',
-  query = '',
-  domains = [],
-} = {}) {
-  const normalResult = await fetchSpellCatalogPage({
-    offset: 0,
-    limit: 100,
-    classAliases,
-    level,
-    query,
-  })
+  async function loadForCast({ classAliases = [], level = '', query = '', domains = [] } = {}) {
+    const normalResult = await fetchSpellCatalogPage({
+      offset: 0,
+      limit: 100,
+      classAliases,
+      level,
+      query,
+    });
 
-  
+    const domainNames = domains.map(domain => (typeof domain === 'string' ? domain : domain.name)).filter(Boolean);
 
-  const domainNames = domains
-    .map(domain => typeof domain === 'string' ? domain : domain.name)
-    .filter(Boolean)
+    if (!domainNames.length || level === '') {
+      return {
+        ...normalResult,
+        rows: normalResult.rows.map(spell => ({
+          ...spell,
+          n: spell.name,
+          s: spell.school,
+          d: spell.descr,
+          dom: false,
+        })),
+      };
+    }
 
-  if (!domainNames.length || level === '') {
+    const domainResult = await fetchSpellCatalogPage({
+      offset: 0,
+      limit: 100,
+      level,
+      domains: domainNames,
+    });
+
+    const normalRows = normalResult.rows.map(spell => ({
+      ...spell,
+      n: spell.name,
+      s: spell.school,
+      d: spell.descr,
+      dom: false,
+    }));
+
+    const domainRows = domainResult.rows.map(spell => ({
+      ...spell,
+      n: spell.name,
+      s: spell.school,
+      d: spell.descr,
+      dom: true,
+    }));
+
     return {
-      ...normalResult,
-      rows: normalResult.rows.map(spell => ({
-        ...spell,
-        n: spell.name,
-        s: spell.school,
-        d: spell.descr,
-        dom: false,
-      })),
-    }
+      rows: [...normalRows, ...domainRows],
+      total: normalResult.total + domainResult.total,
+      hasMore: normalResult.hasMore || domainResult.hasMore,
+    };
   }
 
-  const domainResult = await fetchSpellCatalogPage({
-    offset: 0,
-    limit: 100,
-    level,
-    domains: domainNames,
-  })
+  async function loadDomainCandidates({ domains = [], level = 0 } = {}) {
+    const result = [];
+    const seen = new Set();
+    const targetLevel = Number(level);
 
-  const normalRows = normalResult.rows.map(spell => ({
-    ...spell,
-    n: spell.name,
-    s: spell.school,
-    d: spell.descr,
-    dom: false,
-  }))
+    function matchesDomainLevel(spell, domainName) {
+      const entries = String(spell.domain || '').split(',');
 
-  const domainRows = domainResult.rows.map(spell => ({
-    ...spell,
-    n: spell.name,
-    s: spell.school,
-    d: spell.descr,
-    dom: true,
-  }))
+      return entries.some(entry => {
+        const match = entry.trim().match(/^(.*?)\s*\(\s*(\d+)\s*\)$/);
 
-  return {
-    rows: [...normalRows, ...domainRows],
-    total: normalResult.total + domainResult.total,
-    hasMore: normalResult.hasMore || domainResult.hasMore,
-  }
-}
-
-
-
-async function loadDomainCandidates({ domains = [], level = 0 } = {}) {
-  const result = []
-  const seen = new Set()
-  const targetLevel = Number(level)
-
-  function matchesDomainLevel(spell, domainName) {
-    const entries = String(spell.domain || '').split(',')
-
-    return entries.some(entry => {
-const match = entry.trim().match(/^(.*?)\s*\(\s*(\d+)\s*\)$/)
-
-      return (
-        match &&
-        match[1].trim().toLowerCase() === domainName.toLowerCase() &&
-        Number(match[2]) === targetLevel
-      )
-    })
-  }
-
-  for (const domain of domains) {
-    const name = String(domain?.name || '').trim()
-    const parent = String(domain?.parent || '').trim()
-
-    if (!name) continue
-
-    const searchDomain = async domainName => {
-      const response = await fetchSpellCatalogPage({
-        offset: 0,
-        limit: 1000,
-        domains: [domainName],
-      })
-
-      return response.rows.filter(spell =>
-        matchesDomainLevel(spell, domainName)
-      )
+        return match && match[1].trim().toLowerCase() === domainName.toLowerCase() && Number(match[2]) === targetLevel;
+      });
     }
 
-    let rows = await searchDomain(name)
+    for (const domain of domains) {
+      const name = String(domain?.name || '').trim();
+      const parent = String(domain?.parent || '').trim();
 
-    // Solo se recurre al padre si el dominio propio no tiene resultados.
-    if (!rows.length && parent) {
-      rows = await searchDomain(parent)
+      if (!name) continue;
+
+      const searchDomain = async domainName => {
+        const response = await fetchSpellCatalogPage({
+          offset: 0,
+          limit: 1000,
+          domains: [domainName],
+        });
+
+        return response.rows.filter(spell => matchesDomainLevel(spell, domainName));
+      };
+
+      let rows = await searchDomain(name);
+
+      // Solo se recurre al padre si el dominio propio no tiene resultados.
+      if (!rows.length && parent) {
+        rows = await searchDomain(parent);
+      }
+
+      for (const spell of rows) {
+        const key = String(spell.name || '')
+          .trim()
+          .toLowerCase();
+
+        if (!key || seen.has(key)) continue;
+
+        seen.add(key);
+
+        result.push({
+          ...spell,
+          n: spell.name,
+          s: spell.school,
+          d: spell.descr,
+          dom: true,
+          domainName: name,
+        });
+      }
     }
 
-    for (const spell of rows) {
-      const key = String(spell.name || '').trim().toLowerCase()
-
-      if (!key || seen.has(key)) continue
-
-      seen.add(key)
-
-      result.push({
-        ...spell,
-        n: spell.name,
-        s: spell.school,
-        d: spell.descr,
-        dom: true,
-        domainName: name,
-      })
-    }
+    return result;
   }
-
-  return result
-}
 
   return {
     imported,
@@ -325,8 +319,8 @@ const match = entry.trim().match(/^(.*?)\s*\(\s*(\d+)\s*\)$/)
     setFilters,
     find,
     suggest,
-loadForCast,
-loadDomainCandidates,
+    loadForCast,
+    loadDomainCandidates,
     ensure,
-  }
-})
+  };
+});

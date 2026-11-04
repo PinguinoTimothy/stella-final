@@ -1,14 +1,14 @@
 <script setup>
 // The round buttons for a level's slots. Tap a spent one to restore it, a free one to spend it. Domain slots are the "d" ones.
-import { computed } from 'vue'
-import { domainUsed, regularUsed, slotInfo } from '../../lib/spellcasting'
-import { useCast } from '../../stores/cast'
+import { computed } from 'vue';
+import { domainUsed, regularUsed, slotInfo } from '../../lib/spellcasting';
+import { useCast } from '../../stores/cast';
 
-const props = defineProps({ level: { type: Number, required: true } })
-const cast = useCast()
-const c = computed(() => cast.characterClass)
-const slots = computed(() => slotInfo(c.value, props.level))
-const playing = (kind, index) => cast.castingSlot === `${cast.classIndex}:${props.level}:${kind}:${index - 1}`
+const props = defineProps({ level: { type: Number, required: true } });
+const cast = useCast();
+const c = computed(() => cast.characterClass);
+const slots = computed(() => slotInfo(c.value, props.level));
+const playing = (kind, index) => cast.castingSlot === `${cast.classIndex}:${props.level}:${kind}:${index - 1}`;
 </script>
 
 <template>
@@ -33,10 +33,23 @@ const playing = (kind, index) => cast.castingSlot === `${cast.classIndex}:${prop
 </template>
 
 <style scoped>
-.pip.pl { position: relative; z-index: 1; animation: pulse 0.34s ease-out; }
+.pip.pl {
+  position: relative;
+  z-index: 1;
+  animation: pulse 0.34s ease-out;
+}
 @keyframes pulse {
-  0% { transform: scale(1); box-shadow: 0 0 0 0 var(--cast-glow); }
-  50% { transform: scale(1.3); box-shadow: 0 0 12px 4px var(--cast-glow); }
-  100% { transform: scale(1); box-shadow: 0 0 0 0 transparent; }
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 var(--cast-glow);
+  }
+  50% {
+    transform: scale(1.3);
+    box-shadow: 0 0 12px 4px var(--cast-glow);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 transparent;
+  }
 }
 </style>

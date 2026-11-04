@@ -1,43 +1,27 @@
 <script setup>
 // Dropdown of spells under a name field. One row per spell, with a divider between rows.
 // `meta` is what the right side shows: the spell level, or the duration.
-import { computed } from 'vue'
-import { lowestSpellLevel } from '../lib/spellcasting'
+import { lowestSpellLevel } from '../lib/spellcasting';
 
 const props = defineProps({
   items: { type: Array, default: () => [] },
-  meta: { type: String, default: 'level' },   // 'level' | 'duration'
-})
-const emit = defineEmits(['pick'])
+  meta: { type: String, default: 'level' }, // 'level' | 'duration'
+});
+const emit = defineEmits(['pick']);
 
-const label = (s) => {
-  if (props.meta === 'duration') return s.dur || 'Duration unknown'
-  const lv = lowestSpellLevel(s.lv)
-  return lv === null ? '' : `Lvl ${lv}`
-}
+const label = s => {
+  if (props.meta === 'duration') return s.dur || 'Duration unknown';
+  const lv = lowestSpellLevel(s.lv);
+  return lv === null ? '' : `Lvl ${lv}`;
+};
 </script>
 
 <template>
-  <ul
-    v-if="items.length"
-    class="spell-suggestions"
-    aria-label="Matching spells"
-  >
-    <li
-      v-for="s in items"
-      :key="s.n"
-    >
-      <button
-        data-write
-        type="button"
-        class="spell-option"
-        @click="emit('pick', s)"
-      >
+  <ul v-if="items.length" class="spell-suggestions" aria-label="Matching spells">
+    <li v-for="s in items" :key="s.n">
+      <button data-write type="button" class="spell-option" @click="emit('pick', s)">
         <span class="spell-option-name">{{ s.n }}</span>
-        <span
-          v-if="label(s)"
-          class="spell-option-meta"
-        >{{ label(s) }}</span>
+        <span v-if="label(s)" class="spell-option-meta">{{ label(s) }}</span>
       </button>
     </li>
   </ul>
@@ -54,7 +38,9 @@ const label = (s) => {
   border-radius: 10px;
   background: var(--surface);
 }
-.spell-suggestions li + li { border-top: 1px solid var(--line); }
+.spell-suggestions li + li {
+  border-top: 1px solid var(--line);
+}
 .spell-option {
   display: flex;
   align-items: center;
@@ -71,7 +57,17 @@ const label = (s) => {
   text-align: left;
   cursor: pointer;
 }
-.spell-option:hover, .spell-option:focus-visible { background: var(--raise); outline: none; }
-.spell-option-name { font-weight: 600; }
-.spell-option-meta { color: var(--mute); font-size: 0.9em; text-align: right; }
+.spell-option:hover,
+.spell-option:focus-visible {
+  background: var(--raise);
+  outline: none;
+}
+.spell-option-name {
+  font-weight: 600;
+}
+.spell-option-meta {
+  color: var(--mute);
+  font-size: 0.9em;
+  text-align: right;
+}
 </style>

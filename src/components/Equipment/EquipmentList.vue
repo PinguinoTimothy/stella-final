@@ -1,14 +1,11 @@
 <script setup>
-import EquipmentCard from './EquipmentCard.vue'
-defineProps({ entries: Array, readOnly: Boolean })
-const emit = defineEmits(['details', 'add'])
+import EquipmentCard from './EquipmentCard.vue';
+defineProps({ entries: { type: Array, default: null }, readOnly: Boolean });
+const emit = defineEmits(['details', 'add']);
 </script>
 
 <template>
-  <div
-    v-if="entries.length"
-    class="item-grid magic-item-grid"
-  >
+  <div v-if="entries.length" class="item-grid magic-item-grid">
     <EquipmentCard
       v-for="entry in entries"
       :key="entry.row.id"
@@ -18,10 +15,7 @@ const emit = defineEmits(['details', 'add'])
       @add="emit('add', entry.index)"
     />
   </div>
-  <section
-    v-else
-    class="empty-state magic-empty"
-  >
+  <section v-else class="empty-state magic-empty">
     <span>⚒</span>
     <h2>No matching equipment</h2>
     <p>Try another name or category.</p>

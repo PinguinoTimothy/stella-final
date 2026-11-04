@@ -1,16 +1,11 @@
 <script setup>
 // Search box shared by the "add spell" catalogs.
-const model = defineModel({ type: String, default: '' })
-defineProps({ placeholder: { type: String, default: 'Buscar...' } })
+const model = defineModel({ type: String, default: '' });
+defineProps({ placeholder: { type: String, default: 'Buscar...' } });
 </script>
 
 <template>
-  <input
-    v-model="model"
-    type="search"
-    :placeholder="placeholder"
-    class="known-catalog-search"
-  >
+  <input v-model="model" type="search" :placeholder="placeholder" class="known-catalog-search" />
 </template>
 
 <style scoped>
@@ -25,5 +20,8 @@ defineProps({ placeholder: { type: String, default: 'Buscar...' } })
   font: inherit;
   font-size: 0.82rem;
 }
-.known-catalog-search:focus { outline: none; border-color: #65b8ff; }
+.known-catalog-search:focus {
+  outline: none;
+  border-color: #65b8ff;
+}
 </style>

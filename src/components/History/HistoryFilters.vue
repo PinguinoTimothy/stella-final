@@ -1,7 +1,7 @@
 <script setup>
 // Filter chips: All, Spells, Items, Money, Rests.
-import { HISTORY_FILTERS } from '../../lib/history'
-const kind = defineModel({ type: String, default: '' })
+import { HISTORY_FILTERS } from '../../lib/history';
+const kind = defineModel({ type: String, default: '' });
 </script>
 
 <template>

@@ -1,78 +1,56 @@
 <script setup>
 // Initiative tracker on the left, desktop only. Can be hidden to a tab; the choice is remembered in this browser.
-import { computed, onUnmounted, ref, watch } from 'vue'
-import { useAppStore } from '../../stores/app'
-import { useMonsterFights } from '../../stores/monsterFights'
-import { useInitiative } from '../../stores/initiative'
+import { computed, onUnmounted, ref, watch } from 'vue';
+import { useAppStore } from '../../stores/app';
+import { useMonsterFights } from '../../stores/monsterFights';
+import { useInitiative } from '../../stores/initiative';
 
-const app = useAppStore()
-const fights = useMonsterFights()
-const init = useInitiative()
+const app = useAppStore();
+const fights = useMonsterFights();
+const init = useInitiative();
 
-const HIDE_KEY = 'stella-initiative-hidden-v1'
+const HIDE_KEY = 'stella-initiative-hidden-v1';
 function readHidden() {
   try {
-    return localStorage.getItem(HIDE_KEY) === '1'
+    return localStorage.getItem(HIDE_KEY) === '1';
   } catch {
-    return false
+    return false;
   }
 }
-const hidden = ref(readHidden())
-watch(hidden, (v) => {
+const hidden = ref(readHidden());
+watch(hidden, v => {
   try {
-    localStorage.setItem(HIDE_KEY, v ? '1' : '0')
+    localStorage.setItem(HIDE_KEY, v ? '1' : '0');
   } catch {
     // Storage disabled: the choice only lasts for this session.
   }
-})
+});
 
-const sidePanel = computed(() => !hidden.value)
+const sidePanel = computed(() => !hidden.value);
 
 // Keeps one entry per party member and per combat monster.
 watch(
-  () => [[...app.party], fights.fights.map((f) => f.name)],
+  () => [[...app.party], fights.fights.map(f => f.name)],
   ([party, monsters]) => init.sync(party, monsters),
   { immediate: true, deep: true },
-)
+);
 
 // The page reserves room for the rail only while it is visible (see the unscoped style below).
-watch(sidePanel, (v) => document.body.classList.toggle('has-rail', v), { immediate: true })
-onUnmounted(() => document.body.classList.remove('has-rail'))
+watch(sidePanel, v => document.body.classList.toggle('has-rail', v), { immediate: true });
+onUnmounted(() => document.body.classList.remove('has-rail'));
 </script>
 
 <template>
-  <aside
-    v-if="sidePanel"
-    class="init-rail"
-    aria-label="Initiative"
-  >
+  <aside v-if="sidePanel" class="init-rail" aria-label="Initiative">
     <header class="ir-head">
       <b>Initiative</b>
       <span class="mute">Round {{ init.round }}</span>
-      <button
-        class="ir-hide"
-        type="button"
-        aria-label="Hide initiative"
-        @click="hidden = true"
-      >
-        Hide
-      </button>
+      <button class="ir-hide" type="button" aria-label="Hide initiative" @click="hidden = true">Hide</button>
     </header>
 
     <div class="ir-actions">
-      <button
-        class="cast"
-        :disabled="!init.order.length"
-        @click="init.next()"
-      >
-        Next turn
-      </button>
-      <button
-        :disabled="!init.currentKey && init.round === 1"
-        @click="init.newRound()"
-      >
-        New round
-      </button>
+      <button class="cast" :disabled="!init.order.length" @click="init.next()">Next turn</button>
+      <button :disabled="!init.currentKey && init.round === 1" @click="init.newRound()">New round</button>
     </div>
 
     <ol class="ir-list">
@@ -81,20 +59,10 @@ onUnmounted(() => document.body.classList.remove('has-rail'))
         :key="e.key"
         :class="{ current: e.key === init.currentKey && e.present, away: !e.present }"
       >
-        <label
-          class="ir-present"
-          :title="e.present ? 'Present' : 'Absent'"
-        >
-          <input
-            type="checkbox"
-            :checked="e.present"
-            @change="init.setPresent(e.key, $event.target.checked)"
-          >
+        <label class="ir-present" :title="e.present ? 'Present' : 'Absent'">
+          <input type="checkbox" :checked="e.present" @change="init.setPresent(e.key, $event.target.checked)" />
         </label>
-        <span
-          class="ir-kind"
-          :class="e.kind"
-        >{{ e.kind === 'pc' ? 'PC' : 'Mon' }}</span>
+        <span class="ir-kind" :class="e.kind">{{ e.kind === 'pc' ? 'PC' : 'Mon' }}</span>
         <span class="ir-name">{{ e.label }}</span>
         <input
           class="ir-init"
@@ -104,28 +72,15 @@ onUnmounted(() => document.body.classList.remove('has-rail'))
           placeholder="—"
           aria-label="Initiative"
           @change="init.setInit(e.key, $event.target.value)"
-        >
+        />
       </li>
     </ol>
 
-    <p
-      v-if="!init.entries.length"
-      class="mute"
-    >
-      Add characters in More → Party, and monsters to combat.
-    </p>
+    <p v-if="!init.entries.length" class="mute">Add characters in More → Party, and monsters to combat.</p>
   </aside>
 
   <!-- Hidden: a small tab on the left edge to bring the rail back. -->
-  <button
-    v-else
-    class="ir-tab"
-    type="button"
-    aria-label="Show initiative"
-    @click="hidden = false"
-  >
-    Initiative
-  </button>
+  <button v-else class="ir-tab" type="button" aria-label="Show initiative" @click="hidden = false">Initiative</button>
 </template>
 
 <style scoped>
@@ -196,7 +151,7 @@ onUnmounted(() => document.body.classList.remove('has-rail'))
 }
 
 .ir-list li.away {
-  opacity: .5;
+  opacity: 0.5;
 }
 
 .ir-present input {
@@ -251,8 +206,8 @@ onUnmounted(() => document.body.classList.remove('has-rail'))
   color: inherit;
   font: inherit;
   font-weight: 700;
-  letter-spacing: .04em;
-  box-shadow: 6px 0 18px rgba(0, 0, 0, .25);
+  letter-spacing: 0.04em;
+  box-shadow: 6px 0 18px rgba(0, 0, 0, 0.25);
 }
 
 @media (max-width: 899px) {

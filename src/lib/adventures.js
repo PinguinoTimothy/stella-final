@@ -10,10 +10,12 @@ export function adventureName(fileName) {
     .replace(/_/g, ' ')
     .replace(/\s+/g, ' ')
     .replace(/\s*-\s*$/, '')
-    .trim()
+    .trim();
 }
 
 /** A key that is the same for the book and the map of one adventure. */
 export function adventureKey(fileName) {
-  return adventureName(fileName).toLowerCase().replace(/[^a-z0-9]+/g, '')
+  return adventureName(fileName)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '');
 }

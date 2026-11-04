@@ -1,28 +1,31 @@
 // Bestiary queries (Supabase table `monsters`, see supabase/monsters.sql).
 // Read-only from the app; the anon key can read the table, writes go through the admin script.
-import { SB_ANON, SB_URL } from './supabase'
+import { SB_ANON, SB_URL } from './supabase';
 
-const LIST_COLUMNS = 'url,name,cr,type,size,hp,ac,touch,flat_footed,cmb,cmd,subtypes:data->subtypes,MR:data->MR'
+const LIST_COLUMNS = 'url,name,cr,type,size,hp,ac,touch,flat_footed,cmb,cmd,subtypes:data->subtypes,MR:data->MR';
 
-export const CR_OPTIONS = [0, 0.125, 0.25, 0.5, ...Array.from({ length: 30 }, (_, i) => i + 1)]
+export const CR_OPTIONS = [0, 0.125, 0.25, 0.5, ...Array.from({ length: 30 }, (_, i) => i + 1)];
 
-const FRACTIONS = { 0.125: '1/8', 0.25: '1/4', 0.5: '1/2' }
-export const crLabel = (cr) => FRACTIONS[cr] ?? String(cr)
+const FRACTIONS = { 0.125: '1/8', 0.25: '1/4', 0.5: '1/2' };
+export const crLabel = cr => FRACTIONS[cr] ?? String(cr);
 
-export const signed = (n) => (n == null || n === '' ? '—' : `${Number(n) >= 0 ? '+' : ''}${n}`)
-export const abilityMod = (score) => Math.floor((Number(score) - 10) / 2)
+export const signed = n => (n == null || n === '' ? '—' : `${Number(n) >= 0 ? '+' : ''}${n}`);
+export const abilityMod = score => Math.floor((Number(score) - 10) / 2);
 
 async function get(path, params, extra = {}) {
   const r = await fetch(`${SB_URL}/rest/v1/${path}?${params}`, {
     headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, ...extra },
     cache: 'no-store',
-  })
-  if (!r.ok) throw new Error(`Monsters request failed (${r.status})`)
-  return r
+  });
+  if (!r.ok) throw new Error(`Monsters request failed (${r.status})`);
+  return r;
 }
 
 // Characters that mean something in PostgREST filters are dropped from the search text.
-const cleanQuery = (q) => String(q || '').replace(/[*(),"\\]/g, '').trim()
+const cleanQuery = q =>
+  String(q || '')
+    .replace(/[*(),"\\]/g, '')
+    .trim();
 
 /** One page of the bestiary, sorted by name. Returns { rows, total }. */
 export async function fetchMonsterPage({ query = '', type = '', cr = '', mythic = '', offset = 0, limit = 40 } = {}) {
@@ -31,180 +34,184 @@ export async function fetchMonsterPage({ query = '', type = '', cr = '', mythic 
     order: 'name.asc',
     limit: String(limit),
     offset: String(offset),
-  })
-  const q = cleanQuery(query)
-  if (q) p.set('name', `ilike.*${q}*`)
-  if (type) p.set('type', `eq.${type}`)
-  if (cr !== '') p.set('cr', `eq.${cr}`)
+  });
+  const q = cleanQuery(query);
+  if (q) p.set('name', `ilike.*${q}*`);
+  if (type) p.set('type', `eq.${type}`);
+  if (cr !== '') p.set('cr', `eq.${cr}`);
   // JSONB predicates keep filtering server-side without downloading full monster records.
-  if (mythic === 'mythic') p.set('or', '(data->subtypes.cs.["mythic"],data->MR.gt.0)')
+  if (mythic === 'mythic') p.set('or', '(data->subtypes.cs.["mythic"],data->MR.gt.0)');
 
-  const r = await get('monsters', p, { Prefer: 'count=exact' })
-  const rows = (await r.json()).map((row) => ({
+  const r = await get('monsters', p, { Prefer: 'count=exact' });
+  const rows = (await r.json()).map(row => ({
     ...row,
     isMythic: isMythicMonster({ subtypes: row.subtypes, MR: row.MR }),
-  }))
-  const total = Number((r.headers.get('Content-Range') || '').split('/')[1])
-  return { rows, total: Number.isFinite(total) ? total : rows.length }
+  }));
+  const total = Number((r.headers.get('Content-Range') || '').split('/')[1]);
+  return { rows, total: Number.isFinite(total) ? total : rows.length };
 }
 
 /** Every distinct creature type, for the type filter. Small column, read in pages. */
 export async function fetchMonsterTypes() {
-  const seen = new Set()
+  const seen = new Set();
   for (let offset = 0; ; offset += 1000) {
-    const p = new URLSearchParams({ select: 'type', order: 'type.asc', limit: '1000', offset: String(offset) })
-    const rows = await (await get('monsters', p)).json()
-    rows.forEach((row) => row.type && seen.add(row.type))
-    if (rows.length < 1000) break
+    const p = new URLSearchParams({
+      select: 'type',
+      order: 'type.asc',
+      limit: '1000',
+      offset: String(offset),
+    });
+    const rows = await (await get('monsters', p)).json();
+    rows.forEach(row => row.type && seen.add(row.type));
+    if (rows.length < 1000) break;
   }
-  return [...seen].sort()
+  return [...seen].sort();
 }
 
 /** The full record of one monster (its `data` column). */
 export async function fetchMonsterDetail(url) {
-  const p = new URLSearchParams({ select: 'data', url: `eq.${url}`, limit: '1' })
-  const rows = await (await get('monsters', p)).json()
-  return rows[0]?.data || null
+  const p = new URLSearchParams({ select: 'data', url: `eq.${url}`, limit: '1' });
+  const rows = await (await get('monsters', p)).json();
+  return rows[0]?.data || null;
 }
 
 /* ---------- formatting helpers for the raw record ---------- */
 
-const list = (v) => (Array.isArray(v) ? v : v == null || v === '' ? [] : [v])
+const list = v => (Array.isArray(v) ? v : v == null || v === '' ? [] : [v]);
 
-const ordinal = (n) => {
-  const s = ['th', 'st', 'nd', 'rd']
-  const v = n % 100
-  return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`
-}
+const ordinal = n => {
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`;
+};
 
 // DR: [{ amount: 5, weakness: 'magic' }] -> "5/magic"
 function formatDR(dr) {
   return list(dr)
-    .map((x) => (typeof x === 'string' ? x : `${x.amount ?? ''}/${x.weakness || '—'}`))
-    .filter(Boolean)
+    .map(x => (typeof x === 'string' ? x : `${x.amount ?? ''}/${x.weakness || '—'}`))
+    .filter(Boolean);
 }
 
 // Maps and lists of defences: { fire: 10 } -> "fire 10", { cold: 'vulnerability' } -> "cold vulnerability"
 function formatMap(v) {
-  if (!v) return []
-  if (typeof v === 'string') return [v]
+  if (!v) return [];
+  if (typeof v === 'string') return [v];
   if (Array.isArray(v)) {
-    return v.map((x) => (typeof x === 'string' ? x : x.name ? `${x.name} ${x.value ?? ''}`.trim() : '')).filter(Boolean)
+    return v.map(x => (typeof x === 'string' ? x : x.name ? `${x.name} ${x.value ?? ''}`.trim() : '')).filter(Boolean);
   }
-  return Object.entries(v).map(([k, val]) => (val === true ? k : `${k} ${val}`))
+  return Object.entries(v).map(([k, val]) => (val === true ? k : `${k} ${val}`));
 }
 
 // special_abilities: { "Breath Weapon (Su)": "text" } or [{ name, text }]
 function formatSpecials(v) {
-  if (Array.isArray(v)) return v.map((x) => ({ name: x.name || '', text: x.text || '' })).filter((x) => x.name || x.text)
-  return Object.entries(v || {}).map(([name, text]) => ({ name, text: String(text) }))
+  if (Array.isArray(v)) return v.map(x => ({ name: x.name || '', text: x.text || '' })).filter(x => x.name || x.text);
+  return Object.entries(v || {}).map(([name, text]) => ({ name, text: String(text) }));
 }
 
 // spell_like_abilities: entries grouped by frequency ("At will", "1/day"…)
 function formatSLA(sla) {
-  const entries = list(sla?.entries)
-  if (!entries.length) return null
-  const groups = new Map()
+  const entries = list(sla?.entries);
+  if (!entries.length) return null;
+  const groups = new Map();
   for (const e of entries) {
-    const key = e.freq || 'Spell-like'
-    const label = [e.name, e.DC ? `(DC ${e.DC})` : '', e.other ? `(${e.other})` : ''].filter(Boolean).join(' ')
-    groups.set(key, [...(groups.get(key) || []), label])
+    const key = e.freq || 'Spell-like';
+    const label = [e.name, e.DC ? `(DC ${e.DC})` : '', e.other ? `(${e.other})` : ''].filter(Boolean).join(' ');
+    groups.set(key, [...(groups.get(key) || []), label]);
   }
   return {
     cl: sla.CL ?? sla.caster_level ?? null,
     groups: [...groups].map(([freq, items]) => ({ freq, items: items.join(', ') })),
-  }
+  };
 }
 
 // spells: entries grouped by level, with the per-day count from sources[0].slots when the file has it
 function formatSpellsKnown(spells) {
-  const entries = list(spells?.entries)
-  if (!entries.length) return null
-  const src = list(spells.sources)[0] || {}
-  const slots = src.slots || {}
-  const levels = new Map()
+  const entries = list(spells?.entries);
+  if (!entries.length) return null;
+  const src = list(spells.sources)[0] || {};
+  const slots = src.slots || {};
+  const levels = new Map();
   for (const e of entries) {
-    const lv = Number(e.level) || 0
-    const label = [e.name, e.DC ? `(DC ${e.DC})` : '', e.is_domain_spell ? '[domain]' : ''].filter(Boolean).join(' ')
-    levels.set(lv, [...(levels.get(lv) || []), label])
+    const lv = Number(e.level) || 0;
+    const label = [e.name, e.DC ? `(DC ${e.DC})` : '', e.is_domain_spell ? '[domain]' : ''].filter(Boolean).join(' ');
+    levels.set(lv, [...(levels.get(lv) || []), label]);
   }
   return {
     cl: spells.CL ?? spells.caster_level ?? src.CL ?? src.caster_level ?? null,
     rows: [...levels]
       .sort((a, b) => a[0] - b[0])
       .map(([lv, items]) => {
-        const freq = slots[String(lv)]
-        const head = lv === 0 ? '0' : ordinal(lv)
-        const freqText = freq ? ` (${String(freq).replace('at-will', 'at will')})` : ''
-        return { head: `${head}${freqText}`, items: items.join(', ') }
+        const freq = slots[String(lv)];
+        const head = lv === 0 ? '0' : ordinal(lv);
+        const freqText = freq ? ` (${String(freq).replace('at-will', 'at will')})` : '';
+        return { head: `${head}${freqText}`, items: items.join(', ') };
       }),
-  }
+  };
 }
 
 // Plain list of names: accepts strings or { name } objects.
-const textList = (v) =>
-  list(v).map((x) => (typeof x === 'string' ? x : x?.name || '')).filter(Boolean)
+const textList = v =>
+  list(v)
+    .map(x => (typeof x === 'string' ? x : x?.name || ''))
+    .filter(Boolean);
 
 /** Mythic status is explicit in subtypes; MR is a backwards-compatible fallback. */
 export function isMythicMonster(data) {
-  const rawSubtypes = data?.subtypes
-  const subtypes = Array.isArray(rawSubtypes) ? rawSubtypes : list(rawSubtypes)
-  const hasMythicSubtype = subtypes.some(
-    (subtype) => String(subtype).toLowerCase() === 'mythic',
-  )
-  const mythicRank = Number(data?.MR)
-  return hasMythicSubtype || (Number.isFinite(mythicRank) && mythicRank > 0)
+  const rawSubtypes = data?.subtypes;
+  const subtypes = Array.isArray(rawSubtypes) ? rawSubtypes : list(rawSubtypes);
+  const hasMythicSubtype = subtypes.some(subtype => String(subtype).toLowerCase() === 'mythic');
+  const mythicRank = Number(data?.MR);
+  return hasMythicSubtype || (Number.isFinite(mythicRank) && mythicRank > 0);
 }
 
 // Gear comes as { combat, other } or as flat fields; either a string or a list.
 function gearText(d) {
-  const g = d.gear || {}
-  const text = (v) => (Array.isArray(v) ? v.join(', ') : String(v || '').trim())
+  const g = d.gear || {};
+  const text = v => (Array.isArray(v) ? v.join(', ') : String(v || '').trim());
   return {
     combat: text(g.combat ?? d.combat_gear),
     other: text(g.other ?? d.other_gear),
-  }
+  };
 }
 
 /** Turns the raw record into what the combat card needs. Missing fields become null or empty. */
 export function combatSummary(d) {
-  const ac = d.AC || {}
-  const hp = d.HP || {}
-  const saves = d.saves || {}
+  const ac = d.AC || {};
+  const hp = d.HP || {};
+  const saves = d.saves || {};
 
   const speeds = Object.entries(d.speeds || {})
     .map(([k, v]) => `${k === 'base' ? '' : k + ' '}${v} ft`.trim())
-    .join(' · ')
+    .join(' · ');
 
   const senses = Object.entries(d.senses || {})
     .filter(([, v]) => v)
-    .map(([k, v]) => (v === true ? k : `${k} ${v}`))
+    .map(([k, v]) => (v === true ? k : `${k} ${v}`));
 
   const skills = Object.entries(d.skills || {})
     .filter(([k]) => !k.startsWith('_'))
     .map(([name, v]) => {
       const extra = Object.entries(v || {})
         .filter(([k]) => k !== '_')
-        .map(([k, val]) => `${k} ${signed(val)}`)
-      return `${name} ${signed(v?._)}${extra.length ? ` (${extra.join(', ')})` : ''}`
-    })
+        .map(([k, val]) => `${k} ${signed(val)}`);
+      return `${name} ${signed(v?._)}${extra.length ? ` (${extra.join(', ')})` : ''}`;
+    });
 
   // Attacks come as objects ({ text }) or, for specials, as plain strings.
   const attacks = Object.entries(d.attacks || {}).map(([kind, groups]) => ({
     kind,
     lines: (groups || [])
       .flat()
-      .map((a) => (typeof a === 'string' ? a : a?.text || a?.attack))
+      .map(a => (typeof a === 'string' ? a : a?.text || a?.attack))
       .filter(Boolean),
-  }))
+  }));
 
   // alignment is {raw, cleaned} in the file, a plain string in older exports.
-  const alignment = typeof d.alignment === 'object' ? d.alignment?.cleaned || d.alignment?.raw : d.alignment
+  const alignment = typeof d.alignment === 'object' ? d.alignment?.cleaned || d.alignment?.raw : d.alignment;
 
-  const reachText = [
-    `Space ${d.space ?? 5} ft.`,
-    `Reach ${d.reach ?? 5} ft.`,
-  ].join(', ') + (d.reach_other ? ` (${d.reach_other})` : '')
+  const reachText =
+    [`Space ${d.space ?? 5} ft.`, `Reach ${d.reach ?? 5} ft.`].join(', ') +
+    (d.reach_other ? ` (${d.reach_other})` : '');
 
   return {
     name: d.title1 || d.title2 || '',
@@ -248,28 +255,32 @@ export function combatSummary(d) {
     // statistics
     abilities: Object.entries(d.ability_scores || {}),
     feats: list(d.feats)
-      .map((f) => (typeof f === 'string' ? { name: f, isMythic: false } : {
-        name: f?.name || '',
-        isMythic: f?.is_mythic === true,
-      }))
-      .filter((f) => f.name),
+      .map(f =>
+        typeof f === 'string'
+          ? { name: f, isMythic: false }
+          : {
+              name: f?.name || '',
+              isMythic: f?.is_mythic === true,
+            },
+      )
+      .filter(f => f.name),
     skills,
     languages: list(d.languages),
     senses,
 
     // special
-    auras: list(d.auras).map((a) => `${a.name}${a.radius ? ` (${a.radius} ft.)` : ''}`),
+    auras: list(d.auras).map(a => `${a.name}${a.radius ? ` (${a.radius} ft.)` : ''}`),
     specialQualities: list(d.special_qualities),
     specialAbilities: formatSpecials(d.special_abilities),
 
-    source: (d.sources || []).map((s) => `${s.name}${s.page ? `, p. ${s.page}` : ''}`).join(' · '),
+    source: (d.sources || []).map(s => `${s.name}${s.page ? `, p. ${s.page}` : ''}`).join(' · '),
     descShort: d.desc_short || '',
     descLong: d.desc_long || '',
 
-        defensiveAbilities: textList(d.defensive_abilities),
+    defensiveAbilities: textList(d.defensive_abilities),
     combatGear: gearText(d).combat,
     otherGear: gearText(d).other,
-  }
+  };
 }
 
 /** Same rule as slug() in scripts/upload_monster_art.py. Keep both in sync. */
@@ -280,9 +291,8 @@ export function monsterSlug(name) {
     .toLowerCase()
     .replace(/['\u2019]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
+    .replace(/^-+|-+$/g, '');
 }
 
 /** Public URL of a monster's picture. It may not exist; the card hides it then. */
-export const monsterArtUrl = (name) =>
-  `${SB_URL}/storage/v1/object/public/monster-art/${monsterSlug(name)}.webp`
+export const monsterArtUrl = name => `${SB_URL}/storage/v1/object/public/monster-art/${monsterSlug(name)}.webp`;

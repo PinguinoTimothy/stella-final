@@ -1,25 +1,25 @@
 <script setup>
 // Feat graph: requirements on the left, the feat in the middle (violet), what it unlocks on the right.
 // Tap a feat to make it the centre. Read-only.
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import cytoscape from 'cytoscape'
-import dagre from 'cytoscape-dagre'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import cytoscape from 'cytoscape';
+import dagre from 'cytoscape-dagre';
 
-cytoscape.use(dagre)
+cytoscape.use(dagre);
 
-const props = defineProps({ graph: { type: Object, required: true } })
-const emit = defineEmits(['select'])
-const box = ref(null)
-let cy = null
+const props = defineProps({ graph: { type: Object, required: true } });
+const emit = defineEmits(['select']);
+const box = ref(null);
+let cy = null;
 
 function elements(graph) {
-  const nodes = graph.nodes.map((f) => ({
+  const nodes = graph.nodes.map(f => ({
     data: { id: f.id, label: f.name, center: f.id === graph.center.id ? 1 : 0 },
-  }))
-  const edges = graph.edges.map((e) => ({
+  }));
+  const edges = graph.edges.map(e => ({
     data: { id: `${e.source}>${e.target}`, source: e.source, target: e.target },
-  }))
-  return [...nodes, ...edges]
+  }));
+  return [...nodes, ...edges];
 }
 
 function layout() {
@@ -31,8 +31,8 @@ function layout() {
     edgeSep: 4,
     padding: 16,
     animate: false,
-  }).run()
-  cy.fit(undefined, 16)
+  }).run();
+  cy.fit(undefined, 16);
 }
 
 onMounted(() => {
@@ -88,34 +88,29 @@ onMounted(() => {
         },
       },
     ],
-  })
-  cy.on('tap', 'node', (e) => emit('select', e.target.id()))
-  layout()
-})
+  });
+  cy.on('tap', 'node', e => emit('select', e.target.id()));
+  layout();
+});
 
 watch(
   () => props.graph,
   () => {
-    if (!cy) return
-    cy.elements().remove()
-    cy.add(elements(props.graph))
-    layout()
+    if (!cy) return;
+    cy.elements().remove();
+    cy.add(elements(props.graph));
+    layout();
   },
-)
+);
 
 onBeforeUnmount(() => {
-  cy?.destroy()
-  cy = null
-})
+  cy?.destroy();
+  cy = null;
+});
 </script>
 
 <template>
-  <div
-    ref="box"
-    class="feat-graph"
-    role="img"
-    :aria-label="`Graph of ${graph.center.name}`"
-  />
+  <div ref="box" class="feat-graph" role="img" :aria-label="`Graph of ${graph.center.name}`" />
 </template>
 
 <style scoped>

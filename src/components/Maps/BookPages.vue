@@ -1,211 +1,238 @@
 <script setup>
 // The adventure book read like a PDF reader: pages one after another, drawn as they come into view,
 // at a comfortable reading width and centred on a grey background. Tells the parent which page is on screen.
-import { nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
-import { TextLayer } from 'pdfjs-dist'
-import 'pdfjs-dist/web/pdf_viewer.css'
-import { drawPage, openPdf } from '../../lib/pdfRender'
-import { getFile } from '../../lib/mapsDb'
-import Translator from './Translator.vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
+import { TextLayer } from 'pdfjs-dist';
+import 'pdfjs-dist/web/pdf_viewer.css';
+import { drawPage, openPdf } from '../../lib/pdfRender';
+import { getFile } from '../../lib/mapsDb';
+import MapTranslator from './MapTranslator.vue';
 
 const props = defineProps({
   bookId: { type: String, required: true },
   page: { type: Number, default: 1 },
-  boxes: { type: Array, default: () => [] },     // read-aloud boxes: { page, x0, x1, y0, y1, text }
-})
-const emit = defineEmits(['page'])
-const translator = ref(null)
-const boxesOn = (n) => props.boxes.filter((b) => b.page === n)
+  boxes: { type: Array, default: () => [] }, // read-aloud boxes: { page, x0, x1, y0, y1, text }
+});
+const emit = defineEmits(['page']);
+const translator = ref(null);
+const boxesOn = n => props.boxes.filter(b => b.page === n);
 
 // Holding Ctrl (Cmd on a Mac) hides every Translate button, so the text underneath can be read or selected.
-const ctrlHeld = ref(false)
-const setCtrl = (e) => { ctrlHeld.value = !!(e.ctrlKey || e.metaKey) }
-const releaseCtrl = () => { ctrlHeld.value = false }
+const ctrlHeld = ref(false);
+const setCtrl = e => {
+  ctrlHeld.value = !!(e.ctrlKey || e.metaKey);
+};
+const releaseCtrl = () => {
+  ctrlHeld.value = false;
+};
 function tap(b) {
-  translator.value?.translateText(b.text)
+  translator.value?.translateText(b.text);
 }
 
-const ZOOMS = [0.8, 1, 1.25, 1.5]
-const zoomIdx = ref(1)
-const scroller = ref(null)
-const doc = shallowRef(null)
-const count = ref(0)
-const current = ref(props.page)
-const status = ref('Loading…')
-const pageW = ref(700)
-const pageH = ref(906)
-const pageEls = new Map()
-const drawn = new Map()          // page → width it was drawn at
-const cancels = new Map()
-let observer = null
+const ZOOMS = [0.8, 1, 1.25, 1.5];
+const zoomIdx = ref(1);
+const scroller = ref(null);
+const doc = shallowRef(null);
+const count = ref(0);
+const current = ref(props.page);
+const status = ref('Loading…');
+const pageW = ref(700);
+const pageH = ref(906);
+const pageEls = new Map();
+const drawn = new Map(); // page → width it was drawn at
+const cancels = new Map();
+let observer = null;
 
 /** Reading width: the column, at most 820 px, never wider than the window. */
 function baseWidth() {
-  const column = (scroller.value?.clientWidth || 800) - 40
-  return Math.max(320, Math.min(820, column, window.innerWidth - 60))
+  const column = (scroller.value?.clientWidth || 800) - 40;
+  return Math.max(320, Math.min(820, column, window.innerWidth - 60));
 }
 function layout() {
-  pageW.value = Math.round(baseWidth() * ZOOMS[zoomIdx.value])
-  pageH.value = Math.round(pageW.value * 1.294)   // letter; corrected when the page is drawn
+  pageW.value = Math.round(baseWidth() * ZOOMS[zoomIdx.value]);
+  pageH.value = Math.round(pageW.value * 1.294); // letter; corrected when the page is drawn
 }
 
 function setEl(n, el) {
-  if (el) { pageEls.set(n, el); observer?.observe(el) }
-  else pageEls.delete(n)
+  if (el) {
+    pageEls.set(n, el);
+    observer?.observe(el);
+  } else pageEls.delete(n);
 }
 
 function draw(n) {
-  const el = pageEls.get(n)
-  if (!doc.value || !el) return
-  if (drawn.get(n) === pageW.value) return
-  cancels.get(n)?.()
-  const canvas = el.querySelector('canvas')
-  const cancel = drawPage(doc.value, n, canvas, pageW.value, () => {
-    status.value = `Page ${n} could not be drawn.`
-  }, () => { drawn.set(n, pageW.value); drawText(n) })
-  cancels.set(n, cancel)
+  const el = pageEls.get(n);
+  if (!doc.value || !el) return;
+  if (drawn.get(n) === pageW.value) return;
+  cancels.get(n)?.();
+  const canvas = el.querySelector('canvas');
+  const cancel = drawPage(
+    doc.value,
+    n,
+    canvas,
+    pageW.value,
+    () => {
+      status.value = `Page ${n} could not be drawn.`;
+    },
+    () => {
+      drawn.set(n, pageW.value);
+      drawText(n);
+    },
+  );
+  cancels.set(n, cancel);
 }
 
 /** The page's text, as a transparent layer over the picture: it can be selected and copied. */
 async function drawText(n) {
-  const el = pageEls.get(n)
-  const layer = el?.querySelector('.textLayer')
-  if (!doc.value || !layer) return
-  layer.innerHTML = ''
-  const page = await doc.value.getPage(n)
-  const base = page.getViewport({ scale: 1 })
-  const vp = page.getViewport({ scale: pageW.value / base.width })
+  const el = pageEls.get(n);
+  const layer = el?.querySelector('.textLayer');
+  if (!doc.value || !layer) return;
+  layer.innerHTML = '';
+  const page = await doc.value.getPage(n);
+  const base = page.getViewport({ scale: 1 });
+  const vp = page.getViewport({ scale: pageW.value / base.width });
   // the layer must be exactly the size of the page, and the scale variables must be set,
   // or every character is placed off the glyph and the selection lands in the wrong place
-  layer.style.width = Math.floor(vp.width) + 'px'
-  layer.style.height = Math.floor(vp.height) + 'px'
-  layer.style.setProperty('--scale-factor', vp.scale)
-  layer.style.setProperty('--total-scale-factor', vp.scale)
+  layer.style.width = Math.floor(vp.width) + 'px';
+  layer.style.height = Math.floor(vp.height) + 'px';
+  layer.style.setProperty('--scale-factor', vp.scale);
+  layer.style.setProperty('--total-scale-factor', vp.scale);
   const textLayer = new TextLayer({
     textContentSource: await page.getTextContent(),
     container: layer,
     viewport: vp,
-  })
-  await textLayer.render()
+  });
+  await textLayer.render();
 }
 
 /** Draws the pages that are on screen or close to it. */
 function drawNear() {
-  if (!scroller.value) return
-  const box = scroller.value.getBoundingClientRect()
+  if (!scroller.value) return;
+  const box = scroller.value.getBoundingClientRect();
   for (const [n, el] of pageEls) {
-    const r = el.getBoundingClientRect()
-    if (r.bottom > box.top - 800 && r.top < box.bottom + 800) draw(n)
+    const r = el.getBoundingClientRect();
+    if (r.bottom > box.top - 800 && r.top < box.bottom + 800) draw(n);
   }
 }
 
 /** The page most of the screen shows, reported to the parent. */
-let scrollTimer = 0
+let scrollTimer = 0;
 function onScroll() {
-  if (scrollTimer) return
+  if (scrollTimer) return;
   scrollTimer = requestAnimationFrame(() => {
-    scrollTimer = 0
-    if (!scroller.value) return
-    const box = scroller.value.getBoundingClientRect()
-    const mid = box.top + box.height / 2
-    let best = current.value, bestDist = Infinity
+    scrollTimer = 0;
+    if (!scroller.value) return;
+    const box = scroller.value.getBoundingClientRect();
+    const mid = box.top + box.height / 2;
+    let best = current.value,
+      bestDist = Infinity;
     for (const [n, el] of pageEls) {
-      const r = el.getBoundingClientRect()
-      const d = Math.abs((r.top + r.bottom) / 2 - mid)
-      if (d < bestDist) { bestDist = d; best = n }
+      const r = el.getBoundingClientRect();
+      const d = Math.abs((r.top + r.bottom) / 2 - mid);
+      if (d < bestDist) {
+        bestDist = d;
+        best = n;
+      }
     }
-    if (best !== current.value) { current.value = best; emit('page', best) }
-    drawNear()
-  })
+    if (best !== current.value) {
+      current.value = best;
+      emit('page', best);
+    }
+    drawNear();
+  });
 }
 
 function goToPage(n) {
-  const el = pageEls.get(n)
-  if (!el || !scroller.value) return
-  scroller.value.scrollTop = el.offsetTop - 12
-  current.value = n
-  drawNear()
+  const el = pageEls.get(n);
+  if (!el || !scroller.value) return;
+  scroller.value.scrollTop = el.offsetTop - 12;
+  current.value = n;
+  drawNear();
 }
 
 function zoom(delta) {
-  const next = zoomIdx.value + delta
-  if (next < 0 || next >= ZOOMS.length) return
-  zoomIdx.value = next
+  const next = zoomIdx.value + delta;
+  if (next < 0 || next >= ZOOMS.length) return;
+  zoomIdx.value = next;
 }
 
 async function load() {
-  const blob = await getFile(props.bookId)
-  if (!blob) { status.value = 'The book is no longer on this device.'; return }
-  doc.value = await openPdf(blob)
-  count.value = doc.value.numPages
-  status.value = ''
-  layout()
-  await nextTick()
-  goToPage(Math.min(Math.max(1, props.page), count.value))
-  drawNear()
+  const blob = await getFile(props.bookId);
+  if (!blob) {
+    status.value = 'The book is no longer on this device.';
+    return;
+  }
+  doc.value = await openPdf(blob);
+  count.value = doc.value.numPages;
+  status.value = '';
+  layout();
+  await nextTick();
+  goToPage(Math.min(Math.max(1, props.page), count.value));
+  drawNear();
 }
 
-watch(() => props.page, (p) => { if (p !== current.value) goToPage(p) })
+watch(
+  () => props.page,
+  p => {
+    if (p !== current.value) goToPage(p);
+  },
+);
 watch(zoomIdx, async () => {
-  const keep = current.value
-  layout()
-  drawn.clear()
-  await nextTick()
-  goToPage(keep)
-  drawNear()
-})
+  const keep = current.value;
+  layout();
+  drawn.clear();
+  await nextTick();
+  goToPage(keep);
+  drawNear();
+});
 
-let resizeTimer = 0
+let resizeTimer = 0;
 function onResize() {
-  clearTimeout(resizeTimer)
+  clearTimeout(resizeTimer);
   resizeTimer = setTimeout(() => {
-    const before = pageW.value
-    layout()
-    if (pageW.value !== before) { drawn.clear(); nextTick(() => drawNear()) }
-  }, 150)
+    const before = pageW.value;
+    layout();
+    if (pageW.value !== before) {
+      drawn.clear();
+      nextTick(() => drawNear());
+    }
+  }, 150);
 }
 
 onMounted(() => {
-  observer = new IntersectionObserver(() => drawNear(), { root: scroller.value, rootMargin: '800px 0px' })
-  for (const el of pageEls.values()) observer.observe(el)
-  window.addEventListener('resize', onResize)
-  window.addEventListener('keydown', setCtrl)
-  window.addEventListener('keyup', setCtrl)
-  window.addEventListener('blur', releaseCtrl)
-  load().catch(() => { status.value = 'Could not open the book.' })
-})
+  observer = new IntersectionObserver(() => drawNear(), {
+    root: scroller.value,
+    rootMargin: '800px 0px',
+  });
+  for (const el of pageEls.values()) observer.observe(el);
+  window.addEventListener('resize', onResize);
+  window.addEventListener('keydown', setCtrl);
+  window.addEventListener('keyup', setCtrl);
+  window.addEventListener('blur', releaseCtrl);
+  load().catch(() => {
+    status.value = 'Could not open the book.';
+  });
+});
 onBeforeUnmount(() => {
-  window.removeEventListener('resize', onResize)
-  window.removeEventListener('keydown', setCtrl)
-  window.removeEventListener('keyup', setCtrl)
-  window.removeEventListener('blur', releaseCtrl)
-  observer?.disconnect()
-  cancels.forEach((c) => c?.())
-  doc.value?.destroy()
-})
+  window.removeEventListener('resize', onResize);
+  window.removeEventListener('keydown', setCtrl);
+  window.removeEventListener('keyup', setCtrl);
+  window.removeEventListener('blur', releaseCtrl);
+  observer?.disconnect();
+  cancels.forEach(c => c?.());
+  doc.value?.destroy();
+});
 </script>
 
 <template>
-  <div
-    class="rd"
-    :class="{ 'is-ctrl': ctrlHeld }"
-  >
-    <Translator
-      ref="translator"
-      :root="scroller"
-    />
+  <div class="rd" :class="{ 'is-ctrl': ctrlHeld }">
+    <MapTranslator ref="translator" :root="scroller" />
     <div class="rd-bar">
-      <span class="rd-count">Page {{ current }}<template v-if="count"> of {{ count }}</template></span>
-      <span class="rd-sep" />
-      <button
-        type="button"
-        class="rd-btn"
-        :disabled="zoomIdx === 0"
-        aria-label="Smaller"
-        @click="zoom(-1)"
+      <span class="rd-count"
+        >Page {{ current }}<template v-if="count"> of {{ count }}</template></span
       >
-        −
-      </button>
+      <span class="rd-sep" />
+      <button type="button" class="rd-btn" :disabled="zoomIdx === 0" aria-label="Smaller" @click="zoom(-1)">−</button>
       <span class="rd-zoom">{{ Math.round(ZOOMS[zoomIdx] * 100) }}%</span>
       <button
         type="button"
@@ -217,21 +244,14 @@ onBeforeUnmount(() => {
         +
       </button>
     </div>
-    <p
-      v-if="status"
-      class="rd-status"
-    >
+    <p v-if="status" class="rd-status">
       {{ status }}
     </p>
-    <div
-      ref="scroller"
-      class="rd-scroll"
-      @scroll.passive="onScroll"
-    >
+    <div ref="scroller" class="rd-scroll" @scroll.passive="onScroll">
       <div
         v-for="n in count"
         :key="n"
-        :ref="(el) => setEl(n, el)"
+        :ref="el => setEl(n, el)"
         class="rd-page"
         :style="{ width: pageW + 'px', height: pageH + 'px' }"
       >
@@ -254,14 +274,51 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.rd { display: flex; flex-direction: column; flex: 1; min-height: 0; min-width: 0; }
-.rd-bar { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-bottom: 1px solid var(--line); }
-.rd-count, .rd-zoom { font-size: 13px; color: var(--mute); font-variant-numeric: tabular-nums; }
-.rd-zoom { min-width: 46px; text-align: center; }
-.rd-sep { flex: 1; }
-.rd-btn { min-width: 34px; min-height: 34px; font-size: 18px; line-height: 1; border-radius: 9px; cursor: pointer; }
-.rd-btn:disabled { opacity: .4; cursor: default; }
-.rd-status { margin: 0; padding: 12px; color: var(--mute); font-size: 13px; }
+.rd {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+.rd-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--line);
+}
+.rd-count,
+.rd-zoom {
+  font-size: 13px;
+  color: var(--mute);
+  font-variant-numeric: tabular-nums;
+}
+.rd-zoom {
+  min-width: 46px;
+  text-align: center;
+}
+.rd-sep {
+  flex: 1;
+}
+.rd-btn {
+  min-width: 34px;
+  min-height: 34px;
+  font-size: 18px;
+  line-height: 1;
+  border-radius: 9px;
+  cursor: pointer;
+}
+.rd-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.rd-status {
+  margin: 0;
+  padding: 12px;
+  color: var(--mute);
+  font-size: 13px;
+}
 .rd-scroll {
   flex: 1;
   min-height: 0;
@@ -276,11 +333,37 @@ onBeforeUnmount(() => {
 .rd-page {
   flex: none;
   background: #fff;
-  box-shadow: 0 6px 22px rgba(0, 0, 0, .45);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.45);
   position: relative;
 }
-.rd-canvas { display: block; }
-.rd-page .textLayer { position: absolute; top: 0; left: 0; }
-.rd.is-ctrl .rd-tr { opacity: 0; pointer-events: none; }
-.rd-tr { -webkit-touch-callout: none; user-select: none; transition: opacity .12s; position: absolute; transform: translate(-100%, -100%); z-index: 3; min-height: 26px; padding: 0 10px; border-radius: 999px; border: 0; background: var(--acc); color: #111; font-size: 12px; font-weight: 700; box-shadow: 0 2px 8px rgba(0, 0, 0, .35); cursor: pointer; }
+.rd-canvas {
+  display: block;
+}
+.rd-page .textLayer {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+.rd.is-ctrl .rd-tr {
+  opacity: 0;
+  pointer-events: none;
+}
+.rd-tr {
+  -webkit-touch-callout: none;
+  user-select: none;
+  transition: opacity 0.12s;
+  position: absolute;
+  transform: translate(-100%, -100%);
+  z-index: 3;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 0;
+  background: var(--acc);
+  color: #111;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+}
 </style>

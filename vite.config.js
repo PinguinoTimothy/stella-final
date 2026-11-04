@@ -1,6 +1,6 @@
-import { defineConfig } from 'vite'
-import vue from '@vitejs/plugin-vue'
-import { VitePWA } from 'vite-plugin-pwa'
+import { defineConfig } from 'vite';
+import vue from '@vitejs/plugin-vue';
+import { VitePWA } from 'vite-plugin-pwa';
 
 // base './' lets the build work from any folder (Cloudflare Pages, GitHub Pages, a subpath…)
 export default defineConfig({
@@ -42,4 +42,4 @@ export default defineConfig({
     }),
   ],
   test: { environment: 'jsdom', globals: true },
-})
+});
