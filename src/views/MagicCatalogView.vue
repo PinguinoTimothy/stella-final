@@ -1,7 +1,7 @@
 <script setup>
 // More › Magic catalog: browse magic items and add them to the inventory.
-// Only the visible page is loaded (see stores/magicCatalog.js).
-import { computed, onMounted, ref } from 'vue';
+// Items load a page at a time as the list is scrolled (see stores/magicCatalog.js).
+import { computed, nextTick, onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import { toInventoryItem } from '../lib/magic';
 import { useAppStore } from '../stores/app';
 import { useInventory } from '../stores/inventory';
@@ -9,7 +9,6 @@ import { useMagicCatalog } from '../stores/magicCatalog';
 import BackButton from '../components/BackButton.vue';
 import MagicCatalogFilters from '../components/MagicCatalog/MagicCatalogFilters.vue';
 import MagicCatalogList from '../components/MagicCatalog/MagicCatalogList.vue';
-import MagicCatalogPager from '../components/MagicCatalog/MagicCatalogPager.vue';
 import MagicItemDetails from '../components/MagicCatalog/MagicItemDetails.vue';
 
 const app = useAppStore();
@@ -23,6 +22,16 @@ const entries = computed(() =>
 );
 const empty = computed(() => !catalog.loading && !catalog.error && !catalog.rows.length && !catalog.total);
 
+// The sentinel sits under the last item. When it comes into view (or is already close), the next page loads.
+const sentinel = ref(null);
+let observer = null;
+
+function nearEnd() {
+  const el = sentinel.value;
+  if (!el || !catalog.hasMore || catalog.loading) return;
+  if (el.getBoundingClientRect().top < window.innerHeight + 300) catalog.loadMore();
+}
+
 function addToInventory(item) {
   if (app.viewer) return;
   if (inv.add(toInventoryItem(item))) {
@@ -31,7 +40,30 @@ function addToInventory(item) {
   }
 }
 
-onMounted(catalog.start);
+// A page that loads while the sentinel is still in view does not produce a new intersection event,
+// so check again whenever the list grows.
+watch(
+  () => catalog.rows.length,
+  () => nextTick(nearEnd),
+);
+
+watch(sentinel, (el, old) => {
+  if (old) observer?.unobserve(old);
+  if (el) observer?.observe(el);
+});
+
+onMounted(() => {
+  catalog.start();
+  observer = new IntersectionObserver(
+    entries => {
+      if (entries.some(e => e.isIntersecting)) catalog.loadMore();
+    },
+    { rootMargin: '300px 0px' },
+  );
+  if (sentinel.value) observer.observe(sentinel.value);
+});
+
+onBeforeUnmount(() => observer?.disconnect());
 </script>
 
 <template>
@@ -56,10 +88,10 @@ onMounted(catalog.start);
 
     <div class="magic-results-heading">
       <span>{{ catalog.total }} items found</span>
-      <span v-if="catalog.totalPages > 1">{{ catalog.page + 1 }} / {{ catalog.totalPages }}</span>
+      <span v-if="catalog.rows.length && catalog.hasMore">Showing {{ catalog.rows.length }}</span>
     </div>
 
-    <p v-if="catalog.loading" class="mute magic-status">Loading magic catalog…</p>
+    <p v-if="catalog.loading && !catalog.appending" class="mute magic-status">Loading magic catalog…</p>
 
     <p v-if="catalog.error" class="mute magic-status" role="status">
       {{ catalog.error }}
@@ -69,7 +101,7 @@ onMounted(catalog.start);
     <section v-if="empty" class="panel item-empty">The magic catalog is not available yet.</section>
 
     <template v-else-if="catalog.rows.length || catalog.total">
-      <div :class="{ 'magic-stale': catalog.loading }">
+      <div :class="{ 'magic-stale': catalog.loading && !catalog.appending }">
         <MagicCatalogList
           :entries="entries"
           :read-only="readOnly"
@@ -77,7 +109,8 @@ onMounted(catalog.start);
           @add="i => addToInventory(catalog.rows[i])"
         />
       </div>
-      <MagicCatalogPager :page="catalog.page" :pages="catalog.totalPages" @change="catalog.page = $event" />
+      <p v-if="catalog.appending" class="mute magic-status">Loading more…</p>
+      <div ref="sentinel" class="magic-sentinel" aria-hidden="true"></div>
     </template>
 
     <MagicItemDetails
