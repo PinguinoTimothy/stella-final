@@ -4,6 +4,7 @@ import { useAppStore } from './stores/app';
 import { useCloudStore } from './stores/cloud';
 import { useViewerPolling } from './composables/useViewerPolling';
 import BottomNav from './components/BottomNav.vue';
+import MascotBar from './components/MascotBar.vue';
 import ConfirmDialog from './components/ConfirmDialog.vue';
 import ToastHost from './components/ToastHost.vue';
 import CombatTray from './components/Monsters/CombatTray.vue';
@@ -103,6 +104,7 @@ const title = computed(() => titles[app.ui.tab] || (app.viewer ? app.ui.tab : ''
   </template>
   <template v-else>
     <BottomNav />
+    <MascotBar />
     <component :is="view" v-if="view" v-bind="viewProps" />
     <PlaceholderView v-else :title="title" />
     <ToastHost />

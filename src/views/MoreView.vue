@@ -30,6 +30,7 @@ function openTab(
 
 <template>
   <h2 class="pg">More</h2>
+  <p class="sub">The stars were right. They are still listening.</p>
 
   <details v-if="app.mode === 'dev'" class="panel fold" data-k="share" open>
     <summary>Cloud save</summary>

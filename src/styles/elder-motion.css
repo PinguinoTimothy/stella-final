@@ -1,0 +1,137 @@
+/* Elder Mythos motion and backgrounds. Everything here is skipped when the system asks for reduced motion. */
+
+@media (prefers-reduced-motion: no-preference) {
+  /* the sky: stars drift very slowly, nebula breathes */
+  body::after {
+    animation:
+      starDrift 240s linear infinite,
+      twinkle 11s ease-in-out infinite alternate;
+  }
+
+  body::before {
+    animation: nebula 18s ease-in-out infinite alternate;
+  }
+
+  /* views and panels unveil from the mist. Fill mode "backwards" (not "both") matters: a finished
+   transform animation that is kept applied makes the element a containing block, which pulls
+   fixed children such as the + button and bottom sheets out of their place. */
+  main > *:not(.nav):not(.dlg-bd):not(.fab):not(.mascot) {
+    animation: unveil 0.6s ease-out backwards;
+  }
+
+  /* dialogs open like an iris */
+  .dlg {
+    animation: iris 0.45s ease-out backwards;
+  }
+
+  /* the eye in the header blinks rarely, with a double blink */
+  .hdr .lid {
+    animation: blink 6s infinite;
+  }
+
+  /* a ring of light when a spell is cast */
+  .cast:active {
+    animation: castRing 0.45s ease-out;
+  }
+}
+
+@keyframes starDrift {
+  to {
+    background-position:
+      -380px 380px,
+      -500px 730px;
+  }
+}
+
+@keyframes nebula {
+  from {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes unveil {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+    filter: blur(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+@keyframes iris {
+  from {
+    clip-path: ellipse(0% 0% at 50% 50%);
+    opacity: 0;
+  }
+
+  to {
+    clip-path: ellipse(150% 150% at 50% 50%);
+    opacity: 1;
+  }
+}
+
+@keyframes blink {
+  0%,
+  90%,
+  100% {
+    transform: scaleY(1);
+  }
+
+  93% {
+    transform: scaleY(0.08);
+  }
+
+  95% {
+    transform: scaleY(1);
+  }
+
+  97% {
+    transform: scaleY(0.08);
+  }
+
+  98.5% {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes castRing {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--acc) 60%, transparent);
+  }
+
+  100% {
+    box-shadow: 0 0 0 16px transparent;
+  }
+}
+
+.panel.flat::after,
+.sheet .panel::after {
+  display: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  main::before {
+    animation: sway 16s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes sway {
+  from {
+    transform: rotate(-2.5deg);
+  }
+
+  to {
+    transform: rotate(3deg);
+  }
+}

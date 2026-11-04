@@ -2,6 +2,8 @@ import { createApp } from 'vue';
 import { createPinia } from 'pinia';
 import './styles/app.css';
 import './styles/vue.css';
+import './styles/elder.css';
+import './styles/elder-motion.css';
 import App from './App.vue';
 import { useAppStore } from './stores/app';
 import { useCloudStore } from './stores/cloud';

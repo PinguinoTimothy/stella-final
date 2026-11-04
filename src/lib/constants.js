@@ -114,32 +114,34 @@ export const ICON = {
     { tag: 'path', attrs: { d: 'M16 3v3a4 4 0 0 1-1.5 3L12 12l2.5 3A4 4 0 0 1 16 18v3' } },
   ],
   cast: [
-    { tag: 'path', attrs: { d: 'M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z' } },
-    { tag: 'path', attrs: { d: 'M19 16l.7 1.8 1.8.7-1.8.7L19 21l-.7-1.8-1.8-.7 1.8-.7z' } },
+    { tag: 'path', attrs: { d: 'M2 12c2.7-4.6 6-7 10-7s7.3 2.4 10 7c-2.7 4.6-6 7-10 7S4.7 16.6 2 12z' } },
+    { tag: 'circle', attrs: { cx: 12, cy: 12, r: 3.2 } },
   ],
   db: [
-    { tag: 'path', attrs: { d: 'M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z' } },
-    { tag: 'path', attrs: { d: 'M5 17a3 3 0 0 1 3-3h10' } },
+    { tag: 'path', attrs: { d: 'M4 5.5C6 4.5 8.5 4.5 12 6.5c3.5-2 6-2 8-1v13c-2-1-4.5-1-8 1-3.5-2-6-2-8-1z' } },
+    { tag: 'path', attrs: { d: 'M12 6.5v13' } },
+    { tag: 'path', attrs: { d: 'M12 10l.8 1.6 1.7.2-1.2 1.2.3 1.7L12 13.9l-1.6.8.3-1.7-1.2-1.2 1.7-.2z' } },
   ],
   items: [
-    { tag: 'path', attrs: { d: 'M4 20L15 9' } },
-    { tag: 'path', attrs: { d: 'M16 3l1.1 2.4L19.5 6.5l-2.4 1.1L16 10l-1.1-2.4L12.5 6.5l2.4-1.1z' } },
+    { tag: 'path', attrs: { d: 'M9.5 3h5M10.5 3v4.5L6.6 14.3A5 5 0 0 0 11 21.5h2a5 5 0 0 0 4.4-7.2l-3.9-6.8V3' } },
+    { tag: 'path', attrs: { d: 'M7.8 15.5h8.4' } },
   ],
   setup: [
-    { tag: 'path', attrs: { d: 'M4 7h9M17 7h3M4 17h3M11 17h9' } },
-    { tag: 'circle', attrs: { cx: 15, cy: 7, r: 2 } },
-    { tag: 'circle', attrs: { cx: 9, cy: 17, r: 2 } },
+    { tag: 'circle', attrs: { cx: 12, cy: 12, r: 9 } },
+    { tag: 'circle', attrs: { cx: 12, cy: 12, r: 3 } },
+    { tag: 'path', attrs: { d: 'M12 3v3M12 18v3M3 12h3M18 12h3' } },
+    { tag: 'path', attrs: { d: 'M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1' } },
   ],
-  more: [{ tag: 'path', attrs: { d: 'M5 12h.01M12 12h.01M19 12h.01' } }],
+  more: [
+    { tag: 'path', attrs: { d: 'M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6z' } },
+  ],
   party: [
-    { tag: 'circle', attrs: { cx: 9, cy: 8, r: 3 } },
-    { tag: 'path', attrs: { d: 'M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 5.5a3 3 0 0 1 0 5.5M18 14.5c2 .7 3 2.6 3 5.5' } },
+    { tag: 'path', attrs: { d: 'M5 20.5V11a7 7 0 0 1 14 0v9.5' } },
+    { tag: 'path', attrs: { d: 'M3 20.5h18' } },
+    { tag: 'path', attrs: { d: 'M9 12.5a3 3 0 0 0 6 0' } },
+    { tag: 'path', attrs: { d: 'M12 4v2' } },
   ],
 };
-
-ICON.more = '<path d="M5 12h.01M12 12h.01M19 12h.01"/>';
-ICON.party =
-  '<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 5.5a3 3 0 0 1 0 5.5M18 14.5c2 .7 3 2.6 3 5.5"/>';
 
 export const KINDS = [
   'Wand',
