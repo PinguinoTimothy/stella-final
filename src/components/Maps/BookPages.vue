@@ -17,6 +17,14 @@ const emit = defineEmits(['page'])
 const translator = ref(null)
 const boxesOn = (n) => props.boxes.filter((b) => b.page === n)
 
+// Holding Ctrl (Cmd on a Mac) hides every Translate button, so the text underneath can be read or selected.
+const ctrlHeld = ref(false)
+const setCtrl = (e) => { ctrlHeld.value = !!(e.ctrlKey || e.metaKey) }
+const releaseCtrl = () => { ctrlHeld.value = false }
+function tap(b) {
+  translator.value?.translateText(b.text)
+}
+
 const ZOOMS = [0.8, 1, 1.25, 1.5]
 const zoomIdx = ref(1)
 const scroller = ref(null)
@@ -161,10 +169,16 @@ onMounted(() => {
   observer = new IntersectionObserver(() => drawNear(), { root: scroller.value, rootMargin: '800px 0px' })
   for (const el of pageEls.values()) observer.observe(el)
   window.addEventListener('resize', onResize)
+  window.addEventListener('keydown', setCtrl)
+  window.addEventListener('keyup', setCtrl)
+  window.addEventListener('blur', releaseCtrl)
   load().catch(() => { status.value = 'Could not open the book.' })
 })
 onBeforeUnmount(() => {
   window.removeEventListener('resize', onResize)
+  window.removeEventListener('keydown', setCtrl)
+  window.removeEventListener('keyup', setCtrl)
+  window.removeEventListener('blur', releaseCtrl)
   observer?.disconnect()
   cancels.forEach((c) => c?.())
   doc.value?.destroy()
@@ -172,7 +186,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="rd">
+  <div class="rd" :class="{ 'is-ctrl': ctrlHeld }">
     <Translator ref="translator" :root="scroller" />
     <div class="rd-bar">
       <span class="rd-count">Page {{ current }}<template v-if="count"> of {{ count }}</template></span>
@@ -198,7 +212,8 @@ onBeforeUnmount(() => {
           type="button"
           class="rd-tr"
           :style="{ left: b.x1 * pageW + 'px', top: b.y0 * pageH + 'px' }"
-          @click="translator?.translateText(b.text)"
+          aria-label="Translate this passage"
+          @click="tap(b)"
         >Translate</button>
       </div>
     </div>
@@ -233,5 +248,6 @@ onBeforeUnmount(() => {
 }
 .rd-canvas { display: block; }
 .rd-page .textLayer { position: absolute; top: 0; left: 0; }
-.rd-tr { position: absolute; transform: translate(-100%, -100%); z-index: 3; min-height: 26px; padding: 0 10px; border-radius: 999px; border: 0; background: var(--acc); color: #111; font-size: 12px; font-weight: 700; box-shadow: 0 2px 8px rgba(0, 0, 0, .35); cursor: pointer; }
+.rd.is-ctrl .rd-tr { opacity: 0; pointer-events: none; }
+.rd-tr { -webkit-touch-callout: none; user-select: none; transition: opacity .12s; position: absolute; transform: translate(-100%, -100%); z-index: 3; min-height: 26px; padding: 0 10px; border-radius: 999px; border: 0; background: var(--acc); color: #111; font-size: 12px; font-weight: 700; box-shadow: 0 2px 8px rgba(0, 0, 0, .35); cursor: pointer; }
 </style>

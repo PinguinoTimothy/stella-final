@@ -14,7 +14,7 @@ const emit = defineEmits<{
 const app = useAppStore()
 const cloud = useCloudStore()
 
-function openTab(tab: 'party' | 'setup' | 'magicCatalog' | 'equipmentCatalog' | 'maps' | 'skills' | 'umr' | 'grapple' | 'conditions' | 'history' | 'monsters' | 'feats') {
+function openTab(tab: 'party' | 'setup' | 'magicCatalog' | 'equipmentCatalog' | 'maps' | 'skills' | 'umr' | 'grapple' | 'conditions' | 'history' | 'monsters' | 'feats' | 'rules') {
   if (app.viewer && tab === 'setup') return
   app.ui.tab = tab
   nextTick(() => window.scrollTo(0, 0))
@@ -161,6 +161,14 @@ function openTab(tab: 'party' | 'setup' | 'magicCatalog' | 'equipmentCatalog' | 
       <span>
       <b>Monsters</b>
       <small>Bestiary: quick combat stats</small>
+    </span>
+    <span aria-hidden="true">›</span>
+  </button>
+
+    <button class="more-row setup-link" @click="openTab('rules')">
+    <span>
+      <b>Rules</b>
+      <small>Attacks of opportunity, concentration</small>
     </span>
     <span aria-hidden="true">›</span>
   </button>

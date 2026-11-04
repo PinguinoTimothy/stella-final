@@ -32,10 +32,14 @@ import MapsView from './views/MapsView.vue'
   import DmLoginView from './views/DmLoginView.vue'
   import ReferenceSearch from './components/Reference/ReferenceSearch.vue'
 import FeatsView from './views/FeatsView.vue'
+  import RulesView from './views/RulesView.vue'
+   import { useTabHistory } from './composables/useTabHistory'
+
 
 const app = useAppStore()
 const cloud = useCloudStore()
 useViewerPolling()
+   useTabHistory()
 watchEffect(() => document.body.classList.toggle('ro-mode', app.mode !== 'dev'))
 
 // The admin app needs a session. Players (?view=1) skip the gate; what they can read is limited by the database policies.
@@ -61,7 +65,8 @@ const editorViews = {
   conditions: ConditionsView,
   history: HistoryView,
   maps: MapsView,
-  feats: FeatsView
+  feats: FeatsView,
+    rules: RulesView,
 }
 
 const playerViews = {
@@ -76,7 +81,8 @@ const playerViews = {
   grapple: GrappleView,
   conditions: ConditionsView,
   history: HistoryView,
-  feats: FeatsView
+  feats: FeatsView,
+    rules: RulesView,
 }
 
 const titles = { cast: 'Cast', fx: 'Active effects', db: 'Spells' }

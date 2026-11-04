@@ -7,10 +7,14 @@ const SIDEBAR_X = 0.84        // right of this is the book index (Part 1…, NPC
 const COLUMN_X = 0.47         // left column is left of this, right column starts at about 0.49
 const READ_ALOUD_FONT = 'Dax-Regular'   // the green boxes; stat blocks use the same font, see below
 const HEADING_FONTS = /TradeGothic|CaslonAntique|Dax-Bold/
+// a line that can only be the start of a stat block: it has a number or a label no sentence uses
+const STAT_START = /^(XP \d|Init [+-]|AC \d|hp \d|Speed \d|Melee \S|Ranged \S|Special Attacks\b|Spell-Like\b|Spells Known\b|Domain Spell|Druid Spells|At will\b|\d+\/day\b|0 \(at will\)|TACTICS\b|Before Combat\b|During Combat\b|Morale\b|Defensive Abilities\b|Base Atk [+-]|Feats |Skills |Languages |Str \d|Combat Gear\b|Other Gear\b|Immune )/
+// lines that belong to a monster stat block, whatever font they use
+const STAT_LINE = /^(XP\b|Init\b|Senses\b|AC\b|hp\b|Fort\b|Ref\b|Will\b|Speed\b|Melee\b|Ranged\b|Space\b|Base Atk\b|CMB\b|CMD\b|Feats\b|Skills\b|Languages\b|SQ\b|Special Attacks\b|Spell-Like\b|Spells Known\b|Defensive Abilities\b|DR\b|Immune\b|Resist\b|Weakness\b|Aura\b|Variant\b|OFFENSE\b|DEFENSE\b|STATISTICS\b|ECOLOGY\b|SPECIAL ABILITIES\b|[LNCT][GNEX]? (Medium|Small|Large|Tiny|Huge|Gargantuan)|At will\b|\d+\/day\b|\d+(st|nd|rd|th|th)\s*[—-]|0 \(at will\)|Druid Spells\b|Spells Prepared\b|TACTICS\b|Before Combat\b|During Combat\b|Morale\b|Combat Gear\b|Other Gear\b)/
 
 const ROOM_HEAD = /^([A-F])(\d{1,2})\.\s+(.+?)(?:\s*\(CR\s*([\d/]+)\))?$/
 const AREA_HEAD = /^([A-F])\.\s+([A-Z][A-Z’'\- ]+)$/
-const STAT_NAME_CR = /^([A-Z][A-Z’'\- ]{2,}?)\s+CR\s+([\d/]+)$/
+const STAT_NAME_CR = /^([A-Z][A-Z’'\- ]{2,}?(?:\s*\(\d+\))?)\s+CR\s+([\d/]+)$/
 const STAT_NAME = /^([A-Z][A-Z’'\- ]{2,})$/
 const CR_LINE = /^CR\s+([\d/]+)$/
 const XP_LINE = /^XP\s+([\d,]+)/
@@ -45,7 +49,7 @@ async function pageLines(page, pageNo) {
     let leftEnd = null
     for (const it of row.items) {
       const end = leftEnd
-      const continuesLeft = it.x >= COLUMN_X && end !== null && it.x - end < 0.04 && it.s.length <= 6
+      const continuesLeft = it.x >= COLUMN_X && end !== null && it.x - end < 0.04 && /^[\d\/]+$/.test(it.s)
       if (it.x < COLUMN_X || continuesLeft) { left.push(it); leftEnd = it.x + (it.w || 0) / w }
       else right.push(it)
     }
@@ -246,7 +250,9 @@ export function parseRooms(lines, overrides = []) {
     // trap and hazard stat lines use the same font as the boxes; they are not read aloud
     if (/^(Type|Trigger|Reset|Effect|Perception DC|Disable Device DC|Search DC|Bypass)\b/.test(l.s)) inStat = true
 
-    const isAloud = kind ? kind === 'aloud' : (!inStat && l.font === READ_ALOUD_FONT)
+    if (STAT_START.test(l.s)) inStat = true
+    // special abilities are marked (Ex), (Su) or (Sp): part of a stat block
+    const isAloud = kind ? kind === 'aloud' : (!inStat && !STAT_LINE.test(l.s) && !/\((Ex|Su|Sp)\)/.test(l.s) && l.font === READ_ALOUD_FONT)
     if (kind === 'note') { inNote = true; current.parts.push({ type: 'note', s: l.s }); continue }
     for (const m of l.s.matchAll(AREA_REF)) current.refs.add(m[1])
     current.parts.push({ type: isAloud ? 'aloud' : 'text', s: l.s, page: l.page, col: l.col, y: l.y, x0: l.x0, x1: l.x1 })
@@ -266,7 +272,7 @@ export function parseRooms(lines, overrides = []) {
   for (const r of rooms) {
     let cur = null
     for (const p of r.parts) {
-      if (p.type === 'aloud' && cur && cur.page === p.page && cur.col === p.col) {
+      if (p.type === 'aloud' && cur && cur.page === p.page && cur.col === p.col && p.y - cur.y1 < 0.03) {
         cur.lines.push(p.s)
         cur.x0 = Math.min(cur.x0, p.x0)
         cur.x1 = Math.max(cur.x1, p.x1)
@@ -281,7 +287,7 @@ export function parseRooms(lines, overrides = []) {
     }
     if (cur) boxes.push(cur)
   }
-  const boxList = boxes.map((b) => ({
+  const boxList = boxes.filter((b) => !STAT_LINE.test(b.lines[0] || '') && !/\bCR\s+[\d/]+\b/.test(b.lines.join(' ')) || b.lines.length > 3).map((b) => ({
     page: b.page, code: b.code,
     x0: b.x0, x1: b.x1, y0: b.y0 - 0.012, y1: b.y1 + 0.02,
     text: b.lines.join(' '),
