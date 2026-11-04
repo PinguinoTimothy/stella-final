@@ -9,7 +9,13 @@ const peek = usePeek()
 </script>
 
 <template>
-  <button type="button" class="ref-link" @click="peek.open(props.kind, props.name)">{{ name }}</button>
+  <button
+    type="button"
+    class="ref-link"
+    @click="peek.open(props.kind, props.name)"
+  >
+    {{ name }}
+  </button>
 </template>
 
 <style scoped>

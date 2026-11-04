@@ -34,66 +34,147 @@ const note = computed(() => CONCENTRATION.find((x) => x.id === calc.situation)?.
 
 <template>
   <main class="page rules-page">
-    <h2 class="pg">Rules</h2>
+    <h2 class="pg">
+      Rules
+    </h2>
 
-    <div class="rules-tabs" role="group" aria-label="Rules">
-      <button type="button" :aria-pressed="tab === 'aoo'" @click="tab = 'aoo'">Attacks of opportunity</button>
-      <button type="button" :aria-pressed="tab === 'conc'" @click="tab = 'conc'">Concentration</button>
+    <div
+      class="rules-tabs"
+      role="group"
+      aria-label="Rules"
+    >
+      <button
+        type="button"
+        :aria-pressed="tab === 'aoo'"
+        @click="tab = 'aoo'"
+      >
+        Attacks of opportunity
+      </button>
+      <button
+        type="button"
+        :aria-pressed="tab === 'conc'"
+        @click="tab = 'conc'"
+      >
+        Concentration
+      </button>
     </div>
 
     <!-- ATTACKS OF OPPORTUNITY -->
     <section v-if="tab === 'aoo'">
-      <p class="rules-general"><b>Note 1.</b> {{ AOO_NOTES[1] }}</p>
+      <p class="rules-general">
+        <b>Note 1.</b> {{ AOO_NOTES[1] }}
+      </p>
 
       <div class="rules-filter">
-        <input v-model="query" type="search" placeholder="Find an action…" aria-label="Find an action">
-        <label class="rules-check"><input v-model="onlyProvoking" type="checkbox"> Only those that provoke</label>
+        <input
+          v-model="query"
+          type="search"
+          placeholder="Find an action…"
+          aria-label="Find an action"
+        >
+        <label class="rules-check"><input
+          v-model="onlyProvoking"
+          type="checkbox"
+        > Only those that provoke</label>
       </div>
 
-      <div v-for="g in groups" :key="g.group" class="rules-group">
+      <div
+        v-for="g in groups"
+        :key="g.group"
+        class="rules-group"
+      >
         <h3>{{ g.group }}</h3>
         <ul class="rules-list">
-          <li v-for="([name, aoo, note]) in g.items" :key="name" :class="'aoo-' + aoo">
+          <li
+            v-for="([name, aoo, note]) in g.items"
+            :key="name"
+            :class="'aoo-' + aoo"
+          >
             <span class="rules-name">{{ name }}</span>
             <span class="rules-aoo">{{ AOO_LABEL[aoo] }}<template v-if="note"> · note {{ note }}</template></span>
           </li>
         </ul>
       </div>
-      <p v-if="!groups.length" class="mute">No action matches.</p>
-      <h3 class="rules-notes-h">Notes</h3>
+      <p
+        v-if="!groups.length"
+        class="mute"
+      >
+        No action matches.
+      </p>
+      <h3 class="rules-notes-h">
+        Notes
+      </h3>
       <ol class="rules-notes">
-        <li v-for="n in [2, 3, 4, 5, 6, 7]" :key="n" :value="n">{{ AOO_NOTES[n] }}</li>
+        <li
+          v-for="n in [2, 3, 4, 5, 6, 7]"
+          :key="n"
+          :value="n"
+        >
+          {{ AOO_NOTES[n] }}
+        </li>
       </ol>
     </section>
 
     <!-- CONCENTRATION -->
-    <section v-else class="rules-conc">
+    <section
+      v-else
+      class="rules-conc"
+    >
       <p>
         Casting a spell can be interrupted. When it is, roll a d20 and add your caster level and your casting
         ability modifier. If the total is lower than the DC, the spell is lost.
       </p>
       <ul class="rules-abilities">
-        <li v-for="[text] in CASTING_ABILITY" :key="text">{{ text }}</li>
+        <li
+          v-for="[text] in CASTING_ABILITY"
+          :key="text"
+        >
+          {{ text }}
+        </li>
       </ul>
 
       <h3>DC calculator</h3>
       <div class="rules-calc">
         <label>Situation
           <select v-model="calc.situation">
-            <option v-for="s in CONCENTRATION" :key="s.id" :value="s.id">{{ s.label }}</option>
+            <option
+              v-for="s in CONCENTRATION"
+              :key="s.id"
+              :value="s.id"
+            >{{ s.label }}</option>
           </select>
         </label>
         <label>Spell level
-          <input v-model.number="calc.level" type="number" min="0" max="9" inputmode="numeric">
+          <input
+            v-model.number="calc.level"
+            type="number"
+            min="0"
+            max="9"
+            inputmode="numeric"
+          >
         </label>
         <label v-if="['injured', 'continuous'].includes(calc.situation)">Damage taken
-          <input v-model.number="calc.damage" type="number" min="0" inputmode="numeric">
+          <input
+            v-model.number="calc.damage"
+            type="number"
+            min="0"
+            inputmode="numeric"
+          >
         </label>
         <label v-if="calc.situation === 'nondamaging'">Affecting spell's DC
-          <input v-model.number="calc.spellDc" type="number" min="0" inputmode="numeric">
+          <input
+            v-model.number="calc.spellDc"
+            type="number"
+            min="0"
+            inputmode="numeric"
+          >
         </label>
         <label v-if="calc.situation === 'grappled'">Grappler's CMB
-          <input v-model.number="calc.cmb" type="number" inputmode="numeric">
+          <input
+            v-model.number="calc.cmb"
+            type="number"
+            inputmode="numeric"
+          >
         </label>
       </div>
 

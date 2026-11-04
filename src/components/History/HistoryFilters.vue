@@ -6,6 +6,14 @@ const kind = defineModel({ type: String, default: '' })
 
 <template>
   <div class="chips">
-    <button v-for="[id, label] in HISTORY_FILTERS" :key="id" class="chip" :aria-selected="kind === id" @click="kind = id">{{ label }}</button>
+    <button
+      v-for="[id, label] in HISTORY_FILTERS"
+      :key="id"
+      class="chip"
+      :aria-selected="kind === id"
+      @click="kind = id"
+    >
+      {{ label }}
+    </button>
   </div>
 </template>

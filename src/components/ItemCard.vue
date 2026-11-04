@@ -40,28 +40,46 @@ const glyph = computed(() => IGLYPH[it.value.k] || IGLYPH._);
     :data-c="itemCat(it)"
   >
     <div class="ic-row">
-      <button class="ic-main" @click="$emit('open', it)">
-        <span class="ti" aria-hidden="true"
-          ><svg viewBox="0 0 24 24" v-html="glyph" ></svg>
+      <button
+        class="ic-main"
+        @click="$emit('open', it)"
+      >
+        <span
+          class="ti"
+          aria-hidden="true"
+        ><svg
+          viewBox="0 0 24 24"
+          v-html="glyph"
+        />
         </span>
         <span class="ic-tx">
           <span class="ic-t">
+            <span>{{ it.n
+            }}<small v-if="qty > 1 && !stack"> ×{{ qty }}</small></span>
             <span
-              >{{ it.n
-              }}<small v-if="qty > 1 && !stack"> ×{{ qty }}</small></span
-            >
-            <span v-if="spent" class="tag warn">empty</span>
+              v-if="spent"
+              class="tag warn"
+            >empty</span>
           </span>
           <span class="ic-m">
-            <span v-if="!hideOwner" class="ic-o">{{
+            <span
+              v-if="!hideOwner"
+              class="ic-o"
+            >{{
               it.owner || "Shared"
             }}</span>
             <span>{{ it.k || "Item" }}</span>
-            <span v-if="it.slot && !hideSlot && it.slot !== it.k" class="tag">{{
+            <span
+              v-if="it.slot && !hideSlot && it.slot !== it.k"
+              class="tag"
+            >{{
               it.slot
             }}</span>
           </span>
-          <span v-if="it.o" class="ic-n">{{ it.o }}</span>
+          <span
+            v-if="it.o"
+            class="ic-n"
+          >{{ it.o }}</span>
         </span>
       </button>
 
@@ -71,17 +89,15 @@ const glyph = computed(() => IGLYPH[it.value.k] || IGLYPH._);
         role="group"
         aria-label="Charges"
       >
-        <button data-write
+        <button
+          data-write
           :disabled="cur <= 0"
           aria-label="Use one charge"
           @click="inv.useCharge(it, -1)"
         >
           −
         </button>
-        <span
-          ><b>{{ cur }}</b
-          >/{{ max }}</span
-        >
+        <span><b>{{ cur }}</b>/{{ max }}</span>
         <button
           :disabled="cur >= max"
           aria-label="Restore one charge"
@@ -96,13 +112,18 @@ const glyph = computed(() => IGLYPH[it.value.k] || IGLYPH._);
         role="group"
         aria-label="Quantity"
       >
-        <button data-write aria-label="Use one" @click="inv.adjustQty(it, -1)">−</button>
-        <span
-          ><b>{{ qty }}</b></span
-        >
-        <button data-write aria-label="Add one" @click="inv.adjustQty(it, 1)">+</button>
+        <button
+          data-write
+          aria-label="Use one"
+          @click="inv.adjustQty(it, -1)"
+        >−</button>
+        <span><b>{{ qty }}</b></span>
+        <button
+          data-write
+          aria-label="Add one"
+          @click="inv.adjustQty(it, 1)"
+        >+</button>
       </span>
-
     </div>
   </article>
 </template>

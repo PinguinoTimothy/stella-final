@@ -87,26 +87,64 @@ function edit(it) {
     <section class="panel items-toolbar">
       <p class="isum">
         <span><b>{{ scope.length }}</b>{{ scope.length === 1 ? 'item' : 'items' }}</span>
-        <span v-if="nEmpty" class="warn"><b>{{ nEmpty }}</b>empty</span>
-        <span v-if="totalGp" class="itotal" title="Value of these items: price × quantity"><b>{{ fmtNum(totalGp) }}</b>gp</span>
-        <button v-if="groups.length > 1 && !ui.search" type="button" class="inv-fold-all" @click="toggleAll">
+        <span
+          v-if="nEmpty"
+          class="warn"
+        ><b>{{ nEmpty }}</b>empty</span>
+        <span
+          v-if="totalGp"
+          class="itotal"
+          title="Value of these items: price × quantity"
+        ><b>{{ fmtNum(totalGp) }}</b>gp</span>
+        <button
+          v-if="groups.length > 1 && !ui.search"
+          type="button"
+          class="inv-fold-all"
+          @click="toggleAll"
+        >
           {{ allCollapsed ? 'Expand all' : 'Collapse all' }}
         </button>
       </p>
-      <input v-model="ui.search" class="sr" placeholder="Buscar objetos..." aria-label="Search items">
+      <input
+        v-model="ui.search"
+        class="sr"
+        placeholder="Buscar objetos..."
+        aria-label="Search items"
+      >
       <div class="items-tabs">
-        <button v-for="[id, label] in VIEWS" :key="id" :aria-pressed="ui.itemView === id" @click="ui.itemView = id">{{ label }}</button>
+        <button
+          v-for="[id, label] in VIEWS"
+          :key="id"
+          :aria-pressed="ui.itemView === id"
+          @click="ui.itemView = id"
+        >
+          {{ label }}
+        </button>
       </div>
       <div class="chips">
-        <button v-for="[id, label] in chips" :key="id" class="chip" :aria-selected="ui.owner === id" @click="ui.owner = id">
+        <button
+          v-for="[id, label] in chips"
+          :key="id"
+          class="chip"
+          :aria-selected="ui.owner === id"
+          @click="ui.owner = id"
+        >
           {{ label }} <span class="lv">{{ countFor(id) }}</span>
         </button>
       </div>
     </section>
 
-    <section v-if="!filtered.length" class="panel item-empty">
+    <section
+      v-if="!filtered.length"
+      class="panel item-empty"
+    >
       {{ emptyMsg }}
-      <p v-if="!ui.search && ui.itemView === 'inventory' && !readonly" class="mute">Tap + to add an item.</p>
+      <p
+        v-if="!ui.search && ui.itemView === 'inventory' && !readonly"
+        class="mute"
+      >
+        Tap + to add an item.
+      </p>
     </section>
 
     <template v-else>
@@ -118,14 +156,30 @@ function edit(it) {
         :data-c="g.id"
       >
         <h3 class="inv-sec-h">
-          <button type="button" class="inv-sec-toggle" :aria-expanded="!isCollapsed(g.id)" :aria-controls="`inv-${g.id}`" @click="toggle(g.id)">
-            <span class="inv-chev" aria-hidden="true">▾</span>
+          <button
+            type="button"
+            class="inv-sec-toggle"
+            :aria-expanded="!isCollapsed(g.id)"
+            :aria-controls="`inv-${g.id}`"
+            @click="toggle(g.id)"
+          >
+            <span
+              class="inv-chev"
+              aria-hidden="true"
+            >▾</span>
             <span class="inv-sec-name">{{ g.label }}</span>
             <span class="inv-sec-count">{{ g.items.length }}</span>
-            <span v-if="g.gp" class="inv-sec-gp">{{ fmtNum(g.gp) }} gp</span>
+            <span
+              v-if="g.gp"
+              class="inv-sec-gp"
+            >{{ fmtNum(g.gp) }} gp</span>
           </button>
         </h3>
-        <div v-show="!isCollapsed(g.id)" :id="`inv-${g.id}`" class="inv-list">
+        <div
+          v-show="!isCollapsed(g.id)"
+          :id="`inv-${g.id}`"
+          class="inv-list"
+        >
           <InventoryRow
             v-for="it in g.items"
             :key="it.id"
@@ -138,12 +192,15 @@ function edit(it) {
       </section>
     </template>
 
-    <button data-write
+    <button
       v-if="!readonly"
+      data-write
       class="fab"
       aria-label="Add item"
       @click="form = { item: null }"
-    >+</button>
+    >
+      +
+    </button>
 
     <ItemDetail
       v-if="detail"

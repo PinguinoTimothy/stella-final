@@ -93,26 +93,86 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="tr-root">
-    <button v-if="pos && !panel" type="button" class="tr-fab" :style="buttonStyle" @click="run">Translate</button>
+    <button
+      v-if="pos && !panel"
+      type="button"
+      class="tr-fab"
+      :style="buttonStyle"
+      @click="run"
+    >
+      Translate
+    </button>
 
-    <section v-if="panel" class="tr-panel" role="dialog" aria-label="Translation">
+    <section
+      v-if="panel"
+      class="tr-panel"
+      role="dialog"
+      aria-label="Translation"
+    >
       <header class="tr-head">
         <strong>Translation</strong>
-        <select :value="target" aria-label="Target language" @change="changeLang">
-          <option v-for="[code, name] in LANGS" :key="code" :value="code">{{ name }}</option>
+        <select
+          :value="target"
+          aria-label="Target language"
+          @change="changeLang"
+        >
+          <option
+            v-for="[code, name] in LANGS"
+            :key="code"
+            :value="code"
+          >
+            {{ name }}
+          </option>
         </select>
-        <button type="button" class="tr-x" aria-label="Close translation" @click="close">×</button>
+        <button
+          type="button"
+          class="tr-x"
+          aria-label="Close translation"
+          @click="close"
+        >
+          ×
+        </button>
       </header>
 
-      <p class="tr-original">{{ text }}</p>
+      <p class="tr-original">
+        {{ text }}
+      </p>
 
-      <p v-if="busy" class="tr-state">Translating…</p>
-      <p v-else-if="error" class="tr-error" role="alert">{{ error }}</p>
-      <p v-else-if="result" class="tr-result">{{ result.text }}</p>
+      <p
+        v-if="busy"
+        class="tr-state"
+      >
+        Translating…
+      </p>
+      <p
+        v-else-if="error"
+        class="tr-error"
+        role="alert"
+      >
+        {{ error }}
+      </p>
+      <p
+        v-else-if="result"
+        class="tr-result"
+      >
+        {{ result.text }}
+      </p>
 
-      <footer v-if="result" class="tr-foot">
-        <span class="tr-src" v-if="result.source">From {{ result.source }}</span>
-        <button type="button" class="tr-copy" @click="copy">{{ copied ? 'Copied' : 'Copy' }}</button>
+      <footer
+        v-if="result"
+        class="tr-foot"
+      >
+        <span
+          v-if="result.source"
+          class="tr-src"
+        >From {{ result.source }}</span>
+        <button
+          type="button"
+          class="tr-copy"
+          @click="copy"
+        >
+          {{ copied ? 'Copied' : 'Copy' }}
+        </button>
       </footer>
     </section>
   </div>

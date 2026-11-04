@@ -5,7 +5,12 @@ defineProps({ placeholder: { type: String, default: 'Buscar...' } })
 </script>
 
 <template>
-  <input v-model="model" type="search" :placeholder="placeholder" class="known-catalog-search">
+  <input
+    v-model="model"
+    type="search"
+    :placeholder="placeholder"
+    class="known-catalog-search"
+  >
 </template>
 
 <style scoped>

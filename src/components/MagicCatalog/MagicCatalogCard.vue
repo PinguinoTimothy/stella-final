@@ -15,13 +15,42 @@ const paths: Record<string,string> = {
 const glyph = (kind: string) => paths[kind] || '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16l.7 1.8 1.8.7-1.8.7L19 21l-.7-1.8-1.8-.7 1.8-.7z"/>'
 </script>
 <template>
-  <article class="item-card ic" :data-c="kind === 'Weapon' || kind === 'Armor' || kind === 'Shield' ? 'gear' : ['Wand','Staff','Rod','Metamagic rod'].includes(kind) ? 'charged' : ['Scroll','Potion'].includes(kind) ? 'use' : 'worn'">
+  <article
+    class="item-card ic"
+    :data-c="kind === 'Weapon' || kind === 'Armor' || kind === 'Shield' ? 'gear' : ['Wand','Staff','Rod','Metamagic rod'].includes(kind) ? 'charged' : ['Scroll','Potion'].includes(kind) ? 'use' : 'worn'"
+  >
     <div class="ic-row">
-      <button class="ic-main" type="button" @click="emit('details')">
-        <span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24" v-html="glyph(kind)" /></span>
-        <span class="ic-tx"><span class="ic-t"><span>{{ item.n }}</span></span><span class="ic-m"><span>{{ item.group || 'Magic item' }}</span><span v-if="item.slot && !/^(none|—|-)$/i.test(item.slot)" class="tag">{{ item.slot }}</span></span><span v-if="item.d" class="ic-n">{{ item.d }}</span></span>
+      <button
+        class="ic-main"
+        type="button"
+        @click="emit('details')"
+      >
+        <span
+          class="ti"
+          aria-hidden="true"
+        ><svg
+          viewBox="0 0 24 24"
+          v-html="glyph(kind)"
+        /></span>
+        <span class="ic-tx"><span class="ic-t"><span>{{ item.n }}</span></span><span class="ic-m"><span>{{ item.group || 'Magic item' }}</span><span
+          v-if="item.slot && !/^(none|—|-)$/i.test(item.slot)"
+          class="tag"
+        >{{ item.slot }}</span></span><span
+          v-if="item.d"
+          class="ic-n"
+        >{{ item.d }}</span></span>
       </button>
     </div>
-    <div class="ic-use"><span class="ic-l cat-price">{{ item.price || 'No price' }}</span><button data-write v-if="!readOnly" class="cast" type="button" @click="emit('add')">Add</button></div>
+    <div class="ic-use">
+      <span class="ic-l cat-price">{{ item.price || 'No price' }}</span><button
+        v-if="!readOnly"
+        data-write
+        class="cast"
+        type="button"
+        @click="emit('add')"
+      >
+        Add
+      </button>
+    </div>
   </article>
 </template>

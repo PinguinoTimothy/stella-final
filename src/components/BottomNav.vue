@@ -28,7 +28,10 @@ function go(tab) {
 </script>
 
 <template>
-  <nav class="nav" aria-label="Sections">
+  <nav
+    class="nav"
+    aria-label="Sections"
+  >
     <div
       class="nav-in"
       :style="{ gridTemplateColumns: `repeat(${tabs.length},1fr)` }"
@@ -40,7 +43,11 @@ function go(tab) {
         :aria-selected="active(key)"
         @click="go(key)"
       >
-        <svg viewBox="0 0 24 24" aria-hidden="true" v-html="ICON[key]" ></svg>
+        <svg
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+          v-html="ICON[key]"
+        />
         {{ label }}
       </button>
     </div>

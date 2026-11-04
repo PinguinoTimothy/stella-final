@@ -21,11 +21,10 @@ const money = computed(() => {
 <template>
   <main class="player-view">
     <header class="player-header">
-      <div>
-        <h1>{{ S.name || 'Partida' }}</h1>
-        <p>Vista de jugador · Solo lectura</p>
-      </div>
-      <button type="button" @click="app.loadViewer()">
+      <button
+        type="button"
+        @click="app.loadViewer()"
+      >
         Actualizar
       </button>
     </header>
@@ -39,11 +38,9 @@ const money = computed(() => {
     </p>
 
     <template v-else>
-
-
-<section class="player-inventory">
-  <ItemsView :readonly="true" />
-</section>
+      <section class="player-inventory">
+        <ItemsView :readonly="true" />
+      </section>
 
 
 
@@ -53,3 +50,8 @@ const money = computed(() => {
     </template>
   </main>
 </template>
+<style lang="css" scoped>
+.player-header{
+  margin-bottom: 1rem;
+}
+</style>

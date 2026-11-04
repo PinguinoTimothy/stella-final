@@ -68,31 +68,44 @@ function copy() {
 </script>
 
 <template>
-  <Sheet :title="it.n" @close="emit('close')">
+  <Sheet
+    :title="it.n"
+    @close="emit('close')"
+  >
     <div class="det-head">
-      <span class="ti" aria-hidden="true">
-        <svg viewBox="0 0 24 24" v-html="IGLYPH[it.k] || IGLYPH._"></svg>
+      <span
+        class="ti"
+        aria-hidden="true"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          v-html="IGLYPH[it.k] || IGLYPH._"
+        />
       </span>
       <span class="ic-m">
-        <span class="ic-o">{{ it.owner || "Shared" }}</span
-        ><span>{{ it.k }}</span>
+        <span class="ic-o">{{ it.owner || "Shared" }}</span><span>{{ it.k }}</span>
       </span>
     </div>
 
-    <div v-if="isCharged(it) && !props.readonly" class="det-use">
+    <div
+      v-if="isCharged(it) && !props.readonly"
+      class="det-use"
+    >
       <span class="ic-l">Charges</span>
-      <span class="step" role="group" aria-label="Charges">
-        <button data-write
+      <span
+        class="step"
+        role="group"
+        aria-label="Charges"
+      >
+        <button
+          data-write
           :disabled="curOf(it) <= 0"
           aria-label="Use one charge"
           @click="inv.useCharge(it, -1)"
         >
           −
         </button>
-        <span class="ic-nn"
-          ><b>{{ curOf(it) }}</b
-          >/{{ maxOf(it) }}</span
-        >
+        <span class="ic-nn"><b>{{ curOf(it) }}</b>/{{ maxOf(it) }}</span>
         <button
           :disabled="curOf(it) >= maxOf(it)"
           aria-label="Restore one charge"
@@ -101,34 +114,88 @@ function copy() {
           +
         </button>
       </span>
-      <button data-write v-if="curOf(it) < maxOf(it)" @click="inv.refill(it)">Full</button>
+      <button
+        v-if="curOf(it) < maxOf(it)"
+        data-write
+        @click="inv.refill(it)"
+      >
+        Full
+      </button>
     </div>
-    <div v-else-if="isStack(it) && !props.readonly" class="det-use">
+    <div
+      v-else-if="isStack(it) && !props.readonly"
+      class="det-use"
+    >
       <span class="ic-l">Quantity</span>
-      <span class="step" role="group" aria-label="Quantity">
-        <button data-write aria-label="Use one" @click="inv.adjustQty(it, -1)">−</button>
-        <span class="ic-nn"
-          ><b>{{ qty }}</b></span
-        >
-        <button data-write aria-label="Add one" @click="inv.adjustQty(it, 1)">+</button>
+      <span
+        class="step"
+        role="group"
+        aria-label="Quantity"
+      >
+        <button
+          data-write
+          aria-label="Use one"
+          @click="inv.adjustQty(it, -1)"
+        >−</button>
+        <span class="ic-nn"><b>{{ qty }}</b></span>
+        <button
+          data-write
+          aria-label="Add one"
+          @click="inv.adjustQty(it, 1)"
+        >+</button>
       </span>
     </div>
 
-    <dl v-if="rows.length" class="ic-d">
-      <template v-for="[k, v] in rows" :key="k">
+    <dl
+      v-if="rows.length"
+      class="ic-d"
+    >
+      <template
+        v-for="[k, v] in rows"
+        :key="k"
+      >
         <dt>{{ k }}</dt>
         <dd v-if="k === 'Spell' && it.spellName">
-          <RefLink kind="spell" :name="it.spellName" /><span v-if="it.cl"> (CL {{ it.cl }})</span>
+          <RefLink
+            kind="spell"
+            :name="it.spellName"
+          /><span v-if="it.cl"> (CL {{ it.cl }})</span>
         </dd>
-        <dd v-else>{{ v }}</dd>
+        <dd v-else>
+          {{ v }}
+        </dd>
       </template>
     </dl>
-    <div v-if="it.o" class="item-card-note">{{ it.o }}</div>
+    <div
+      v-if="it.o"
+      class="item-card-note"
+    >
+      {{ it.o }}
+    </div>
 
-    <div v-if="!props.readonly" class="det-actions">
-      <button data-write @click="emit('edit', it)">Edit</button>
-      <button data-write @click="copy">Duplicate</button>
-      <button data-write class="danger" @click="del">Delete</button>
+    <div
+      v-if="!props.readonly"
+      class="det-actions"
+    >
+      <button
+        data-write
+        @click="emit('edit', it)"
+      >
+        Edit
+      </button>
+      <button
+        data-write
+        @click="copy"
+      >
+        Duplicate
+      </button>
+      <button
+        data-write
+        class="danger"
+        @click="del"
+      >
+        Delete
+      </button>
     </div>
   </Sheet>
 </template>

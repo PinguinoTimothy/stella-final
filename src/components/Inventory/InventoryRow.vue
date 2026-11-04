@@ -27,32 +27,83 @@ const value = computed(() => Math.round((Number(props.item.price) || 0) * qty.va
 </script>
 
 <template>
-  <article class="inv-row" :class="{ spent }" :data-c="itemCat(item)">
-    <button type="button" class="inv-main" @click="$emit('open', item)">
-      <span class="inv-glyph" aria-hidden="true"><svg viewBox="0 0 24 24" v-html="glyph" /></span>
+  <article
+    class="inv-row"
+    :class="{ spent }"
+    :data-c="itemCat(item)"
+  >
+    <button
+      type="button"
+      class="inv-main"
+      @click="$emit('open', item)"
+    >
+      <span
+        class="inv-glyph"
+        aria-hidden="true"
+      ><svg
+        viewBox="0 0 24 24"
+        v-html="glyph"
+      /></span>
       <span class="inv-text">
         <span class="inv-name">{{ item.n }}<small v-if="qty > 1 && !stack"> ×{{ qty }}</small></span>
         <span class="inv-meta">
           <span v-if="!hideOwner">{{ item.owner || 'Shared' }}</span>
           <span>{{ item.k || 'Item' }}</span>
           <span v-if="item.slot && item.slot !== item.k">{{ item.slot }}</span>
-          <span v-if="spent" class="inv-empty">empty</span>
+          <span
+            v-if="spent"
+            class="inv-empty"
+          >empty</span>
         </span>
-        <span v-if="item.o" class="inv-note">{{ item.o }}</span>
+        <span
+          v-if="item.o"
+          class="inv-note"
+        >{{ item.o }}</span>
       </span>
     </button>
 
     <div class="inv-side">
-      <span v-if="value" class="inv-value">{{ fmtNum(value) }} gp</span>
-      <span v-if="!readonly && charged" class="step" role="group" aria-label="Charges">
-        <button type="button" :disabled="cur <= 0" aria-label="Use one charge" @click="inv.useCharge(item, -1)">−</button>
+      <span
+        v-if="value"
+        class="inv-value"
+      >{{ fmtNum(value) }} gp</span>
+      <span
+        v-if="!readonly && charged"
+        class="step"
+        role="group"
+        aria-label="Charges"
+      >
+        <button
+          type="button"
+          :disabled="cur <= 0"
+          aria-label="Use one charge"
+          @click="inv.useCharge(item, -1)"
+        >−</button>
         <span class="inv-count"><b>{{ cur }}</b>/{{ max }}</span>
-        <button type="button" :disabled="cur >= max" aria-label="Restore one charge" @click="inv.useCharge(item, 1)">+</button>
+        <button
+          type="button"
+          :disabled="cur >= max"
+          aria-label="Restore one charge"
+          @click="inv.useCharge(item, 1)"
+        >+</button>
       </span>
-      <span v-else-if="!readonly && stack" class="step" role="group" aria-label="Quantity">
-        <button type="button" aria-label="Use one" @click="inv.adjustQty(item, -1)">−</button>
+      <span
+        v-else-if="!readonly && stack"
+        class="step"
+        role="group"
+        aria-label="Quantity"
+      >
+        <button
+          type="button"
+          aria-label="Use one"
+          @click="inv.adjustQty(item, -1)"
+        >−</button>
         <span class="inv-count"><b>{{ qty }}</b></span>
-        <button type="button" aria-label="Add one" @click="inv.adjustQty(item, 1)">+</button>
+        <button
+          type="button"
+          aria-label="Add one"
+          @click="inv.adjustQty(item, 1)"
+        >+</button>
       </span>
     </div>
   </article>

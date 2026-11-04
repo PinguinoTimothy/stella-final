@@ -21,15 +21,52 @@ const status = computed(() => total.value ? (total.value - ex.value) + ' en curs
       <h2>Hechizos activos</h2>
       <span class="mute">{{ status }}</span>
     </div>
-    <button data-write class="cast sr fx-tick" :disabled="!run" @click="fx.tick()">Nueva ronda</button>
+    <button
+      data-write
+      class="cast sr fx-tick"
+      :disabled="!run"
+      @click="fx.tick()"
+    >
+      Nueva ronda
+    </button>
     <div class="grid g3 fx-adv">
-      <button data-write :disabled="!run" @click="fx.skip(10)">+1 min</button>
-      <button data-write :disabled="!run" @click="fx.skip(100)">+10 min</button>
-      <button data-write :disabled="!run" @click="fx.skip(600)">+1 hora</button>
+      <button
+        data-write
+        :disabled="!run"
+        @click="fx.skip(10)"
+      >
+        +1 min
+      </button>
+      <button
+        data-write
+        :disabled="!run"
+        @click="fx.skip(100)"
+      >
+        +10 min
+      </button>
+      <button
+        data-write
+        :disabled="!run"
+        @click="fx.skip(600)"
+      >
+        +1 hora
+      </button>
     </div>
     <div class="fxc fx-tools">
-      <button data-write @click="$emit('toggleAdd')">{{ adding ? 'Cerrar' : 'Nuevo hechizo' }}</button>
-      <button data-write v-if="ex" class="danger" @click="fx.clearExpired()">Clear expired</button>
+      <button
+        data-write
+        @click="$emit('toggleAdd')"
+      >
+        {{ adding ? 'Cerrar' : 'Nuevo hechizo' }}
+      </button>
+      <button
+        v-if="ex"
+        data-write
+        class="danger"
+        @click="fx.clearExpired()"
+      >
+        Clear expired
+      </button>
     </div>
   </section>
 </template>

@@ -15,9 +15,17 @@ const list = computed(() => {
 
 <template>
   <div class="spell-list">
-    <p v-if="!list.length" class="mute">
+    <p
+      v-if="!list.length"
+      class="mute"
+    >
       {{ cast.prepareMode ? 'No hay conjuros registrados en este nivel.' : 'No hay conjuros preparados o conocidos en este nivel.' }}
     </p>
-    <SpellRow v-for="spell in list" :key="spell.n" :level="level" :spell="spell" />
+    <SpellRow
+      v-for="spell in list"
+      :key="spell.n"
+      :level="level"
+      :spell="spell"
+    />
   </div>
 </template>

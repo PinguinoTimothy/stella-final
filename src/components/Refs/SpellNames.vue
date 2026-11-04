@@ -9,8 +9,14 @@ const items = computed(() => splitNames(props.list))
 
 <template>
   <span>
-    <template v-for="(s, i) in items" :key="i">
-      <RefLink kind="spell" :name="s.name" />
+    <template
+      v-for="(s, i) in items"
+      :key="i"
+    >
+      <RefLink
+        kind="spell"
+        :name="s.name"
+      />
       <span v-if="s.note"> {{ s.note }}</span>
       <span v-if="i < items.length - 1">, </span>
     </template>

@@ -9,8 +9,15 @@ const parts = computed(() => textParts(props.text))
 
 <template>
   <span>
-    <template v-for="(p, i) in parts" :key="i">
-      <RefLink v-if="p.condition" kind="condition" :name="p.text" />
+    <template
+      v-for="(p, i) in parts"
+      :key="i"
+    >
+      <RefLink
+        v-if="p.condition"
+        kind="condition"
+        :name="p.text"
+      />
       <template v-else>{{ p.text }}</template>
     </template>
   </span>

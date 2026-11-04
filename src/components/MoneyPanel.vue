@@ -173,9 +173,15 @@ function spendMoney() {
       </span>
     </div>
 
-    <div v-if="expanded & !readonly" class="wal-x">
+    <div
+      v-if="expanded & !readonly"
+      class="wal-x"
+    >
       <div class="coin-in">
-        <label v-for="coin in coins" :key="coin">
+        <label
+          v-for="coin in coins"
+          :key="coin"
+        >
           {{ coin }}
           <input
             v-model.number="amounts[coin]"
@@ -188,11 +194,23 @@ function spendMoney() {
         </label>
       </div>
 
-      <div class="grid g2" v-if="!readonly">
-        <button data-write class="cast" type="button" @click="addMoney">
+      <div
+        v-if="!readonly"
+        class="grid g2"
+      >
+        <button
+          data-write
+          class="cast"
+          type="button"
+          @click="addMoney"
+        >
           Add
         </button>
-        <button data-write type="button" @click="spendMoney">
+        <button
+          data-write
+          type="button"
+          @click="spendMoney"
+        >
           Spend
         </button>
       </div>

@@ -104,10 +104,17 @@ const title = computed(() => titles[app.ui.tab] || (app.viewer ? app.ui.tab : ''
     <DmLoginView v-if="app.mode === 'dm'" />
     <LoginView v-else />
   </template>
-    <template v-else>
+  <template v-else>
     <BottomNav />
-    <component :is="view" v-if="view" v-bind="viewProps" />
-    <PlaceholderView v-else :title="title" />
+    <component
+      :is="view"
+      v-if="view"
+      v-bind="viewProps"
+    />
+    <PlaceholderView
+      v-else
+      :title="title"
+    />
     <ToastHost />
     <template v-if="app.mode !== 'player'">
       <CombatTray />
@@ -115,6 +122,6 @@ const title = computed(() => titles[app.ui.tab] || (app.viewer ? app.ui.tab : ''
     </template>
     <ConfirmDialog />
     <ReferenceSearch />
-          <PeekSheet />
+    <PeekSheet />
   </template>
 </template>

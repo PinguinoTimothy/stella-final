@@ -33,9 +33,14 @@ async function submit() {
 
 <template>
   <main class="login">
-    <form class="panel login-card" @submit.prevent="submit">
+    <form
+      class="panel login-card"
+      @submit.prevent="submit"
+    >
       <h1>Admin</h1>
-      <p class="mute">Sign in to manage the game.</p>
+      <p class="mute">
+        Sign in to manage the game.
+      </p>
 
       <input
         v-model="email"
@@ -57,9 +62,21 @@ async function submit() {
         :disabled="busy"
       >
 
-      <p v-if="error" class="login-err" role="alert">{{ error }}</p>
+      <p
+        v-if="error"
+        class="login-err"
+        role="alert"
+      >
+        {{ error }}
+      </p>
 
-      <button class="cast" type="submit" :disabled="busy">{{ busy ? 'Signing in…' : 'Sign in' }}</button>
+      <button
+        class="cast"
+        type="submit"
+        :disabled="busy"
+      >
+        {{ busy ? 'Signing in…' : 'Sign in' }}
+      </button>
     </form>
   </main>
 </template>

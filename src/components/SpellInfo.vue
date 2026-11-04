@@ -19,7 +19,18 @@ const url = computed(() => 'https://aonprd.com/SpellDisplay.aspx?ItemName=' + en
 </script>
 
 <template>
-  <div class="mute"><template v-for="(l, i) in lines" :key="i"><br v-if="i">{{ l }}</template></div>
+  <div class="mute">
+    <template
+      v-for="(l, i) in lines"
+      :key="i"
+    >
+      <br v-if="i">{{ l }}
+    </template>
+  </div>
   <div><LinkedText :text="spell.d" /></div>
-  <a :href="url" target="_blank" rel="noopener">Open on Archives of Nethys</a>
+  <a
+    :href="url"
+    target="_blank"
+    rel="noopener"
+  >Open on Archives of Nethys</a>
 </template>

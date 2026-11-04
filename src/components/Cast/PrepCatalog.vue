@@ -13,15 +13,37 @@ const results = computed(() => catalog.catalogFor(cast.characterClass, props.lev
 
 <template>
   <div class="catalog">
-    <CatalogSearch v-model="catalog.search" placeholder="Buscar conjuro..." />
-    <div v-if="catalog.search.trim().length >= 2" class="catalog-results">
-      <button data-write v-for="spell in results" :key="spell.n" type="button" @click="cast.addSpell(cast.characterClass, level, spell)">
+    <CatalogSearch
+      v-model="catalog.search"
+      placeholder="Buscar conjuro..."
+    />
+    <div
+      v-if="catalog.search.trim().length >= 2"
+      class="catalog-results"
+    >
+      <button
+        v-for="spell in results"
+        :key="spell.n"
+        data-write
+        type="button"
+        @click="cast.addSpell(cast.characterClass, level, spell)"
+      >
         <span>{{ spell.n }}</span>
         <span class="mute">Añadir +</span>
       </button>
-      <p v-if="!results.length" class="mute">No hay resultados para esta búsqueda.</p>
+      <p
+        v-if="!results.length"
+        class="mute"
+      >
+        No hay resultados para esta búsqueda.
+      </p>
     </div>
   </div>
 
-  <p v-if="catalog.loading" class="mute">Cargando conjuros de este nivel...</p>
+  <p
+    v-if="catalog.loading"
+    class="mute"
+  >
+    Cargando conjuros de este nivel...
+  </p>
 </template>

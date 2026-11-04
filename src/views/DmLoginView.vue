@@ -27,10 +27,18 @@ async function unlock() {
 
 <template>
   <section class="dm-login">
-    <h2 class="pg">Dungeon Master</h2>
-    <p class="mute">Enter the 6-digit code.</p>
-    <form class="panel grid" data-ro-ok @submit.prevent="unlock">
-              <input
+    <h2 class="pg">
+      Dungeon Master
+    </h2>
+    <p class="mute">
+      Enter the 6-digit code.
+    </p>
+    <form
+      class="panel grid"
+      data-ro-ok
+      @submit.prevent="unlock"
+    >
+      <input
         v-model="pin"
         type="password"
         inputmode="numeric"
@@ -39,8 +47,20 @@ async function unlock() {
         placeholder="····"
         aria-label="Code"
       >
-      <p v-if="error" class="mute" role="alert">{{ error }}</p>
-      <button class="cast" type="submit" :disabled="busy">Unlock</button>
+      <p
+        v-if="error"
+        class="mute"
+        role="alert"
+      >
+        {{ error }}
+      </p>
+      <button
+        class="cast"
+        type="submit"
+        :disabled="busy"
+      >
+        Unlock
+      </button>
     </form>
   </section>
 </template>

@@ -11,14 +11,26 @@ const time = computed(() => e.value.rem === null ? 'no limit' : expired.value ? 
 </script>
 
 <template>
-  <div class="fx" :class="[e.k, { exp: expired }]">
+  <div
+    class="fx"
+    :class="[e.k, { exp: expired }]"
+  >
     <div class="row">
       <span class="fxn">
         <b>{{ e.n }}</b>
-        <span v-if="targets.length" class="fxg"><span v-for="t in targets" :key="t" class="tag">{{ t }}</span></span>
+        <span
+          v-if="targets.length"
+          class="fxg"
+        ><span
+          v-for="t in targets"
+          :key="t"
+          class="tag"
+        >{{ t }}</span></span>
       </span>
       <span class="fxt">{{ time }}</span>
     </div>
-    <div class="bar"><i :style="{ width: fxPct(e) + '%' }" /></div>
+    <div class="bar">
+      <i :style="{ width: fxPct(e) + '%' }" />
+    </div>
   </div>
 </template>

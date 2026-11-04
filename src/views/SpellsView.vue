@@ -122,7 +122,9 @@ onBeforeUnmount(() => {
     <header class="spells-heading">
       <div>
         <h1>Spells</h1>
-        <p class="mute">Catálogo de conjuros · Pathfinder 1.ª edición</p>
+        <p class="mute">
+          Catálogo de conjuros · Pathfinder 1.ª edición
+        </p>
       </div>
       <span class="spells-count">{{ count }}</span>
     </header>
@@ -143,7 +145,11 @@ onBeforeUnmount(() => {
           Escuela
           <select v-model="school">
             <option value="">Todas</option>
-            <option v-for="s in schools" :key="s" :value="s">
+            <option
+              v-for="s in schools"
+              :key="s"
+              :value="s"
+            >
               {{ s }}
             </option>
           </select>
@@ -202,29 +208,49 @@ onBeforeUnmount(() => {
       </button>
     </section>
 
-    <section v-if="store.loading && !results.length" class="panel mute">
+    <section
+      v-if="store.loading && !results.length"
+      class="panel mute"
+    >
       Cargando catálogo…
     </section>
 
-    <section v-else-if="store.error" class="panel spells-empty">
+    <section
+      v-else-if="store.error"
+      class="panel spells-empty"
+    >
       <h2>No se pudo cargar el catálogo</h2>
-      <p class="mute">{{ store.error }}</p>
-      <button type="button" @click="store.load(true)">
+      <p class="mute">
+        {{ store.error }}
+      </p>
+      <button
+        type="button"
+        @click="store.load(true)"
+      >
         Reintentar
       </button>
     </section>
 
-    <section v-else-if="!results.length" class="panel spells-empty">
+    <section
+      v-else-if="!results.length"
+      class="panel spells-empty"
+    >
       <h2>No hay resultados</h2>
       <p class="mute">
         Prueba con otro término o elimina alguno de los filtros.
       </p>
-      <button type="button" @click="clearFilters">
+      <button
+        type="button"
+        @click="clearFilters"
+      >
         Limpiar búsqueda y filtros
       </button>
     </section>
 
-    <section v-else class="spells-results">
+    <section
+      v-else
+      class="spells-results"
+    >
       <article
         v-for="spell in results"
         :key="spell.id || spell.n"
@@ -267,24 +293,42 @@ onBeforeUnmount(() => {
             <div><small>Rating</small><b>{{ display(spell.rt) }}</b></div>
           </div>
 
-          <p v-if="spell.d" class="spells-description">
+          <p
+            v-if="spell.d"
+            class="spells-description"
+          >
             {{ spell.d }}
           </p>
 
-          <p v-if="spell.src" class="mute spells-source">
+          <p
+            v-if="spell.src"
+            class="mute spells-source"
+          >
             Fuente: {{ spell.src }}
           </p>
         </div>
       </article>
 
-      <div ref="sentinel" class="spells-sentinel">
-        <span v-if="store.loadingMore" class="mute">
+      <div
+        ref="sentinel"
+        class="spells-sentinel"
+      >
+        <span
+          v-if="store.loadingMore"
+          class="mute"
+        >
           Cargando más conjuros…
         </span>
-        <span v-else-if="store.hasMore" class="mute">
+        <span
+          v-else-if="store.hasMore"
+          class="mute"
+        >
           Desplázate para cargar más
         </span>
-        <span v-else class="mute">
+        <span
+          v-else
+          class="mute"
+        >
           Has llegado al final del catálogo
         </span>
       </div>

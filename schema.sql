@@ -1,12 +1,22 @@
 -- =====================================================================
 --  PF1e tracker · esquema relacional
 --  Pégalo entero en Supabase > SQL Editor y ejecútalo UNA vez.
---  Cambia el email de public.is_admin() si usas otro.
+--  Después añade tu UUID a public.app_admins (ver más abajo).
 -- =====================================================================
 
 -- ¿es el admin? (toda la seguridad de escritura pasa por aquí)
+-- Se decide por UUID de usuario, no por email. Tras ejecutar este esquema, añade tu id:
+--   insert into public.app_admins (user_id) values ('<TU-UUID>');   -- Authentication > Users > User UID
+create table public.app_admins (
+  user_id uuid primary key references auth.users(id) on delete cascade
+);
+alter table public.app_admins enable row level security;   -- sin políticas: la API no la ve
+revoke all on public.app_admins from anon, authenticated;
+
 create or replace function public.is_admin() returns boolean
-language sql stable as $$ select (auth.jwt() ->> 'email') = 'ianrodriguezocampo@gmail.com' $$;
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.app_admins where user_id = auth.uid())
+$$;
 
 -- ---------- control de versión (detecta conflictos entre dispositivos)
 create table public.sync_state (
@@ -214,4 +224,5 @@ begin
   update sync_state set rev = rev + 1, updated_at = now() where id = 'main' returning rev into cur;
   return cur;
 end $$;
+revoke all on function public.apply_changes(bigint, jsonb, boolean) from public, anon;
 grant execute on function public.apply_changes(bigint, jsonb, boolean) to authenticated;

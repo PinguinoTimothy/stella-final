@@ -89,8 +89,13 @@ onUnmounted(() => {
     <header class="sb-head">
       <div class="sb-title">
         <div class="sb-name-wrap">
-          <h3 class="sb-name">{{ card.displayName || card.name }}</h3>
-          <p v-if="card.isMythic" class="sb-mythic-meta">
+          <h3 class="sb-name">
+            {{ card.displayName || card.name }}
+          </h3>
+          <p
+            v-if="card.isMythic"
+            class="sb-mythic-meta"
+          >
             <span class="sb-mythic-badge">Mythic</span>
             <span v-if="card.mythicRank != null">MR {{ card.mythicRank }}</span>
             <span v-if="card.title1 && card.title2 && card.title1 !== card.title2">Base: {{ card.title1 }}</span>
@@ -106,7 +111,7 @@ onUnmounted(() => {
         >
           <img
             class="cc-art"
-:src="monsterArtUrl(card.title2 || card.name)"
+            :src="monsterArtUrl(card.title2 || card.name)"
             :alt="card.name"
             loading="lazy"
             @error="broken = true"
@@ -122,17 +127,30 @@ onUnmounted(() => {
       <span class="sb-cr"><small>CR</small>{{ card.cr }}</span>
     </header>
 
-    <p v-if="card.descShort" class="sb-intro">{{ card.descShort }}</p>
+    <p
+      v-if="card.descShort"
+      class="sb-intro"
+    >
+      {{ card.descShort }}
+    </p>
 
     <dl class="sb-facts">
-      <div v-if="card.init != null"><dt>Init</dt><dd>{{ signed(card.init) }}</dd></div>
-      <div v-if="card.senses.length"><dt>Senses</dt><dd>{{ joinList(card.senses) }}</dd></div>
-      <div v-if="card.auras.length"><dt>Aura</dt><dd>{{ joinList(card.auras) }}</dd></div>
+      <div v-if="card.init != null">
+        <dt>Init</dt><dd>{{ signed(card.init) }}</dd>
+      </div>
+      <div v-if="card.senses.length">
+        <dt>Senses</dt><dd>{{ joinList(card.senses) }}</dd>
+      </div>
+      <div v-if="card.auras.length">
+        <dt>Aura</dt><dd>{{ joinList(card.auras) }}</dd>
+      </div>
     </dl>
 
     <!-- DEFENSE -->
     <section class="sb-sec">
-      <h4 class="sb-h">Defense</h4>
+      <h4 class="sb-h">
+        Defense
+      </h4>
       <div class="sb-tiles">
         <div class="sb-tile">
           <span>AC</span><b>{{ card.ac ?? '—' }}</b>
@@ -143,63 +161,133 @@ onUnmounted(() => {
           <span>HP</span><b>{{ card.hp ?? '—' }}</b>
           <small v-if="card.hpLong">{{ card.hpLong }}</small>
         </div>
-        <div class="sb-tile"><span>Fort</span><b>{{ signed(card.saves.fort) }}</b></div>
-        <div class="sb-tile"><span>Ref</span><b>{{ signed(card.saves.ref) }}</b></div>
-        <div class="sb-tile"><span>Will</span><b>{{ signed(card.saves.will) }}</b></div>
+        <div class="sb-tile">
+          <span>Fort</span><b>{{ signed(card.saves.fort) }}</b>
+        </div>
+        <div class="sb-tile">
+          <span>Ref</span><b>{{ signed(card.saves.ref) }}</b>
+        </div>
+        <div class="sb-tile">
+          <span>Will</span><b>{{ signed(card.saves.will) }}</b>
+        </div>
       </div>
-      <dl v-if="hasDefense(card)" class="sb-lines">
-        <div v-if="card.dr.length"><dt>DR</dt><dd>{{ joinList(card.dr) }}</dd></div>
-        <div v-if="card.immunities.length"><dt>Immune</dt><dd>{{ joinList(card.immunities) }}</dd></div>
-        <div v-if="card.resistances.length"><dt>Resist</dt><dd>{{ joinList(card.resistances) }}</dd></div>
-        <div v-if="card.sr != null"><dt>SR</dt><dd>{{ card.sr }}</dd></div>
-        <div v-if="card.weaknesses.length"><dt>Weaknesses</dt><dd>{{ joinList(card.weaknesses) }}</dd></div>
-        <div v-if="card.defensiveAbilities.length"><dt>Defensive Abilities</dt><dd>{{ joinList(card.defensiveAbilities) }}</dd></div>
+      <dl
+        v-if="hasDefense(card)"
+        class="sb-lines"
+      >
+        <div v-if="card.dr.length">
+          <dt>DR</dt><dd>{{ joinList(card.dr) }}</dd>
+        </div>
+        <div v-if="card.immunities.length">
+          <dt>Immune</dt><dd>{{ joinList(card.immunities) }}</dd>
+        </div>
+        <div v-if="card.resistances.length">
+          <dt>Resist</dt><dd>{{ joinList(card.resistances) }}</dd>
+        </div>
+        <div v-if="card.sr != null">
+          <dt>SR</dt><dd>{{ card.sr }}</dd>
+        </div>
+        <div v-if="card.weaknesses.length">
+          <dt>Weaknesses</dt><dd>{{ joinList(card.weaknesses) }}</dd>
+        </div>
+        <div v-if="card.defensiveAbilities.length">
+          <dt>Defensive Abilities</dt><dd>{{ joinList(card.defensiveAbilities) }}</dd>
+        </div>
       </dl>
     </section>
 
     <!-- OFFENSE -->
     <section class="sb-sec">
-      <h4 class="sb-h">Offense</h4>
+      <h4 class="sb-h">
+        Offense
+      </h4>
       <dl class="sb-lines">
         <div><dt>Speed</dt><dd>{{ card.speeds || '—' }}</dd></div>
         <div><dt>Space / Reach</dt><dd>{{ card.reachText }}</dd></div>
       </dl>
 
-      <div v-for="g in card.attacks" :key="g.kind" class="sb-atk">
-        <h5 class="sb-atk-kind">{{ kindLabel(g.kind) }}</h5>
+      <div
+        v-for="g in card.attacks"
+        :key="g.kind"
+        class="sb-atk"
+      >
+        <h5 class="sb-atk-kind">
+          {{ kindLabel(g.kind) }}
+        </h5>
         <ul>
-          <li v-for="(line, i) in g.lines" :key="i">{{ line }}</li>
+          <li
+            v-for="(line, i) in g.lines"
+            :key="i"
+          >
+            {{ line }}
+          </li>
         </ul>
       </div>
-      <p v-if="!card.attacks.length" class="sb-none">No attacks listed.</p>
+      <p
+        v-if="!card.attacks.length"
+        class="sb-none"
+      >
+        No attacks listed.
+      </p>
 
-      <div v-if="card.sla" class="sb-spells">
-        <h5 class="sb-atk-kind">Spell-Like Abilities<template v-if="card.sla.cl"> (CL {{ card.sla.cl }})</template></h5>
+      <div
+        v-if="card.sla"
+        class="sb-spells"
+      >
+        <h5 class="sb-atk-kind">
+          Spell-Like Abilities<template v-if="card.sla.cl">
+            (CL {{ card.sla.cl }})
+          </template>
+        </h5>
         <ul>
-          <li v-for="g in card.sla.groups" :key="g.freq"><b>{{ g.freq }}</b> <SpellNames :list="g.items" /></li>
+          <li
+            v-for="g in card.sla.groups"
+            :key="g.freq"
+          >
+            <b>{{ g.freq }}</b> <SpellNames :list="g.items" />
+          </li>
         </ul>
       </div>
 
-      <div v-if="card.spells" class="sb-spells">
-        <h5 class="sb-atk-kind">Spells Known<template v-if="card.spells.cl"> (CL {{ card.spells.cl }})</template></h5>
+      <div
+        v-if="card.spells"
+        class="sb-spells"
+      >
+        <h5 class="sb-atk-kind">
+          Spells Known<template v-if="card.spells.cl">
+            (CL {{ card.spells.cl }})
+          </template>
+        </h5>
         <ul>
-          <li v-for="r in card.spells.rows" :key="r.head"><b>{{ r.head }}</b> <SpellNames :list="r.items" /></li>
+          <li
+            v-for="r in card.spells.rows"
+            :key="r.head"
+          >
+            <b>{{ r.head }}</b> <SpellNames :list="r.items" />
+          </li>
         </ul>
       </div>
     </section>
 
     <!-- STATISTICS -->
     <section class="sb-sec">
-      <h4 class="sb-h">Statistics</h4>
+      <h4 class="sb-h">
+        Statistics
+      </h4>
       <div class="sb-abil">
-        <div v-for="[k, v] in card.abilities" :key="k">
+        <div
+          v-for="[k, v] in card.abilities"
+          :key="k"
+        >
           <span>{{ k }}</span>
           <b>{{ v }}</b>
           <small>{{ signed(abilityMod(v)) }}</small>
         </div>
       </div>
       <div class="sb-tiles sb-tiles-combat">
-        <div class="sb-tile"><span>Base Atk</span><b>{{ signed(card.bab) }}</b></div>
+        <div class="sb-tile">
+          <span>Base Atk</span><b>{{ signed(card.bab) }}</b>
+        </div>
         <div class="sb-tile">
           <span>CMB</span><b>{{ signed(card.cmb) }}</b>
           <small v-if="card.cmbOther">{{ card.cmbOther }}</small>
@@ -210,36 +298,82 @@ onUnmounted(() => {
         </div>
       </div>
       <dl class="sb-lines">
-        <div v-if="card.feats.length"><dt>Feats</dt><dd class="sb-feats"><template v-for="(feat, i) in card.feats" :key="`${feat.name}-${i}`"><span>{{ feat.name }}<small v-if="feat.isMythic" class="sb-feat-mythic">Mythic</small></span><span v-if="i < card.feats.length - 1">, </span></template></dd></div>
-        <div v-if="card.skills.length"><dt>Skills</dt><dd>{{ joinList(card.skills) }}</dd></div>
-        <div v-if="card.languages.length"><dt>Languages</dt><dd>{{ joinList(card.languages) }}</dd></div>
-        <div v-if="card.specialQualities.length"><dt>Special Qualities</dt><dd>{{ joinList(card.specialQualities) }}</dd></div>
+        <div v-if="card.feats.length">
+          <dt>Feats</dt><dd class="sb-feats">
+            <template
+              v-for="(feat, i) in card.feats"
+              :key="`${feat.name}-${i}`"
+            >
+              <span>{{ feat.name }}<small
+                v-if="feat.isMythic"
+                class="sb-feat-mythic"
+              >Mythic</small></span><span v-if="i < card.feats.length - 1">, </span>
+            </template>
+          </dd>
+        </div>
+        <div v-if="card.skills.length">
+          <dt>Skills</dt><dd>{{ joinList(card.skills) }}</dd>
+        </div>
+        <div v-if="card.languages.length">
+          <dt>Languages</dt><dd>{{ joinList(card.languages) }}</dd>
+        </div>
+        <div v-if="card.specialQualities.length">
+          <dt>Special Qualities</dt><dd>{{ joinList(card.specialQualities) }}</dd>
+        </div>
       </dl>
     </section>
 
     <!-- SPECIAL ABILITIES -->
-    <section v-if="card.specialAbilities.length" class="sb-sec">
-      <h4 class="sb-h">Special Abilities</h4>
-      <div v-for="a in card.specialAbilities" :key="a.name" class="sb-special">
+    <section
+      v-if="card.specialAbilities.length"
+      class="sb-sec"
+    >
+      <h4 class="sb-h">
+        Special Abilities
+      </h4>
+      <div
+        v-for="a in card.specialAbilities"
+        :key="a.name"
+        class="sb-special"
+      >
         <h5>{{ a.name }}</h5>
         <p><LinkedText :text="a.text" /></p>
       </div>
     </section>
 
     <!-- GEAR AND SOURCE -->
-    <section v-if="card.combatGear || card.otherGear" class="sb-sec">
-      <h4 class="sb-h">Gear</h4>
+    <section
+      v-if="card.combatGear || card.otherGear"
+      class="sb-sec"
+    >
+      <h4 class="sb-h">
+        Gear
+      </h4>
       <dl class="sb-lines">
-        <div v-if="card.combatGear"><dt>Combat Gear</dt><dd>{{ card.combatGear }}</dd></div>
-        <div v-if="card.otherGear"><dt>Other Gear</dt><dd>{{ card.otherGear }}</dd></div>
+        <div v-if="card.combatGear">
+          <dt>Combat Gear</dt><dd>{{ card.combatGear }}</dd>
+        </div>
+        <div v-if="card.otherGear">
+          <dt>Other Gear</dt><dd>{{ card.otherGear }}</dd>
+        </div>
       </dl>
     </section>
 
-    <p v-if="card.source" class="sb-source">Source: {{ card.source }}</p>
+    <p
+      v-if="card.source"
+      class="sb-source"
+    >
+      Source: {{ card.source }}
+    </p>
 
-    <details v-if="card.descLong" class="sb-desc">
+    <details
+      v-if="card.descLong"
+      class="sb-desc"
+    >
       <summary>Description</summary>
-      <p v-if="card.descShort">{{ card.descShort }}</p>
+      <p v-if="card.descShort">
+        {{ card.descShort }}
+      </p>
       <p>{{ card.descLong }}</p>
     </details>
 
@@ -257,14 +391,24 @@ onUnmounted(() => {
         @touchmove="onTouchMove"
         @touchend="onTouchEnd"
       >
-        <button type="button" class="art-zoom-close" aria-label="Cerrar" @click="zoom = false">×</button>
+        <button
+          type="button"
+          class="art-zoom-close"
+          aria-label="Cerrar"
+          @click="zoom = false"
+        >
+          ×
+        </button>
 
-        <div class="art-zoom-scroll" @click.self="onBackdrop">
+        <div
+          class="art-zoom-scroll"
+          @click.self="onBackdrop"
+        >
           <img
             ref="imgEl"
             class="art-zoom-img"
             :style="scale > 1 ? { width: `${baseW * scale}px` } : null"
-:src="monsterArtUrl(card.title2 || card.name)"
+            :src="monsterArtUrl(card.title2 || card.name)"
             :alt="card.name"
             draggable="false"
             @click.stop
@@ -273,9 +417,29 @@ onUnmounted(() => {
         </div>
 
         <div class="art-zoom-bar">
-          <button type="button" aria-label="Alejar" :disabled="scale <= MIN" @click="zoomOut">−</button>
-          <button type="button" class="art-zoom-pct" @click="reset">{{ Math.round(scale * 100) }}%</button>
-          <button type="button" aria-label="Acercar" :disabled="scale >= MAX" @click="zoomIn">+</button>
+          <button
+            type="button"
+            aria-label="Alejar"
+            :disabled="scale <= MIN"
+            @click="zoomOut"
+          >
+            −
+          </button>
+          <button
+            type="button"
+            class="art-zoom-pct"
+            @click="reset"
+          >
+            {{ Math.round(scale * 100) }}%
+          </button>
+          <button
+            type="button"
+            aria-label="Acercar"
+            :disabled="scale >= MAX"
+            @click="zoomIn"
+          >
+            +
+          </button>
         </div>
       </div>
     </Teleport>

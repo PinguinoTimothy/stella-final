@@ -125,21 +125,49 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="mv" role="dialog" aria-modal="true" :aria-label="title">
+  <div
+    class="mv"
+    role="dialog"
+    aria-modal="true"
+    :aria-label="title"
+  >
     <header class="mv-bar">
-      <button type="button" class="mv-btn" aria-label="Close" @click="emit('close')">×</button>
+      <button
+        type="button"
+        class="mv-btn"
+        aria-label="Close"
+        @click="emit('close')"
+      >
+        ×
+      </button>
       <strong class="mv-title">{{ title }}</strong>
-      <button v-if="hasBook && hasMap" type="button" class="mv-mapbtn" :aria-pressed="showMap" @click="showMap = !showMap">
+      <button
+        v-if="hasBook && hasMap"
+        type="button"
+        class="mv-mapbtn"
+        :aria-pressed="showMap"
+        @click="showMap = !showMap"
+      >
         {{ showMap ? 'Hide map' : 'Map' }}
       </button>
     </header>
 
     <div class="mv-body">
-      <section v-if="hasBook" class="mv-reader">
-        <BookReader :key="book.id" :book-id="book.id" :boxes="book.boxes || []" />
+      <section
+        v-if="hasBook"
+        class="mv-reader"
+      >
+        <BookReader
+          :key="book.id"
+          :book-id="book.id"
+          :boxes="book.boxes || []"
+        />
       </section>
 
-      <div v-if="hasMap && (mapFull || showMap)" :class="mapFull ? 'mv-map-full' : 'mv-map-float'">
+      <div
+        v-if="hasMap && (mapFull || showMap)"
+        :class="mapFull ? 'mv-map-full' : 'mv-map-float'"
+      >
         <div
           ref="stage"
           class="mv-stage"
@@ -148,18 +176,61 @@ onBeforeUnmount(() => {
           @pointerup="onPanEnd"
           @pointercancel="onPanEnd"
         >
-          <p v-if="status" class="mv-status">{{ status }}</p>
-          <div v-show="!status" class="mv-page">
-            <canvas ref="canvas" class="mv-canvas"></canvas>
+          <p
+            v-if="status"
+            class="mv-status"
+          >
+            {{ status }}
+          </p>
+          <div
+            v-show="!status"
+            class="mv-page"
+          >
+            <canvas
+              ref="canvas"
+              class="mv-canvas"
+            />
           </div>
         </div>
 
         <footer class="mv-bar mv-foot">
-          <button type="button" class="mv-btn" :disabled="page <= 1" aria-label="Previous map page" @click="go(-1)">‹</button>
-          <button type="button" class="mv-btn" :disabled="zoomIdx === 0" aria-label="Zoom out map" @click="zoom(-1)">−</button>
+          <button
+            type="button"
+            class="mv-btn"
+            :disabled="page <= 1"
+            aria-label="Previous map page"
+            @click="go(-1)"
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            class="mv-btn"
+            :disabled="zoomIdx === 0"
+            aria-label="Zoom out map"
+            @click="zoom(-1)"
+          >
+            −
+          </button>
           <span class="mv-zoom">{{ ZOOMS[zoomIdx] * 100 }}%</span>
-          <button type="button" class="mv-btn" :disabled="zoomIdx === ZOOMS.length - 1" aria-label="Zoom in map" @click="zoom(1)">+</button>
-          <button type="button" class="mv-btn" :disabled="page >= pages" aria-label="Next map page" @click="go(1)">›</button>
+          <button
+            type="button"
+            class="mv-btn"
+            :disabled="zoomIdx === ZOOMS.length - 1"
+            aria-label="Zoom in map"
+            @click="zoom(1)"
+          >
+            +
+          </button>
+          <button
+            type="button"
+            class="mv-btn"
+            :disabled="page >= pages"
+            aria-label="Next map page"
+            @click="go(1)"
+          >
+            ›
+          </button>
         </footer>
       </div>
     </div>

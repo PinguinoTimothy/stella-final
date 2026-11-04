@@ -226,18 +226,29 @@ function removeSchool(index, schoolIndex) {
 
 <template>
   <BackButton />
-  <h2 class="pg">Setup</h2>
-  <p class="mute">Character, spellcasting classes, slots, domains and school DC bonuses.</p>
+  <h2 class="pg">
+    Setup
+  </h2>
+  <p class="mute">
+    Character, spellcasting classes, slots, domains and school DC bonuses.
+  </p>
 
   <section class="panel grid">
     <h3>Character</h3>
     <label>
       Character name
-      <input :value="app.S.name" placeholder="Character name" @change="updateName">
+      <input
+        :value="app.S.name"
+        placeholder="Character name"
+        @change="updateName"
+      >
     </label>
   </section>
 
-  <section v-if="!classes.length" class="panel">
+  <section
+    v-if="!classes.length"
+    class="panel"
+  >
     <h3>No spellcasting classes</h3>
     <p class="mute">
       Add a class to set its slots and use Cast. You can start from a class table
@@ -259,22 +270,39 @@ function removeSchool(index, schoolIndex) {
     </summary>
 
     <div class="grid setup-fields">
-      <p v-if="slotSummary(c)" class="setup-summary">
+      <p
+        v-if="slotSummary(c)"
+        class="setup-summary"
+      >
         Slots: {{ slotSummary(c) }}
-        <span v-if="c.dom" class="tag dom">domain slot</span>
+        <span
+          v-if="c.dom"
+          class="tag dom"
+        >domain slot</span>
       </p>
 
       <label>
         Class name
-        <input :value="c.name" placeholder="e.g. Wizard" @change="updateText(index, 'name', $event)">
+        <input
+          :value="c.name"
+          placeholder="e.g. Wizard"
+          @change="updateText(index, 'name', $event)"
+        >
       </label>
 
       <div class="grid g2">
         <label>
           Class table
-          <select :value="c.pre" @change="changePreset(index, $event)">
+          <select
+            :value="c.pre"
+            @change="changePreset(index, $event)"
+          >
             <option value="">Custom (manual)</option>
-            <option v-for="[key, preset] in PRESETS" :key="key" :value="key">
+            <option
+              v-for="[key, preset] in PRESETS"
+              :key="key"
+              :value="key"
+            >
               {{ preset.n }}
             </option>
           </select>
@@ -283,7 +311,10 @@ function removeSchool(index, schoolIndex) {
         <label>
           Class level
           <input
-            type="number" min="1" max="20" inputmode="numeric"
+            type="number"
+            min="1"
+            max="20"
+            inputmode="numeric"
             :value="c.lvl || 1"
             @change="updateNumber(index, 'lvl', $event)"
           >
@@ -291,7 +322,10 @@ function removeSchool(index, schoolIndex) {
 
         <label>
           Casting type
-          <select :value="c.type" @change="updateText(index, 'type', $event)">
+          <select
+            :value="c.type"
+            @change="updateText(index, 'type', $event)"
+          >
             <option value="prep">Prepared</option>
             <option value="spont">Spontaneous</option>
           </select>
@@ -299,7 +333,10 @@ function removeSchool(index, schoolIndex) {
 
         <label>
           Casting ability
-          <select :value="c.ab" @change="updateText(index, 'ab', $event)">
+          <select
+            :value="c.ab"
+            @change="updateText(index, 'ab', $event)"
+          >
             <option value="int">INT</option>
             <option value="wis">WIS</option>
             <option value="cha">CHA</option>
@@ -309,7 +346,10 @@ function removeSchool(index, schoolIndex) {
         <label>
           Ability score
           <input
-            type="number" min="1" max="50" inputmode="numeric"
+            type="number"
+            min="1"
+            max="50"
+            inputmode="numeric"
             :value="c.score ?? 10"
             @change="updateNumber(index, 'score', $event)"
           >
@@ -318,7 +358,10 @@ function removeSchool(index, schoolIndex) {
         <label>
           Caster level (CL)
           <input
-            type="number" min="0" max="30" inputmode="numeric"
+            type="number"
+            min="0"
+            max="30"
+            inputmode="numeric"
             :value="c.cl ?? 1"
             @change="updateNumber(index, 'cl', $event)"
           >
@@ -327,7 +370,8 @@ function removeSchool(index, schoolIndex) {
         <label>
           General DC bonus
           <input
-            type="number" inputmode="numeric"
+            type="number"
+            inputmode="numeric"
             :value="c.dcb || 0"
             @change="updateNumber(index, 'dcb', $event)"
           >
@@ -345,15 +389,26 @@ function removeSchool(index, schoolIndex) {
 
       <label class="row setup-check">
         <span>Knows its whole spell list (cleric, druid…)</span>
-        <input type="checkbox" :checked="!!c.all" @change="updateCheckbox(index, 'all', $event)">
+        <input
+          type="checkbox"
+          :checked="!!c.all"
+          @change="updateCheckbox(index, 'all', $event)"
+        >
       </label>
 
       <label class="row setup-check">
         <span>Has a domain slot at every spell level (1+)</span>
-        <input type="checkbox" :checked="!!c.dom" @change="updateCheckbox(index, 'dom', $event)">
+        <input
+          type="checkbox"
+          :checked="!!c.dom"
+          @change="updateCheckbox(index, 'dom', $event)"
+        >
       </label>
 
-      <section v-if="c.dom" class="setup-subsection">
+      <section
+        v-if="c.dom"
+        class="setup-subsection"
+      >
         <h3>Domains</h3>
         <p class="mute">
           Type the domain name as it appears in the spell database.
@@ -381,12 +436,17 @@ function removeSchool(index, schoolIndex) {
               @change="updateDomain(index, domainIndex, 'parent', $event)"
             >
           </label>
-          <button class="danger setup-remove" @click="removeDomain(index, domainIndex)">
+          <button
+            class="danger setup-remove"
+            @click="removeDomain(index, domainIndex)"
+          >
             Remove domain
           </button>
         </div>
 
-        <button @click="addDomain(index)">+ Add domain</button>
+        <button @click="addDomain(index)">
+          + Add domain
+        </button>
       </section>
 
       <section class="setup-subsection">
@@ -395,28 +455,45 @@ function removeSchool(index, schoolIndex) {
           For feats like Spell Focus or Greater Spell Focus. They apply only to spells of that school.
         </p>
 
-        <div v-for="(entry, schoolIndex) in c.sf" :key="schoolIndex" class="row setup-school">
+        <div
+          v-for="(entry, schoolIndex) in c.sf"
+          :key="schoolIndex"
+          class="row setup-school"
+        >
           <select
             :value="entry.sch"
             aria-label="School"
             @change="updateSchool(index, schoolIndex, 'sch', $event)"
           >
-            <option v-for="school in SCHOOLS" :key="school" :value="school">{{ school }}</option>
+            <option
+              v-for="school in SCHOOLS"
+              :key="school"
+              :value="school"
+            >
+              {{ school }}
+            </option>
           </select>
 
           <input
-            type="number" inputmode="numeric"
+            type="number"
+            inputmode="numeric"
             :value="entry.b"
             aria-label="DC bonus"
             @change="updateSchool(index, schoolIndex, 'b', $event)"
           >
 
-          <button class="danger" aria-label="Remove bonus" @click="removeSchool(index, schoolIndex)">
+          <button
+            class="danger"
+            aria-label="Remove bonus"
+            @click="removeSchool(index, schoolIndex)"
+          >
             ×
           </button>
         </div>
 
-        <button @click="addSchool(index)">+ Add bonus</button>
+        <button @click="addSchool(index)">
+          + Add bonus
+        </button>
       </section>
 
       <section class="setup-subsection">
@@ -427,10 +504,16 @@ function removeSchool(index, schoolIndex) {
         </p>
 
         <div class="setup-slots">
-          <label v-for="(value, level) in c.base" :key="level">
+          <label
+            v-for="(value, level) in c.base"
+            :key="level"
+          >
             {{ level === 0 ? 'Cantrips' : `Lvl ${level}` }}
             <input
-              type="number" min="0" step="1" inputmode="numeric"
+              type="number"
+              min="0"
+              step="1"
+              inputmode="numeric"
               :value="value ?? ''"
               placeholder="—"
               @change="updateBase(index, level, $event)"
@@ -439,7 +522,10 @@ function removeSchool(index, schoolIndex) {
         </div>
       </section>
 
-      <p v-if="c.pre" class="mute">
+      <p
+        v-if="c.pre"
+        class="mute"
+      >
         Table: {{ CLASS_TABLES[c.pre]?.n }}. Caster level calculated as {{ c.cl }}.
         Changing the class or level recalculates the slots.
       </p>
@@ -449,11 +535,21 @@ function removeSchool(index, schoolIndex) {
         School bonuses and per-spell bonuses are added on top.
       </p>
 
-      <button class="danger" @click="deleteClass(index)">Delete this class</button>
+      <button
+        class="danger"
+        @click="deleteClass(index)"
+      >
+        Delete this class
+      </button>
     </div>
   </details>
 
-  <button class="cast setup-add" @click="addClass">+ Add spellcasting class</button>
+  <button
+    class="cast setup-add"
+    @click="addClass"
+  >
+    + Add spellcasting class
+  </button>
 </template>
 
 <style scoped>

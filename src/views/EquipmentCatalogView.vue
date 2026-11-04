@@ -33,13 +33,22 @@ onMounted(catalog.start)
 </script>
 
 <template>
-  <main class="page magic-catalog-page" :aria-busy="catalog.loading">
+  <main
+    class="page magic-catalog-page"
+    :aria-busy="catalog.loading"
+  >
     <BackButton />
 
     <header class="magic-catalog-heading">
-      <p class="magic-eyebrow">PATHFINDER · EQUIPMENT</p>
-      <h1 class="pg">Equipment catalog</h1>
-      <p class="mute">Weapons, armor, tools, alchemical goods and more. Add them to your inventory.</p>
+      <p class="magic-eyebrow">
+        PATHFINDER · EQUIPMENT
+      </p>
+      <h1 class="pg">
+        Equipment catalog
+      </h1>
+      <p class="mute">
+        Weapons, armor, tools, alchemical goods and more. Add them to your inventory.
+      </p>
     </header>
 
     <EquipmentFilters
@@ -54,22 +63,57 @@ onMounted(catalog.start)
       <span v-if="catalog.totalPages > 1">{{ catalog.page + 1 }} / {{ catalog.totalPages }}</span>
     </div>
 
-    <p v-if="catalog.loading" class="mute magic-status">Loading equipment…</p>
-
-    <p v-if="catalog.error" class="mute magic-status" role="status">
-      {{ catalog.error }}
-      <button type="button" class="magic-retry" @click="catalog.retry()">Retry</button>
+    <p
+      v-if="catalog.loading"
+      class="mute magic-status"
+    >
+      Loading equipment…
     </p>
 
-    <section v-if="empty" class="panel item-empty">The equipment catalog is not available yet.</section>
+    <p
+      v-if="catalog.error"
+      class="mute magic-status"
+      role="status"
+    >
+      {{ catalog.error }}
+      <button
+        type="button"
+        class="magic-retry"
+        @click="catalog.retry()"
+      >
+        Retry
+      </button>
+    </p>
+
+    <section
+      v-if="empty"
+      class="panel item-empty"
+    >
+      The equipment catalog is not available yet.
+    </section>
 
     <template v-else-if="catalog.rows.length || catalog.total">
       <div :class="{ 'magic-stale': catalog.loading }">
-        <EquipmentList :entries="entries" :read-only="readOnly" @details="(i) => detail = catalog.rows[i]" @add="(i) => addToInventory(catalog.rows[i])" />
+        <EquipmentList
+          :entries="entries"
+          :read-only="readOnly"
+          @details="(i) => detail = catalog.rows[i]"
+          @add="(i) => addToInventory(catalog.rows[i])"
+        />
       </div>
-      <MagicCatalogPager :page="catalog.page" :pages="catalog.totalPages" @change="catalog.page = $event" />
+      <MagicCatalogPager
+        :page="catalog.page"
+        :pages="catalog.totalPages"
+        @change="catalog.page = $event"
+      />
     </template>
 
-    <EquipmentDetails v-if="detail" :row="detail" :read-only="readOnly" @close="detail = null" @add="addToInventory(detail)" />
+    <EquipmentDetails
+      v-if="detail"
+      :row="detail"
+      :read-only="readOnly"
+      @close="detail = null"
+      @add="addToInventory(detail)"
+    />
   </main>
 </template>

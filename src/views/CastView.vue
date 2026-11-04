@@ -28,19 +28,38 @@ const classTheme = computed(() => {
 </script>
 
 <template>
-  <div v-if="!app.S.cl.length" class="panel">
+  <div
+    v-if="!app.S.cl.length"
+    class="panel"
+  >
     <h2>Aún no hay clases</h2>
-    <p class="mute">Configura primero una clase lanzadora de conjuros en la sección Setup de la versión original.</p>
+    <p class="mute">
+      Configura primero una clase lanzadora de conjuros en la sección Setup de la versión original.
+    </p>
   </div>
 
-  <div v-else-if="cast.characterClass" class="cast-view" :style="classTheme">
+  <div
+    v-else-if="cast.characterClass"
+    class="cast-view"
+    :style="classTheme"
+  >
     <CastHeader />
     <ClassTabs />
     <ModeSwitch />
     <ClassSummary />
     <FxStrip />
-    <LevelPanel v-for="level in cast.levelsToShow" :key="`${cast.classIndex}-${level}`" :level="level" />
-    <button data-write class="rest" @click="cast.rest()">Descansar y recuperar</button>
+    <LevelPanel
+      v-for="level in cast.levelsToShow"
+      :key="`${cast.classIndex}-${level}`"
+      :level="level"
+    />
+    <button
+      data-write
+      class="rest"
+      @click="cast.rest()"
+    >
+      Descansar y recuperar
+    </button>
   </div>
 </template>
 

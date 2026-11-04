@@ -34,7 +34,6 @@ const viewer = ref(mode.value === 'player')
     const now = Date.now()
     if (now - lastDeny < 1500) return
     lastDeny = now
-    notify('Solo lectura: los cambios los hace el dev.')
   }
   const guarded = new WeakMap()
   function guard(target) {

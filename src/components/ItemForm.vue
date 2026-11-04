@@ -86,45 +86,151 @@ function submit() {
 </script>
 
 <template>
-  <Sheet :title="editing ? 'Edit item' : 'Add item'" @close="emit('close')">
-    <form class="item-form" @submit.prevent="submit">
-      <label>Name<input id="f-name" v-model="f.n" placeholder="Cloak of Resistance +1" autocomplete="off" @input="touched.name = true"></label>
+  <Sheet
+    :title="editing ? 'Edit item' : 'Add item'"
+    @close="emit('close')"
+  >
+    <form
+      class="item-form"
+      @submit.prevent="submit"
+    >
+      <label>Name<input
+        id="f-name"
+        v-model="f.n"
+        placeholder="Cloak of Resistance +1"
+        autocomplete="off"
+        @input="touched.name = true"
+      ></label>
       <div class="grid g2">
-        <label>Type<select v-model="f.k"><option v-for="k in KINDS" :key="k">{{ k }}</option></select></label>
-        <label>Quantity<input v-model.number="f.qty" type="number" min="1" step="1" inputmode="numeric"></label>
+        <label>Type<select v-model="f.k"><option
+          v-for="k in KINDS"
+          :key="k"
+        >{{ k }}</option></select></label>
+        <label>Quantity<input
+          v-model.number="f.qty"
+          type="number"
+          min="1"
+          step="1"
+          inputmode="numeric"
+        ></label>
       </div>
       <label>Owner
-        <select v-model="f.owner"><option value="">Unassigned</option><option v-for="n in app.party" :key="n" :value="n">{{ n }}</option></select>
+        <select v-model="f.owner"><option value="">Unassigned</option><option
+          v-for="n in app.party"
+          :key="n"
+          :value="n"
+        >{{ n }}</option></select>
       </label>
 
-      <div v-if="showSpell" class="grid">
-        <label>Spell<input v-model="f.spellName" placeholder="Search spell by name…" autocomplete="off"></label>
-        <SpellSuggestions :items="suggestions" meta="level" @pick="pick" />
+      <div
+        v-if="showSpell"
+        class="grid"
+      >
+        <label>Spell<input
+          v-model="f.spellName"
+          placeholder="Search spell by name…"
+          autocomplete="off"
+        ></label>
+        <SpellSuggestions
+          :items="suggestions"
+          meta="level"
+          @pick="pick"
+        />
         <div class="grid g2">
-          <label>Caster level<input v-model.number="f.cl" type="number" min="1" inputmode="numeric" @input="touched.cl = true"></label>
-          <label>Spell level<input v-model.number="f.spellLevel" type="number" min="0" max="9" inputmode="numeric" @input="touched.spellLevel = true"></label>
+          <label>Caster level<input
+            v-model.number="f.cl"
+            type="number"
+            min="1"
+            inputmode="numeric"
+            @input="touched.cl = true"
+          ></label>
+          <label>Spell level<input
+            v-model.number="f.spellLevel"
+            type="number"
+            min="0"
+            max="9"
+            inputmode="numeric"
+            @input="touched.spellLevel = true"
+          ></label>
         </div>
       </div>
-      <div v-if="showCharges" class="grid g2">
-        <label>Max charges<input v-model.number="f.max" type="number" min="0" inputmode="numeric" @input="touched.max = true" @change="f.cur = Math.min(Number(f.cur) || 0, Number(f.max) || 0)"></label>
+      <div
+        v-if="showCharges"
+        class="grid g2"
+      >
+        <label>Max charges<input
+          v-model.number="f.max"
+          type="number"
+          min="0"
+          inputmode="numeric"
+          @input="touched.max = true"
+          @change="f.cur = Math.min(Number(f.cur) || 0, Number(f.max) || 0)"
+        ></label>
         <label>Recovery<select v-model="f.recovery"><option value="none">Never</option><option value="rest">On rest</option></select></label>
-        <label v-if="editing">Charges now<input v-model.number="f.cur" type="number" min="0" inputmode="numeric"></label>
+        <label v-if="editing">Charges now<input
+          v-model.number="f.cur"
+          type="number"
+          min="0"
+          inputmode="numeric"
+        ></label>
       </div>
-      <button v-if="canAdv" type="button" @click="adv = true">Add charges or a spell</button>
+      <button
+        v-if="canAdv"
+        type="button"
+        @click="adv = true"
+      >
+        Add charges or a spell
+      </button>
 
       <div class="grid g2">
-        <label>Price each (gp)<input v-model.number="f.price" type="number" min="0" step="any" inputmode="decimal" placeholder="0" @input="touched.price = true"></label>
-        <label>Weight each (lb)<input v-model.number="f.weight" type="number" min="0" step="any" inputmode="decimal" placeholder="0"></label>
+        <label>Price each (gp)<input
+          v-model.number="f.price"
+          type="number"
+          min="0"
+          step="any"
+          inputmode="decimal"
+          placeholder="0"
+          @input="touched.price = true"
+        ></label>
+        <label>Weight each (lb)<input
+          v-model.number="f.weight"
+          type="number"
+          min="0"
+          step="any"
+          inputmode="decimal"
+          placeholder="0"
+        ></label>
       </div>
       <details>
         <summary>Aura and caster level</summary>
-        <div class="grid g2" style="margin-top:10px">
-          <label>Aura<input v-model="f.aura" placeholder="Moderate evocation"></label>
-          <label>Caster level<input v-model.number="f.icl" type="number" min="0" inputmode="numeric" placeholder="0"></label>
+        <div
+          class="grid g2"
+          style="margin-top:10px"
+        >
+          <label>Aura<input
+            v-model="f.aura"
+            placeholder="Moderate evocation"
+          ></label>
+          <label>Caster level<input
+            v-model.number="f.icl"
+            type="number"
+            min="0"
+            inputmode="numeric"
+            placeholder="0"
+          ></label>
         </div>
       </details>
-      <label>Notes<textarea v-model="f.o" rows="3" placeholder="Bonus, properties, source…" /></label>
-      <button class="cast" type="submit">{{ editing ? 'Save changes' : 'Add item' }}</button>
+      <label>Notes<textarea
+        v-model="f.o"
+        rows="3"
+        placeholder="Bonus, properties, source…"
+      /></label>
+      <button
+        class="cast"
+        type="submit"
+      >
+        {{ editing ? 'Save changes' : 'Add item' }}
+      </button>
     </form>
   </Sheet>
 </template>

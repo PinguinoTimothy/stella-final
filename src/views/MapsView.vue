@@ -111,36 +111,95 @@ onMounted(refresh)
 <template>
   <main class="page maps-page">
     <header class="maps-head">
-      <h2 class="pg">Adventures</h2>
+      <h2 class="pg">
+        Adventures
+      </h2>
       <label class="btn-like">
         Import PDF
-        <input type="file" accept="application/pdf,.pdf" multiple hidden @change="importFiles">
+        <input
+          type="file"
+          accept="application/pdf,.pdf"
+          multiple
+          hidden
+          @change="importFiles"
+        >
       </label>
     </header>
 
-    <p v-if="busy" class="mute" role="status">{{ busy }}</p>
-    <p v-if="error" class="warn" role="alert">{{ error }}</p>
+    <p
+      v-if="busy"
+      class="mute"
+      role="status"
+    >
+      {{ busy }}
+    </p>
+    <p
+      v-if="error"
+      class="warn"
+      role="alert"
+    >
+      {{ error }}
+    </p>
 
-    <section v-if="!adventures.length && !busy" class="panel item-empty">
+    <section
+      v-if="!adventures.length && !busy"
+      class="panel item-empty"
+    >
       <p>No adventures yet.</p>
-      <p class="mute">Import the book and the maps of an adventure together. Files with the same name are one adventure.</p>
+      <p class="mute">
+        Import the book and the maps of an adventure together. Files with the same name are one adventure.
+      </p>
     </section>
 
-    <ul v-else class="adv-list">
-      <li v-for="a in adventures" :key="a.key" class="adv-row">
-        <button type="button" class="adv-open" :disabled="!a.book && !a.map" @click="open(a)">
+    <ul
+      v-else
+      class="adv-list"
+    >
+      <li
+        v-for="a in adventures"
+        :key="a.key"
+        class="adv-row"
+      >
+        <button
+          type="button"
+          class="adv-open"
+          :disabled="!a.book && !a.map"
+          @click="open(a)"
+        >
           <span class="adv-name">{{ a.name }}</span>
           <span class="adv-parts">
             <span :class="{ ok: a.book }">Book{{ a.book ? '' : ' missing' }}</span>
             <span :class="{ ok: a.map }">Maps{{ a.map ? '' : ' missing' }}</span>
           </span>
         </button>
-        <label v-if="a.book" class="adv-act">
+        <label
+          v-if="a.book"
+          class="adv-act"
+        >
           Improve
-          <input type="file" accept="application/json,.json" hidden @change="improve(a.book, $event)">
+          <input
+            type="file"
+            accept="application/json,.json"
+            hidden
+            @change="improve(a.book, $event)"
+          >
         </label>
-        <button type="button" class="adv-act" aria-label="Rename adventure" @click="rename(a)">Rename</button>
-        <button type="button" class="adv-act adv-del" aria-label="Delete adventure" @click="remove(a)">Delete</button>
+        <button
+          type="button"
+          class="adv-act"
+          aria-label="Rename adventure"
+          @click="rename(a)"
+        >
+          Rename
+        </button>
+        <button
+          type="button"
+          class="adv-act adv-del"
+          aria-label="Delete adventure"
+          @click="remove(a)"
+        >
+          Delete
+        </button>
       </li>
     </ul>
 

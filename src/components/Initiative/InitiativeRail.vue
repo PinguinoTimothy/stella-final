@@ -41,16 +41,38 @@ onUnmounted(() => document.body.classList.remove('has-rail'))
 </script>
 
 <template>
-  <aside v-if="sidePanel" class="init-rail" aria-label="Initiative">
+  <aside
+    v-if="sidePanel"
+    class="init-rail"
+    aria-label="Initiative"
+  >
     <header class="ir-head">
       <b>Initiative</b>
       <span class="mute">Round {{ init.round }}</span>
-      <button class="ir-hide" type="button" aria-label="Hide initiative" @click="hidden = true">Hide</button>
+      <button
+        class="ir-hide"
+        type="button"
+        aria-label="Hide initiative"
+        @click="hidden = true"
+      >
+        Hide
+      </button>
     </header>
 
     <div class="ir-actions">
-      <button class="cast" :disabled="!init.order.length" @click="init.next()">Next turn</button>
-      <button :disabled="!init.currentKey && init.round === 1" @click="init.newRound()">New round</button>
+      <button
+        class="cast"
+        :disabled="!init.order.length"
+        @click="init.next()"
+      >
+        Next turn
+      </button>
+      <button
+        :disabled="!init.currentKey && init.round === 1"
+        @click="init.newRound()"
+      >
+        New round
+      </button>
     </div>
 
     <ol class="ir-list">
@@ -59,10 +81,20 @@ onUnmounted(() => document.body.classList.remove('has-rail'))
         :key="e.key"
         :class="{ current: e.key === init.currentKey && e.present, away: !e.present }"
       >
-        <label class="ir-present" :title="e.present ? 'Present' : 'Absent'">
-          <input type="checkbox" :checked="e.present" @change="init.setPresent(e.key, $event.target.checked)">
+        <label
+          class="ir-present"
+          :title="e.present ? 'Present' : 'Absent'"
+        >
+          <input
+            type="checkbox"
+            :checked="e.present"
+            @change="init.setPresent(e.key, $event.target.checked)"
+          >
         </label>
-        <span class="ir-kind" :class="e.kind">{{ e.kind === 'pc' ? 'PC' : 'Mon' }}</span>
+        <span
+          class="ir-kind"
+          :class="e.kind"
+        >{{ e.kind === 'pc' ? 'PC' : 'Mon' }}</span>
         <span class="ir-name">{{ e.label }}</span>
         <input
           class="ir-init"
@@ -76,13 +108,22 @@ onUnmounted(() => document.body.classList.remove('has-rail'))
       </li>
     </ol>
 
-    <p v-if="!init.entries.length" class="mute">
+    <p
+      v-if="!init.entries.length"
+      class="mute"
+    >
       Add characters in More → Party, and monsters to combat.
     </p>
   </aside>
 
   <!-- Hidden: a small tab on the left edge to bring the rail back. -->
-  <button v-else class="ir-tab" type="button" aria-label="Show initiative" @click="hidden = false">
+  <button
+    v-else
+    class="ir-tab"
+    type="button"
+    aria-label="Show initiative"
+    @click="hidden = false"
+  >
     Initiative
   </button>
 </template>

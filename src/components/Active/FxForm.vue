@@ -60,48 +60,126 @@ function submit() {
 <template>
   <section class="panel grid">
     <h2>Nuevo hechizo</h2>
-    <input ref="nameEl" v-model="f.n" placeholder="Spell or effect name" autocomplete="off" aria-label="Effect name">
+    <input
+      ref="nameEl"
+      v-model="f.n"
+      placeholder="Spell or effect name"
+      autocomplete="off"
+      aria-label="Effect name"
+    >
     <div>
-      <SpellSuggestions :items="suggestions" meta="duration" @pick="fill" />
-      <p v-if="showNoMatch" class="mute">No matching spells found.</p>
+      <SpellSuggestions
+        :items="suggestions"
+        meta="duration"
+        @pick="fill"
+      />
+      <p
+        v-if="showNoMatch"
+        class="mute"
+      >
+        No matching spells found.
+      </p>
     </div>
 
     <div class="grid g2">
-      <select v-model="f.k" aria-label="Type">
-        <option value="buff">Buff</option>
-        <option value="debuff">Debuff</option>
+      <select
+        v-model="f.k"
+        aria-label="Type"
+      >
+        <option value="buff">
+          Buff
+        </option>
+        <option value="debuff">
+          Debuff
+        </option>
       </select>
     </div>
 
     <div class="detail">
       <strong>Objetivos</strong>
-      <p class="mute">Selecciona uno o más</p>
-      <label v-for="o in targetOptions" :key="o.v" class="row fx-target" :class="{ foe: o.foe }">
-        <input v-model="f.targets" type="checkbox" :value="o.v">
+      <p class="mute">
+        Selecciona uno o más
+      </p>
+      <label
+        v-for="o in targetOptions"
+        :key="o.v"
+        class="row fx-target"
+        :class="{ foe: o.foe }"
+      >
+        <input
+          v-model="f.targets"
+          type="checkbox"
+          :value="o.v"
+        >
         <span>{{ o.l }}</span>
       </label>
     </div>
 
-    <label v-if="app.S.cl.length" class="mute">Caster level
-      <select v-model.number="f.ci" class="sr">
-        <option v-for="(k, i) in app.S.cl" :key="i" :value="i">{{ k.name }} (CL {{ k.cl || 1 }})</option>
+    <label
+      v-if="app.S.cl.length"
+      class="mute"
+    >Caster level
+      <select
+        v-model.number="f.ci"
+        class="sr"
+      >
+        <option
+          v-for="(k, i) in app.S.cl"
+          :key="i"
+          :value="i"
+        >{{ k.name }} (CL {{ k.cl || 1 }})</option>
       </select>
     </label>
 
     <div class="grid g2">
-      <input ref="amountEl" v-model="f.amount" type="number" min="1" inputmode="numeric" placeholder="Duration" aria-label="Duration amount">
-      <select v-model="f.unit" aria-label="Duration unit">
-        <option value="rd">rounds</option>
-        <option value="min">minutes</option>
-        <option value="hr">hours</option>
-        <option value="day">days</option>
-        <option value="perm">until dismissed</option>
+      <input
+        ref="amountEl"
+        v-model="f.amount"
+        type="number"
+        min="1"
+        inputmode="numeric"
+        placeholder="Duration"
+        aria-label="Duration amount"
+      >
+      <select
+        v-model="f.unit"
+        aria-label="Duration unit"
+      >
+        <option value="rd">
+          rounds
+        </option>
+        <option value="min">
+          minutes
+        </option>
+        <option value="hr">
+          hours
+        </option>
+        <option value="day">
+          days
+        </option>
+        <option value="perm">
+          until dismissed
+        </option>
       </select>
     </div>
-    <div class="mute">{{ f.hint }}</div>
+    <div class="mute">
+      {{ f.hint }}
+    </div>
 
-    <label class="row"><span>Extended (duration ×2)</span><input v-model="f.extended" type="checkbox"></label>
-    <input v-model="f.note" placeholder="Note (optional)" aria-label="Note">
-    <button class="cast" @click="submit">Nuevo hechizo</button>
+    <label class="row"><span>Extended (duration ×2)</span><input
+      v-model="f.extended"
+      type="checkbox"
+    ></label>
+    <input
+      v-model="f.note"
+      placeholder="Note (optional)"
+      aria-label="Note"
+    >
+    <button
+      class="cast"
+      @click="submit"
+    >
+      Nuevo hechizo
+    </button>
   </section>
 </template>

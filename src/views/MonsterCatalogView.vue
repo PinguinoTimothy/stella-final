@@ -120,63 +120,177 @@ function addFromStats() {
 
 <template>
   <BackButton />
-  <h2 class="pg">Monsters</h2>
-  <p class="mute">{{ total }} creatures in the bestiary. Tap a name to read it; + adds it to combat.</p>
+  <h2 class="pg">
+    Monsters
+  </h2>
+  <p class="mute">
+    {{ total }} creatures in the bestiary. Tap a name to read it; + adds it to combat.
+  </p>
 
   <div class="grid">
-    <input v-model="query" class="sr" type="search" placeholder="Search monsters…" aria-label="Search monsters">
+    <input
+      v-model="query"
+      class="sr"
+      type="search"
+      placeholder="Search monsters…"
+      aria-label="Search monsters"
+    >
     <div class="grid g2">
-      <select v-model="type" aria-label="Type">
-        <option value="">All types</option>
-        <option v-for="t in types" :key="t" :value="t">{{ t }}</option>
+      <select
+        v-model="type"
+        aria-label="Type"
+      >
+        <option value="">
+          All types
+        </option>
+        <option
+          v-for="t in types"
+          :key="t"
+          :value="t"
+        >
+          {{ t }}
+        </option>
       </select>
-      <select v-model="cr" aria-label="Challenge rating">
-        <option value="">Any CR</option>
-        <option v-for="c in CR_OPTIONS" :key="c" :value="String(c)">CR {{ crLabel(c) }}</option>
+      <select
+        v-model="cr"
+        aria-label="Challenge rating"
+      >
+        <option value="">
+          Any CR
+        </option>
+        <option
+          v-for="c in CR_OPTIONS"
+          :key="c"
+          :value="String(c)"
+        >
+          CR {{ crLabel(c) }}
+        </option>
       </select>
-      <select v-model="mythic" aria-label="Mythic status">
-        <option value="">All monsters</option>
-        <option value="mythic">Mythic only</option>
+      <select
+        v-model="mythic"
+        aria-label="Mythic status"
+      >
+        <option value="">
+          All monsters
+        </option>
+        <option value="mythic">
+          Mythic only
+        </option>
       </select>
     </div>
   </div>
 
-  <p v-if="error" class="mute" role="alert">{{ error }}</p>
-  <section v-else-if="!loading && !rows.length" class="panel item-empty">No monster matches.</section>
+  <p
+    v-if="error"
+    class="mute"
+    role="alert"
+  >
+    {{ error }}
+  </p>
+  <section
+    v-else-if="!loading && !rows.length"
+    class="panel item-empty"
+  >
+    No monster matches.
+  </section>
 
-  <div class="grid" style="margin-top:12px">
-    <div v-for="m in rows" :key="m.url" class="cat-row">
-      <button class="more-row cat-main" @click="openStats(m)">
+  <div
+    class="grid"
+    style="margin-top:12px"
+  >
+    <div
+      v-for="m in rows"
+      :key="m.url"
+      class="cat-row"
+    >
+      <button
+        class="more-row cat-main"
+        @click="openStats(m)"
+      >
         <span>
-          <b>{{ m.name }} <span v-if="m.isMythic" class="mythic-tag">Mythic · MR {{ m.MR || '—' }}</span></b>
+          <b>{{ m.name }} <span
+            v-if="m.isMythic"
+            class="mythic-tag"
+          >Mythic · MR {{ m.MR || '—' }}</span></b>
           <small>CR {{ crLabel(m.cr) }} · {{ m.size }} {{ m.type }} · HP {{ m.hp }} · AC {{ m.ac }}</small>
         </span>
         <i aria-hidden="true">›</i>
       </button>
-      <button class="cast cat-add combat-add" aria-label="Add to combat" title="Add to combat" @click="addFight(m)">+</button>
+      <button
+        class="cast cat-add combat-add"
+        aria-label="Add to combat"
+        title="Add to combat"
+        @click="addFight(m)"
+      >
+        +
+      </button>
     </div>
   </div>
 
-  <button v-if="hasMore" type="button" :disabled="loading" style="margin-top:12px" @click="load(false)">
+  <button
+    v-if="hasMore"
+    type="button"
+    :disabled="loading"
+    style="margin-top:12px"
+    @click="load(false)"
+  >
     {{ loading ? 'Loading…' : 'Load more' }}
   </button>
 
   <!-- Centred panel with the stat block. Escape, × or a tap outside closes it. -->
-  <div v-if="stats" class="mc-bg" @click.self="closeStats">
-    <section class="mc-modal" role="dialog" aria-modal="true" :aria-label="stats.monster.name">
+  <div
+    v-if="stats"
+    class="mc-bg"
+    @click.self="closeStats"
+  >
+    <section
+      class="mc-modal"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="stats.monster.name"
+    >
       <header class="mc-head">
         <h2>{{ stats.monster.name }}</h2>
-        <button class="x" aria-label="Close" @click="closeStats">×</button>
+        <button
+          class="x"
+          aria-label="Close"
+          @click="closeStats"
+        >
+          ×
+        </button>
       </header>
 
       <div class="mc-body">
-        <p v-if="stats.loading" class="mute">Loading…</p>
-        <p v-else-if="stats.error" class="mute" role="alert">{{ stats.error }}</p>
-        <CombatCard v-else-if="stats.card" :card="stats.card" />
+        <p
+          v-if="stats.loading"
+          class="mute"
+        >
+          Loading…
+        </p>
+        <p
+          v-else-if="stats.error"
+          class="mute"
+          role="alert"
+        >
+          {{ stats.error }}
+        </p>
+        <CombatCard
+          v-else-if="stats.card"
+          :card="stats.card"
+        />
       </div>
 
-      <footer v-if="stats.card" class="mc-foot combat-add">
-        <button class="cast" style="width:100%" @click="addFromStats">Add to combat</button>
+      <footer
+        v-if="stats.card"
+        class="mc-foot combat-add"
+      >
+        <button
+          class="cast"
+          style="width:100%"
+          @click="addFromStats"
+        >
+          Add to combat
+        </button>
       </footer>
     </section>
   </div>

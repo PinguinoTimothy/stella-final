@@ -6,13 +6,25 @@ defineEmits(['toggle'])
 </script>
 
 <template>
-  <article class="cond" :class="{ on: open }">
-    <button class="sk-h" :aria-expanded="open" @click="$emit('toggle')">
+  <article
+    class="cond"
+    :class="{ on: open }"
+  >
+    <button
+      class="sk-h"
+      :aria-expanded="open"
+      @click="$emit('toggle')"
+    >
       <b>{{ skill.name }}</b><span class="sk-t">{{ skill.tags.join(' · ') }}</span>
     </button>
     <template v-if="open">
-      <template v-for="sec in skill.sections" :key="sec[0]">
-        <div class="sk-st">{{ sec[0] }}</div>
+      <template
+        v-for="sec in skill.sections"
+        :key="sec[0]"
+      >
+        <div class="sk-st">
+          {{ sec[0] }}
+        </div>
         <SkillRows :items="sec[1]" />
       </template>
     </template>

@@ -10,8 +10,17 @@ const sorted = computed(() => props.effects.slice().sort(fxCmp))
 </script>
 
 <template>
-  <section v-if="sorted.length" class="panel flat">
+  <section
+    v-if="sorted.length"
+    class="panel flat"
+  >
     <h2>{{ title }}</h2>
-    <FxRow v-for="e in sorted" :key="e.id" :effect="e" :open="openId === e.id" @toggle="$emit('toggle', e.id)" />
+    <FxRow
+      v-for="e in sorted"
+      :key="e.id"
+      :effect="e"
+      :open="openId === e.id"
+      @toggle="$emit('toggle', e.id)"
+    />
   </section>
 </template>

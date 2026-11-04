@@ -175,14 +175,36 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <button class="ref-open" type="button" aria-label="Search reference (/)" title="Search reference (/)" @click="show">
+  <button
+    class="ref-open"
+    type="button"
+    aria-label="Search reference (/)"
+    title="Search reference (/)"
+    @click="show"
+  >
     Search
   </button>
 
-  <div v-if="open" class="ref-bg" @click.self="close">
-    <section class="ref-modal" role="dialog" aria-modal="true" aria-label="Reference search">
+  <div
+    v-if="open"
+    class="ref-bg"
+    @click.self="close"
+  >
+    <section
+      class="ref-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Reference search"
+    >
       <header class="ref-head">
-        <button v-if="detail" class="back" type="button" @click="back">‹ Results</button>
+        <button
+          v-if="detail"
+          class="back"
+          type="button"
+          @click="back"
+        >
+          ‹ Results
+        </button>
         <input
           v-else
           ref="inputEl"
@@ -192,7 +214,14 @@ onBeforeUnmount(() => {
           aria-label="Search reference"
           autocomplete="off"
         >
-        <button class="x" type="button" aria-label="Close" @click="close">×</button>
+        <button
+          class="x"
+          type="button"
+          aria-label="Close"
+          @click="close"
+        >
+          ×
+        </button>
       </header>
 
       <div class="ref-body">
@@ -201,21 +230,44 @@ onBeforeUnmount(() => {
           <h2>{{ detail.title }}</h2>
 
           <template v-if="detail.kind === 'monster'">
-            <p v-if="detail.loading" class="mute">Loading…</p>
-            <p v-else-if="detail.error" class="mute" role="alert">{{ detail.error }}</p>
-            <CombatCard v-else-if="detail.card" :card="detail.card" />
+            <p
+              v-if="detail.loading"
+              class="mute"
+            >
+              Loading…
+            </p>
+            <p
+              v-else-if="detail.error"
+              class="mute"
+              role="alert"
+            >
+              {{ detail.error }}
+            </p>
+            <CombatCard
+              v-else-if="detail.card"
+              :card="detail.card"
+            />
           </template>
 
           <template v-else-if="detail.kind === 'spell'">
-            <p class="mute">{{ detail.data.lv }}</p>
+            <p class="mute">
+              {{ detail.data.lv }}
+            </p>
             <SpellInfo :spell="detail.data" />
           </template>
 
           <template v-else-if="detail.kind === 'magic'">
             <ul class="grl">
-              <li v-for="[label, value] in magicFields(detail.data)" :key="label"><b>{{ label }}</b> {{ value }}</li>
+              <li
+                v-for="[label, value] in magicFields(detail.data)"
+                :key="label"
+              >
+                <b>{{ label }}</b> {{ value }}
+              </li>
             </ul>
-            <p v-if="detail.data.descr">{{ detail.data.descr }}</p>
+            <p v-if="detail.data.descr">
+              {{ detail.data.descr }}
+            </p>
           </template>
 
           <template v-else-if="detail.kind === 'condition'">
@@ -223,11 +275,20 @@ onBeforeUnmount(() => {
           </template>
 
           <template v-else-if="detail.kind === 'skill'">
-            <p class="mute">{{ detail.data.tags.join(' · ') }}</p>
-            <section v-for="[title, items] in detail.data.sections" :key="title" class="ref-sec">
+            <p class="mute">
+              {{ detail.data.tags.join(' · ') }}
+            </p>
+            <section
+              v-for="[title, items] in detail.data.sections"
+              :key="title"
+              class="ref-sec"
+            >
               <h3>{{ title }}</h3>
               <ul class="grl">
-                <li v-for="(it, i) in items" :key="i">
+                <li
+                  v-for="(it, i) in items"
+                  :key="i"
+                >
                   {{ it.t ?? [it.l, it.v, it.x, it.n && `(${it.n})`].filter(Boolean).join(' ') }}
                 </li>
               </ul>
@@ -235,19 +296,34 @@ onBeforeUnmount(() => {
           </template>
 
           <template v-else-if="detail.kind === 'rule'">
-            <p class="mute">{{ detail.data[2] }} · {{ detail.data[1] }}</p>
+            <p class="mute">
+              {{ detail.data[2] }} · {{ detail.data[1] }}
+            </p>
             <p>{{ detail.data[3] }}</p>
           </template>
         </template>
 
         <!-- Results -->
         <template v-else>
-          <p v-if="query.trim().length < 2" class="mute">
+          <p
+            v-if="query.trim().length < 2"
+            class="mute"
+          >
             Type at least 2 letters. Tip: press / anywhere to open this search.
           </p>
-          <p v-else-if="busy" class="mute">Searching…</p>
+          <p
+            v-else-if="busy"
+            class="mute"
+          >
+            Searching…
+          </p>
 
-          <section v-for="g in groups" v-show="g.items.length" :key="g.kind" class="ref-group">
+          <section
+            v-for="g in groups"
+            v-show="g.items.length"
+            :key="g.kind"
+            class="ref-group"
+          >
             <h3>{{ g.label }}</h3>
             <button
               v-for="(r, i) in g.items"
@@ -264,7 +340,10 @@ onBeforeUnmount(() => {
             </button>
           </section>
 
-          <p v-if="query.trim().length >= 2 && !busy && !groups.some((g) => g.items.length)" class="mute">
+          <p
+            v-if="query.trim().length >= 2 && !busy && !groups.some((g) => g.items.length)"
+            class="mute"
+          >
             No results.
           </p>
         </template>

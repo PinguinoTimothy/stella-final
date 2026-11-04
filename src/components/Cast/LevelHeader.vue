@@ -15,7 +15,9 @@ const slots = computed(() => slotInfo(c.value, props.level))
     <div>
       <h2>{{ level === 0 ? 'Trucos / nivel 0' : `Nivel ${level}` }}</h2>
       <p class="mute">
-        <template v-if="slots.atWill">A voluntad</template>
+        <template v-if="slots.atWill">
+          A voluntad
+        </template>
         <template v-else>
           {{ remaining(c, level) }} de {{ slots.total }} espacios restantes
           <span v-if="slots.bonus">· {{ slots.base }} base + {{ slots.bonus }} bonificación</span>

@@ -110,7 +110,12 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="box" class="feat-graph" role="img" :aria-label="`Graph of ${graph.center.name}`"></div>
+  <div
+    ref="box"
+    class="feat-graph"
+    role="img"
+    :aria-label="`Graph of ${graph.center.name}`"
+  />
 </template>
 
 <style scoped>

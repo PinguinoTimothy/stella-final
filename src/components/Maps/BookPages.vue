@@ -186,17 +186,48 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="rd" :class="{ 'is-ctrl': ctrlHeld }">
-    <Translator ref="translator" :root="scroller" />
+  <div
+    class="rd"
+    :class="{ 'is-ctrl': ctrlHeld }"
+  >
+    <Translator
+      ref="translator"
+      :root="scroller"
+    />
     <div class="rd-bar">
       <span class="rd-count">Page {{ current }}<template v-if="count"> of {{ count }}</template></span>
-      <span class="rd-sep"></span>
-      <button type="button" class="rd-btn" :disabled="zoomIdx === 0" aria-label="Smaller" @click="zoom(-1)">−</button>
+      <span class="rd-sep" />
+      <button
+        type="button"
+        class="rd-btn"
+        :disabled="zoomIdx === 0"
+        aria-label="Smaller"
+        @click="zoom(-1)"
+      >
+        −
+      </button>
       <span class="rd-zoom">{{ Math.round(ZOOMS[zoomIdx] * 100) }}%</span>
-      <button type="button" class="rd-btn" :disabled="zoomIdx === ZOOMS.length - 1" aria-label="Larger" @click="zoom(1)">+</button>
+      <button
+        type="button"
+        class="rd-btn"
+        :disabled="zoomIdx === ZOOMS.length - 1"
+        aria-label="Larger"
+        @click="zoom(1)"
+      >
+        +
+      </button>
     </div>
-    <p v-if="status" class="rd-status">{{ status }}</p>
-    <div ref="scroller" class="rd-scroll" @scroll.passive="onScroll">
+    <p
+      v-if="status"
+      class="rd-status"
+    >
+      {{ status }}
+    </p>
+    <div
+      ref="scroller"
+      class="rd-scroll"
+      @scroll.passive="onScroll"
+    >
       <div
         v-for="n in count"
         :key="n"
@@ -204,8 +235,8 @@ onBeforeUnmount(() => {
         class="rd-page"
         :style="{ width: pageW + 'px', height: pageH + 'px' }"
       >
-        <canvas class="rd-canvas"></canvas>
-        <div class="textLayer"></div>
+        <canvas class="rd-canvas" />
+        <div class="textLayer" />
         <button
           v-for="(b, i) in boxesOn(n)"
           :key="i"
@@ -214,7 +245,9 @@ onBeforeUnmount(() => {
           :style="{ left: b.x1 * pageW + 'px', top: b.y0 * pageH + 'px' }"
           aria-label="Translate this passage"
           @click="tap(b)"
-        >Translate</button>
+        >
+          Translate
+        </button>
       </div>
     </div>
   </div>

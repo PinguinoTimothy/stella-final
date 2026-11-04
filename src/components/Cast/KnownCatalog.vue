@@ -25,31 +25,65 @@ watch(() => catalog.scrollReset, async () => { await nextTick(); if (list.value)
         <h3>Añadir conjuros conocidos</h3>
         <p>
           Conocidos: {{ knownCount(c, level) }}
-          <template v-if="max !== null"> / {{ max }}</template>
+          <template v-if="max !== null">
+            / {{ max }}
+          </template>
         </p>
       </div>
 
       <div class="known-catalog-actions">
         <CatalogSearch v-model="catalog.search" />
-        <button type="button" class="known-catalog-toggle" @click="catalog.showKnown = !catalog.showKnown">
+        <button
+          type="button"
+          class="known-catalog-toggle"
+          @click="catalog.showKnown = !catalog.showKnown"
+        >
           {{ catalog.showKnown ? 'Ocultar' : 'Mostrar' }} {{ catalog.showKnown ? '−' : '+' }}
         </button>
       </div>
     </div>
 
     <template v-if="catalog.showKnown">
-      <p v-if="catalog.loading" class="mute">Cargando conjuros...</p>
+      <p
+        v-if="catalog.loading"
+        class="mute"
+      >
+        Cargando conjuros...
+      </p>
 
-      <div v-else ref="list" class="known-catalog-list">
-        <div v-for="spell in results" :key="spell.n" class="known-catalog-row">
+      <div
+        v-else
+        ref="list"
+        class="known-catalog-list"
+      >
+        <div
+          v-for="spell in results"
+          :key="spell.n"
+          class="known-catalog-row"
+        >
           <div class="known-catalog-info">
             <span class="known-catalog-name">{{ spell.n }}</span>
-            <span v-if="spell.s" class="known-catalog-school">{{ spell.s }}</span>
+            <span
+              v-if="spell.s"
+              class="known-catalog-school"
+            >{{ spell.s }}</span>
           </div>
-          <button data-write type="button" class="known-catalog-add" @click="cast.addSpell(c, level, spell)">+</button>
+          <button
+            data-write
+            type="button"
+            class="known-catalog-add"
+            @click="cast.addSpell(c, level, spell)"
+          >
+            +
+          </button>
         </div>
 
-        <p v-if="!results.length" class="mute">No hay más conjuros disponibles.</p>
+        <p
+          v-if="!results.length"
+          class="mute"
+        >
+          No hay más conjuros disponibles.
+        </p>
       </div>
     </template>
   </div>

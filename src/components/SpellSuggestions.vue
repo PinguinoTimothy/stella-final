@@ -18,11 +18,26 @@ const label = (s) => {
 </script>
 
 <template>
-  <ul v-if="items.length" class="spell-suggestions" aria-label="Matching spells">
-    <li v-for="s in items" :key="s.n">
-      <button data-write type="button" class="spell-option" @click="emit('pick', s)">
+  <ul
+    v-if="items.length"
+    class="spell-suggestions"
+    aria-label="Matching spells"
+  >
+    <li
+      v-for="s in items"
+      :key="s.n"
+    >
+      <button
+        data-write
+        type="button"
+        class="spell-option"
+        @click="emit('pick', s)"
+      >
         <span class="spell-option-name">{{ s.n }}</span>
-        <span v-if="label(s)" class="spell-option-meta">{{ label(s) }}</span>
+        <span
+          v-if="label(s)"
+          class="spell-option-meta"
+        >{{ label(s) }}</span>
       </button>
     </li>
   </ul>

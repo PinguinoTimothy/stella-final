@@ -15,42 +15,98 @@ const open = computed(() => cast.openSpell === cast.spellKey(props.level, props.
 <template>
   <article class="spell sp">
     <div class="row">
-      <button class="nm" @click="cast.toggleSpell(level, spell)">
+      <button
+        class="nm"
+        @click="cast.toggleSpell(level, spell)"
+      >
         <span>{{ spell.n }}</span>
         <span class="sm"><span class="mute">CD {{ spellDC(c, level, spell) }}</span></span>
       </button>
 
-      <span v-if="c.type === 'prep' && cast.prepareMode" class="step">
-        <button data-write :disabled="spell.dom || !spell.prep" aria-label="Preparar menos" @click="cast.changePreparation(c, level, spell, -1)">−</button>
+      <span
+        v-if="c.type === 'prep' && cast.prepareMode"
+        class="step"
+      >
+        <button
+          data-write
+          :disabled="spell.dom || !spell.prep"
+          aria-label="Preparar menos"
+          @click="cast.changePreparation(c, level, spell, -1)"
+        >−</button>
         <b>{{ spell.prep || 0 }}</b>
-        <button data-write :disabled="spell.dom || !canPrepare(c, level)" aria-label="Preparar más" @click="cast.changePreparation(c, level, spell, 1)">+</button>
+        <button
+          data-write
+          :disabled="spell.dom || !canPrepare(c, level)"
+          aria-label="Preparar más"
+          @click="cast.changePreparation(c, level, spell, 1)"
+        >+</button>
       </span>
 
-      <span v-else-if="atWill" class="mute">A voluntad</span>
+      <span
+        v-else-if="atWill"
+        class="mute"
+      >A voluntad</span>
 
-      <button data-write v-else class="cast" :disabled="!canCast(c, level, spell)" @click="cast.castSpell(c, level, spell)">Lanzar</button>
+      <button
+        v-else
+        data-write
+        class="cast"
+        :disabled="!canCast(c, level, spell)"
+        @click="cast.castSpell(c, level, spell)"
+      >
+        Lanzar
+      </button>
     </div>
 
-    <div v-if="open" class="detail">
+    <div
+      v-if="open"
+      class="detail"
+    >
       <SpellInfo :spell="cast.fullSpell(spell)" />
 
       <label class="grid">
         Notas
-        <textarea data-write :value="spell.note || ''" rows="2" placeholder="Notas del conjuro" @change="cast.saveNote(c, level, spell, $event)" />
+        <textarea
+          data-write
+          :value="spell.note || ''"
+          rows="2"
+          placeholder="Notas del conjuro"
+          @change="cast.saveNote(c, level, spell, $event)"
+        />
       </label>
 
       <div class="row">
         <span>Modificador adicional de CD</span>
         <span class="step">
-          <button data-write aria-label="Bajar CD" @click="cast.changeSpellDC(c, spell, -1)">−</button>
+          <button
+            data-write
+            aria-label="Bajar CD"
+            @click="cast.changeSpellDC(c, spell, -1)"
+          >−</button>
           <b>{{ spell.dcb || 0 }}</b>
-          <button data-write aria-label="Subir CD" @click="cast.changeSpellDC(c, spell, 1)">+</button>
+          <button
+            data-write
+            aria-label="Subir CD"
+            @click="cast.changeSpellDC(c, spell, 1)"
+          >+</button>
         </span>
       </div>
 
-      <p v-if="c.type === 'prep'" class="mute">Copias restantes: {{ spell.left || 0 }} de {{ spell.prep || 0 }} preparadas.</p>
+      <p
+        v-if="c.type === 'prep'"
+        class="mute"
+      >
+        Copias restantes: {{ spell.left || 0 }} de {{ spell.prep || 0 }} preparadas.
+      </p>
 
-      <button data-write v-if="!c.all" class="danger" @click="cast.removeSpell(c, level, spell)">Eliminar conjuro de este nivel</button>
+      <button
+        v-if="!c.all"
+        data-write
+        class="danger"
+        @click="cast.removeSpell(c, level, spell)"
+      >
+        Eliminar conjuro de este nivel
+      </button>
     </div>
   </article>
 </template>

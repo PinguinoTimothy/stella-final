@@ -62,34 +62,99 @@ async function addList(list, label) {
       <span class="mute">({{ pageCreatures.length }})</span>
     </summary>
 
-    <p v-if="!shown.length" class="enc-none">No room starts on this page.</p>
-    <p v-else-if="continuing" class="enc-note">Continues from {{ continuing.code }} · {{ continuing.title }}</p>
+    <p
+      v-if="!shown.length"
+      class="enc-none"
+    >
+      No room starts on this page.
+    </p>
+    <p
+      v-else-if="continuing"
+      class="enc-note"
+    >
+      Continues from {{ continuing.code }} · {{ continuing.title }}
+    </p>
 
-    <details v-for="r in shown" :key="r.code + r.page" class="enc-room" open>
+    <details
+      v-for="r in shown"
+      :key="r.code + r.page"
+      class="enc-room"
+      open
+    >
       <summary class="enc-head">
         <span class="enc-code">{{ r.code }}</span>
         <strong class="enc-title">{{ r.title }}</strong>
-        <span v-if="r.cr" class="enc-cr">CR {{ r.cr }}</span>
+        <span
+          v-if="r.cr"
+          class="enc-cr"
+        >CR {{ r.cr }}</span>
         <span class="mute enc-count">{{ r.creatures?.length || 0 }}</span>
-        <button type="button" class="enc-map" @click.stop.prevent="emit('show-room', r.code)">Map</button>
+        <button
+          type="button"
+          class="enc-map"
+          @click.stop.prevent="emit('show-room', r.code)"
+        >
+          Map
+        </button>
       </summary>
 
-      <div v-if="r.creatures?.length" class="enc-creatures">
-        <div v-for="c in r.creatures" :key="c.name" class="enc-creature">
-          <img v-if="art[c.name]" :src="art[c.name]" :alt="c.name" class="enc-art" />
-          <RefLink kind="monster" :name="c.name" />
+      <div
+        v-if="r.creatures?.length"
+        class="enc-creatures"
+      >
+        <div
+          v-for="c in r.creatures"
+          :key="c.name"
+          class="enc-creature"
+        >
+          <img
+            v-if="art[c.name]"
+            :src="art[c.name]"
+            :alt="c.name"
+            class="enc-art"
+          >
+          <RefLink
+            kind="monster"
+            :name="c.name"
+          />
           <span class="enc-meta">CR {{ c.cr || '—' }}<template v-if="c.xp"> · XP {{ c.xp.toLocaleString('en-US') }}</template></span>
-          <button type="button" class="enc-add" :disabled="busy" @click="addOne(c.name)">+ Combat</button>
+          <button
+            type="button"
+            class="enc-add"
+            :disabled="busy"
+            @click="addOne(c.name)"
+          >
+            + Combat
+          </button>
         </div>
-        <button v-if="r.creatures.length > 1" type="button" class="enc-start" :disabled="busy" @click="addList(r.creatures, 'creatures')">
+        <button
+          v-if="r.creatures.length > 1"
+          type="button"
+          class="enc-start"
+          :disabled="busy"
+          @click="addList(r.creatures, 'creatures')"
+        >
           Start combat with this room ({{ r.creatures.length }})
         </button>
       </div>
-      <p v-else class="enc-none">No creatures in this room.</p>
+      <p
+        v-else
+        class="enc-none"
+      >
+        No creatures in this room.
+      </p>
     </details>
 
-    <div v-if="pageCreatures.length > 1" class="enc-page">
-      <button type="button" class="enc-start" :disabled="busy" @click="addList(pageCreatures, 'creatures')">
+    <div
+      v-if="pageCreatures.length > 1"
+      class="enc-page"
+    >
+      <button
+        type="button"
+        class="enc-start"
+        :disabled="busy"
+        @click="addList(pageCreatures, 'creatures')"
+      >
         Start combat with this page ({{ pageCreatures.length }})
       </button>
     </div>

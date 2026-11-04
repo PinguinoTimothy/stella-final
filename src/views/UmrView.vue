@@ -15,12 +15,32 @@ const toggle = (name) => { opened.value = opened.value === name ? null : name }
 
 <template>
   <BackButton />
-  <h2 class="pg">Monster rules</h2>
-  <p class="mute">Universal monster rules: special abilities, defenses and traits. Search a rule or a word (“paralysis”, “DC”, “aura”), or filter by group.</p>
-  <UmrFilters v-model:query="query" v-model:cat="cat" />
+  <h2 class="pg">
+    Monster rules
+  </h2>
+  <p class="mute">
+    Universal monster rules: special abilities, defenses and traits. Search a rule or a word (“paralysis”, “DC”, “aura”), or filter by group.
+  </p>
+  <UmrFilters
+    v-model:query="query"
+    v-model:cat="cat"
+  />
   <div>
-    <UmrCard v-for="r in list" :key="r[0]" :rule="r" :open="umrIsOpen(r[0], opened, query, list.length)" @toggle="toggle(r[0])" />
-    <section v-if="!list.length" class="panel item-empty">No rule matches.</section>
+    <UmrCard
+      v-for="r in list"
+      :key="r[0]"
+      :rule="r"
+      :open="umrIsOpen(r[0], opened, query, list.length)"
+      @toggle="toggle(r[0])"
+    />
+    <section
+      v-if="!list.length"
+      class="panel item-empty"
+    >
+      No rule matches.
+    </section>
   </div>
-  <p class="mute">Source: Archives of Nethys, Universal Monster Rules, condensed. “Mythic” rules need the Mythic Adventures rules.</p>
+  <p class="mute">
+    Source: Archives of Nethys, Universal Monster Rules, condensed. “Mythic” rules need the Mythic Adventures rules.
+  </p>
 </template>

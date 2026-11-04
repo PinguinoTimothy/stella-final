@@ -111,39 +111,135 @@ async function clearAll() {
 </script>
 
 <template>
-  <aside v-if="sidePanel" class="combat-tray" :class="{ open: expanded }" aria-label="Combat">
+  <aside
+    v-if="sidePanel"
+    class="combat-tray"
+    :class="{ open: expanded }"
+    aria-label="Combat"
+  >
     <header class="ct-head">
-      <button class="ct-toggle" type="button" :aria-expanded="expanded" @click="expanded = !expanded">
+      <button
+        class="ct-toggle"
+        type="button"
+        :aria-expanded="expanded"
+        @click="expanded = !expanded"
+      >
         <b>Combat</b>
         <span class="mute">{{ fights.fights.length ? `${fights.activeIndex + 1} / ${fights.fights.length}` : 'empty' }}</span>
       </button>
       <div class="ct-nav">
-        <button :disabled="fights.fights.length < 2" aria-label="Previous monster" @click="fights.step(-1)">‹</button>
-        <button :disabled="fights.fights.length < 2" aria-label="Next monster" @click="fights.step(1)">›</button>
-        <button v-if="!readonly" :disabled="!fights.fights.length" class="danger" aria-label="Clear all" @click="clearAll">Clear</button>
-        <button class="ct-hide" aria-label="Hide combat" @click="hide">Hide</button>
+        <button
+          :disabled="fights.fights.length < 2"
+          aria-label="Previous monster"
+          @click="fights.step(-1)"
+        >
+          ‹
+        </button>
+        <button
+          :disabled="fights.fights.length < 2"
+          aria-label="Next monster"
+          @click="fights.step(1)"
+        >
+          ›
+        </button>
+        <button
+          v-if="!readonly"
+          :disabled="!fights.fights.length"
+          class="danger"
+          aria-label="Clear all"
+          @click="clearAll"
+        >
+          Clear
+        </button>
+        <button
+          class="ct-hide"
+          aria-label="Hide combat"
+          @click="hide"
+        >
+          Hide
+        </button>
       </div>
     </header>
 
-    <div v-if="!readonly" class="ct-amount">
-      <input v-model.number="amount" type="number" min="1" inputmode="numeric" aria-label="Amount">
-      <button class="danger" :disabled="!fights.active" @click="applyToActive(-1)">Damage</button>
-      <button class="cast" :disabled="!fights.active" @click="applyToActive(1)">Heal</button>
+    <div
+      v-if="!readonly"
+      class="ct-amount"
+    >
+      <input
+        v-model.number="amount"
+        type="number"
+        min="1"
+        inputmode="numeric"
+        aria-label="Amount"
+      >
+      <button
+        class="danger"
+        :disabled="!fights.active"
+        @click="applyToActive(-1)"
+      >
+        Damage
+      </button>
+      <button
+        class="cast"
+        :disabled="!fights.active"
+        @click="applyToActive(1)"
+      >
+        Heal
+      </button>
     </div>
 
-    <div v-if="!readonly" class="ct-add">
-      <input v-model="addQuery" type="search" placeholder="Add a monster…" aria-label="Add a monster to combat">
+    <div
+      v-if="!readonly"
+      class="ct-add"
+    >
+      <input
+        v-model="addQuery"
+        type="search"
+        placeholder="Add a monster…"
+        aria-label="Add a monster to combat"
+      >
       <details class="ct-custom">
-        <summary class="ct-custom-btn">+ Add creature not in the bestiary</summary>
+        <summary class="ct-custom-btn">
+          + Add creature not in the bestiary
+        </summary>
         <div class="ct-custom-row">
-          <input v-model="customName" type="text" placeholder="Name" aria-label="Creature name">
-          <input v-model.number="customHp" type="number" min="1" inputmode="numeric" placeholder="HP" aria-label="Creature HP">
-          <button type="button" class="cast" :disabled="!customName.trim() || !(customHp > 0)" @click="addCustomCreature">Add</button>
+          <input
+            v-model="customName"
+            type="text"
+            placeholder="Name"
+            aria-label="Creature name"
+          >
+          <input
+            v-model.number="customHp"
+            type="number"
+            min="1"
+            inputmode="numeric"
+            placeholder="HP"
+            aria-label="Creature HP"
+          >
+          <button
+            type="button"
+            class="cast"
+            :disabled="!customName.trim() || !(customHp > 0)"
+            @click="addCustomCreature"
+          >
+            Add
+          </button>
         </div>
       </details>
-      <ul v-if="addRows.length" class="ct-add-list">
-        <li v-for="row in addRows" :key="row.name + row.url">
-          <button type="button" :disabled="addBusy" @click="addMonster(row)">
+      <ul
+        v-if="addRows.length"
+        class="ct-add-list"
+      >
+        <li
+          v-for="row in addRows"
+          :key="row.name + row.url"
+        >
+          <button
+            type="button"
+            :disabled="addBusy"
+            @click="addMonster(row)"
+          >
             <span>{{ row.name }}</span>
             <span class="mute">CR {{ row.cr }}</span>
           </button>
@@ -152,7 +248,10 @@ async function clearAll() {
     </div>
 
     <div class="ct-body">
-      <p v-if="!fights.fights.length" class="mute">
+      <p
+        v-if="!fights.fights.length"
+        class="mute"
+      >
         No open fights. Add monsters from More → Monsters.
       </p>
 
@@ -163,49 +262,141 @@ async function clearAll() {
         :class="{ active: f.uid === fights.active?.uid, down: isDown(f) }"
       >
         <div class="ct-row">
-          <button class="ct-name" :aria-current="f.uid === fights.active?.uid" @click="openDetail(f.uid)">
+          <button
+            class="ct-name"
+            :aria-current="f.uid === fights.active?.uid"
+            @click="openDetail(f.uid)"
+          >
             {{ f.name }}
           </button>
-          <span v-if="isDown(f)" class="tag warn">down</span>
+          <span
+            v-if="isDown(f)"
+            class="tag warn"
+          >down</span>
           <span class="ct-hp"><b>{{ f.hp }}</b>/{{ f.maxHp }}</span>
-          <button v-if="!readonly" class="ct-x" aria-label="Remove from combat" @click="fights.remove(f.uid)">×</button>
+          <button
+            v-if="!readonly"
+            class="ct-x"
+            aria-label="Remove from combat"
+            @click="fights.remove(f.uid)"
+          >
+            ×
+          </button>
         </div>
 
-        <div class="ct-bar" aria-hidden="true"><i :style="{ width: pct(f) + '%' }"></i></div>
-
-        <div v-if="!readonly" class="ct-btns">
-          <button aria-label="Minus 5" @click="fights.change(f.uid, -5)">−5</button>
-          <button aria-label="Minus 1" @click="fights.change(f.uid, -1)">−1</button>
-          <button aria-label="Plus 1" @click="fights.change(f.uid, 1)">+1</button>
-          <button aria-label="Plus 5" @click="fights.change(f.uid, 5)">+5</button>
-          <button aria-label="Reset HP" @click="fights.reset(f.uid)">↺</button>
+        <div
+          class="ct-bar"
+          aria-hidden="true"
+        >
+          <i :style="{ width: pct(f) + '%' }" />
         </div>
 
-        <p v-if="f.loading" class="mute">Loading…</p>
-        <p v-else-if="f.error" class="mute" role="alert">{{ f.error }}</p>
+        <div
+          v-if="!readonly"
+          class="ct-btns"
+        >
+          <button
+            aria-label="Minus 5"
+            @click="fights.change(f.uid, -5)"
+          >
+            −5
+          </button>
+          <button
+            aria-label="Minus 1"
+            @click="fights.change(f.uid, -1)"
+          >
+            −1
+          </button>
+          <button
+            aria-label="Plus 1"
+            @click="fights.change(f.uid, 1)"
+          >
+            +1
+          </button>
+          <button
+            aria-label="Plus 5"
+            @click="fights.change(f.uid, 5)"
+          >
+            +5
+          </button>
+          <button
+            aria-label="Reset HP"
+            @click="fights.reset(f.uid)"
+          >
+            ↺
+          </button>
+        </div>
+
+        <p
+          v-if="f.loading"
+          class="mute"
+        >
+          Loading…
+        </p>
+        <p
+          v-else-if="f.error"
+          class="mute"
+          role="alert"
+        >
+          {{ f.error }}
+        </p>
       </article>
     </div>
   </aside>
 
   <!-- Hidden: a small tab to bring the panel back. -->
-  <button v-else class="ct-tab" type="button" aria-label="Show combat" @click="reveal">
+  <button
+    v-else
+    class="ct-tab"
+    type="button"
+    aria-label="Show combat"
+    @click="reveal"
+  >
     Combat
     <span v-if="fights.fights.length">{{ fights.fights.length }}</span>
   </button>
 
   <!-- Popover with the full stat block. Clicking outside or × closes it. -->
   <template v-if="sidePanel && detail">
-    <div class="ct-pop-bg" aria-hidden="true" @click="detailUid = null"></div>
-    <section class="ct-pop" role="dialog" :aria-label="detail.name">
+    <div
+      class="ct-pop-bg"
+      aria-hidden="true"
+      @click="detailUid = null"
+    />
+    <section
+      class="ct-pop"
+      role="dialog"
+      :aria-label="detail.name"
+    >
       <header class="ct-pop-head">
         <h2>{{ detail.name }}</h2>
         <span class="mute">HP {{ detail.hp }}/{{ detail.maxHp }}</span>
-        <button class="x" aria-label="Close" @click="detailUid = null">×</button>
+        <button
+          class="x"
+          aria-label="Close"
+          @click="detailUid = null"
+        >
+          ×
+        </button>
       </header>
       <div class="ct-pop-body">
-        <p v-if="detail.loading" class="mute">Loading…</p>
-        <p v-else-if="detail.error" class="mute" role="alert">{{ detail.error }}</p>
-        <CombatCard v-else-if="detail.card" :card="detail.card" />
+        <p
+          v-if="detail.loading"
+          class="mute"
+        >
+          Loading…
+        </p>
+        <p
+          v-else-if="detail.error"
+          class="mute"
+          role="alert"
+        >
+          {{ detail.error }}
+        </p>
+        <CombatCard
+          v-else-if="detail.card"
+          :card="detail.card"
+        />
       </div>
     </section>
   </template>

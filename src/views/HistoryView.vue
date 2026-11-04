@@ -22,19 +22,42 @@ async function clear() {
 
 <template>
   <BackButton />
-  <h2 class="pg">History</h2>
+  <h2 class="pg">
+    History
+  </h2>
   <HistoryFilters v-model="kind" />
 
-  <section v-if="!list.length" class="panel item-empty">
+  <section
+    v-if="!list.length"
+    class="panel item-empty"
+  >
     Nothing here yet. Casts, item uses, money changes and rests are recorded as they happen.
   </section>
 
   <template v-else>
-    <template v-for="g in days" :key="g.day">
-      <h3 class="ig-h">{{ g.day }}</h3>
-      <HistoryEntry v-for="(e, i) in g.entries" :key="e.t + ':' + i" :entry="e" />
+    <template
+      v-for="g in days"
+      :key="g.day"
+    >
+      <h3 class="ig-h">
+        {{ g.day }}
+      </h3>
+      <HistoryEntry
+        v-for="(e, i) in g.entries"
+        :key="e.t + ':' + i"
+        :entry="e"
+      />
     </template>
-    <p class="mute">Showing the latest {{ Math.min(HISTORY_SHOWN, list.length) }} of {{ app.S.log.length }} (the app keeps the last 300).</p>
-    <button data-write v-if="!app.viewer" class="danger" @click="clear">Clear history</button>
+    <p class="mute">
+      Showing the latest {{ Math.min(HISTORY_SHOWN, list.length) }} of {{ app.S.log.length }} (the app keeps the last 300).
+    </p>
+    <button
+      v-if="!app.viewer"
+      data-write
+      class="danger"
+      @click="clear"
+    >
+      Clear history
+    </button>
   </template>
 </template>

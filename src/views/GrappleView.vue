@@ -11,8 +11,12 @@ const steps = computed(() => GRAPPLE_STEPS[view.value] || [])
 
 <template>
   <BackButton />
-  <h2 class="pg">Grapple</h2>
-  <p class="mute">A grapple check is a combat maneuver: d20 + CMB against the target’s CMD. Pick where you are in the grapple.</p>
+  <h2 class="pg">
+    Grapple
+  </h2>
+  <p class="mute">
+    A grapple check is a combat maneuver: d20 + CMB against the target’s CMD. Pick where you are in the grapple.
+  </p>
 
   <div class="chips">
     <button
@@ -22,14 +26,25 @@ const steps = computed(() => GRAPPLE_STEPS[view.value] || [])
       type="button"
       :aria-selected="view === v.id"
       @click="view = v.id"
-    >{{ v.label }}</button>
+    >
+      {{ v.label }}
+    </button>
   </div>
 
   <div>
-    <article v-for="step in steps" :key="step.title" class="cond">
+    <article
+      v-for="step in steps"
+      :key="step.title"
+      class="cond"
+    >
       <b>{{ step.title }}</b>
       <ul class="grl">
-        <li v-for="(point, i) in step.points" :key="i">{{ point }}</li>
+        <li
+          v-for="(point, i) in step.points"
+          :key="i"
+        >
+          {{ point }}
+        </li>
       </ul>
     </article>
   </div>

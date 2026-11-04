@@ -8,7 +8,10 @@ const cast = useCast()
 </script>
 
 <template>
-  <section v-if="app.S.cl.length > 1" class="panel">
+  <section
+    v-if="app.S.cl.length > 1"
+    class="panel"
+  >
     <div class="chips">
       <button
         v-for="(c, index) in app.S.cl"
@@ -18,7 +21,10 @@ const cast = useCast()
         @click="cast.selectClass(index)"
       >
         {{ c.name || `Clase ${index + 1}` }}
-        <span v-if="c.lvl" class="lv">{{ c.lvl }}</span>
+        <span
+          v-if="c.lvl"
+          class="lv"
+        >{{ c.lvl }}</span>
       </button>
     </div>
   </section>

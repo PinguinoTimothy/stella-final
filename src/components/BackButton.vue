@@ -6,5 +6,10 @@ const back = () => { app.ui.tab = 'more'; window.scrollTo(0, 0) }
 </script>
 
 <template>
-  <button class="back" @click="back">‹ More</button>
+  <button
+    class="back"
+    @click="back"
+  >
+    ‹ More
+  </button>
 </template>

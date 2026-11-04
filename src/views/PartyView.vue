@@ -157,12 +157,18 @@ async function removeMember(member) {
     <template v-if="!selected">
       <header class="page-head">
         <h1>Grupo</h1>
-<button data-write v-if="!props.readonly" class="cast" @click="showAdd = !showAdd">          {{ showAdd ? 'Cancelar' : '+ Personaje' }}
+        <button
+          v-if="!props.readonly"
+          data-write
+          class="cast"
+          @click="showAdd = !showAdd"
+        >
+          {{ showAdd ? 'Cancelar' : '+ Personaje' }}
         </button>
       </header>
 
-<form
-  v-if="showAdd && !props.readonly"
+      <form
+        v-if="showAdd && !props.readonly"
         class="panel"
         @submit.prevent="addMember"
       >
@@ -173,12 +179,20 @@ async function removeMember(member) {
             v-model="newName"
             placeholder="Ej. Valeros"
             autocomplete="off"
-          />
-          <button class="cast" type="submit">Añadir</button>
+          >
+          <button
+            class="cast"
+            type="submit"
+          >
+            Añadir
+          </button>
         </div>
       </form>
 
-      <section v-if="members.length" class="party-list">
+      <section
+        v-if="members.length"
+        class="party-list"
+      >
         <button
           v-for="member in members"
           :key="member.name"
@@ -197,18 +211,24 @@ async function removeMember(member) {
         </button>
       </section>
 
-      <section v-else class="panel item-empty">
-<h2>El grupo está vacío</h2>
-<p class="mute">
-  {{ props.readonly
-    ? 'No hay personajes publicados.'
-    : 'Añade un personaje para empezar a organizar el grupo.' }}
-</p>
+      <section
+        v-else
+        class="panel item-empty"
+      >
+        <h2>El grupo está vacío</h2>
+        <p class="mute">
+          {{ props.readonly
+            ? 'No hay personajes publicados.'
+            : 'Añade un personaje para empezar a organizar el grupo.' }}
+        </p>
       </section>
     </template>
 
     <template v-else>
-      <button class="back" @click="selectedName = ''">
+      <button
+        class="back"
+        @click="selectedName = ''"
+      >
         ‹ Volver al grupo
       </button>
 
@@ -225,16 +245,28 @@ async function removeMember(member) {
       <section class="panel">
         <div class="row">
           <h2>Inventario</h2>
-<button data-write v-if="!props.readonly" class="cast" style="margin: 1rem;" @click="openPicker">
-  + Añadir objeto
-</button>
+          <button
+            v-if="!props.readonly"
+            data-write
+            class="cast"
+            style="margin: 1rem;"
+            @click="openPicker"
+          >
+            + Añadir objeto
+          </button>
         </div>
 
-        <p v-if="!selected.items.length" class="mute">
+        <p
+          v-if="!selected.items.length"
+          class="mute"
+        >
           No tiene objetos asignados.
         </p>
 
-        <div v-else class="item-grid">
+        <div
+          v-else
+          class="item-grid"
+        >
           <ItemCard
             v-for="it in sortedItems"
             :key="it.id"
@@ -249,7 +281,10 @@ async function removeMember(member) {
       <section class="panel">
         <h2>Efectos activos</h2>
 
-        <p v-if="!selected.effects.length" class="mute">
+        <p
+          v-if="!selected.effects.length"
+          class="mute"
+        >
           No tiene efectos registrados.
         </p>
 
@@ -265,17 +300,23 @@ async function removeMember(member) {
               {{ effect.rem == null ? 'Permanente' : effect.rem === 0 ? 'Terminado' : `${fmtR(effect.rem)} restantes` }}
             </span>
           </div>
-          <p v-if="effect.note" class="mute">{{ effect.note }}</p>
+          <p
+            v-if="effect.note"
+            class="mute"
+          >
+            {{ effect.note }}
+          </p>
         </article>
       </section>
 
-<button data-write
-  v-if="!props.readonly"
-  class="danger wide"
-  @click="removeMember(selected)"
->
-  Retirar {{ selected.name }} del grupo
-</button>
+      <button
+        v-if="!props.readonly"
+        data-write
+        class="danger wide"
+        @click="removeMember(selected)"
+      >
+        Retirar {{ selected.name }} del grupo
+      </button>
     </template>
 
     <ItemDetail
@@ -304,28 +345,57 @@ async function removeMember(member) {
         autocomplete="off"
       >
 
-      <p v-if="!pickerRows.free.length && !pickerRows.held.length" class="item-empty">
+      <p
+        v-if="!pickerRows.free.length && !pickerRows.held.length"
+        class="item-empty"
+      >
         Todos los objetos ya están con {{ selected.name }}.
         Crea objetos nuevos desde la pestaña Objetos.
       </p>
 
-      <section v-if="pickerRows.free.length" class="pk-g">
-        <h3 class="ig-h">Sin asignar <span>{{ pickerRows.free.length }}</span></h3>
-        <article v-for="it in pickerRows.free" :key="it.id" class="pk">
+      <section
+        v-if="pickerRows.free.length"
+        class="pk-g"
+      >
+        <h3 class="ig-h">
+          Sin asignar <span>{{ pickerRows.free.length }}</span>
+        </h3>
+        <article
+          v-for="it in pickerRows.free"
+          :key="it.id"
+          class="pk"
+        >
           <span class="pk-t">
             <b>{{ it.n }}</b>
             <small>
               <span>{{ it.k || 'Objeto' }}</span>
-              <span v-if="it.slot && it.slot !== it.k" class="tag">{{ it.slot }}</span>
+              <span
+                v-if="it.slot && it.slot !== it.k"
+                class="tag"
+              >{{ it.slot }}</span>
             </small>
           </span>
-          <button data-write @click="assign(it)">Asignar</button>
+          <button
+            data-write
+            @click="assign(it)"
+          >
+            Asignar
+          </button>
         </article>
       </section>
 
-      <section v-if="pickerRows.held.length" class="pk-g">
-        <h3 class="ig-h">Llevados por otros <span>{{ pickerRows.held.length }}</span></h3>
-        <article v-for="it in pickerRows.held" :key="it.id" class="pk">
+      <section
+        v-if="pickerRows.held.length"
+        class="pk-g"
+      >
+        <h3 class="ig-h">
+          Llevados por otros <span>{{ pickerRows.held.length }}</span>
+        </h3>
+        <article
+          v-for="it in pickerRows.held"
+          :key="it.id"
+          class="pk"
+        >
           <span class="pk-t">
             <b>{{ it.n }}</b>
             <small>
@@ -333,7 +403,12 @@ async function removeMember(member) {
               <span class="tag">con {{ it.owner }}</span>
             </small>
           </span>
-          <button data-write @click="assign(it)">Quitar</button>
+          <button
+            data-write
+            @click="assign(it)"
+          >
+            Quitar
+          </button>
         </article>
       </section>
     </Sheet>

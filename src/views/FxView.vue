@@ -17,9 +17,32 @@ const debuffs = computed(() => app.S.fx.filter((e) => e.k === 'debuff'))
 </script>
 
 <template>
-  <FxSummary :adding="adding" @toggle-add="toggleForm" />
-  <FxForm v-if="adding" :key="app.ui.fxPrefill ? app.ui.fxPrefill.n : 'new'" :prefill="app.ui.fxPrefill" @done="closeForm" />
-  <FxGroup title="Buffs" :effects="buffs" :open-id="openId" @toggle="toggle" />
-  <FxGroup title="Debuffs" :effects="debuffs" :open-id="openId" @toggle="toggle" />
-  <p v-if="!app.S.fx.length && !adding" class="mute">Nothing running. Cast a spell and tap Track, or add an effect by hand.</p>
+  <FxSummary
+    :adding="adding"
+    @toggle-add="toggleForm"
+  />
+  <FxForm
+    v-if="adding"
+    :key="app.ui.fxPrefill ? app.ui.fxPrefill.n : 'new'"
+    :prefill="app.ui.fxPrefill"
+    @done="closeForm"
+  />
+  <FxGroup
+    title="Buffs"
+    :effects="buffs"
+    :open-id="openId"
+    @toggle="toggle"
+  />
+  <FxGroup
+    title="Debuffs"
+    :effects="debuffs"
+    :open-id="openId"
+    @toggle="toggle"
+  />
+  <p
+    v-if="!app.S.fx.length && !adding"
+    class="mute"
+  >
+    Nothing running. Cast a spell and tap Track, or add an effect by hand.
+  </p>
 </template>

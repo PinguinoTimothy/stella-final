@@ -102,45 +102,103 @@ watch(() => peek.current, async (cur) => {
 </script>
 
 <template>
-  <Sheet v-if="peek.current" class="peek-sheet" :title="peek.current.name" @close="peek.close()">
+  <Sheet
+    v-if="peek.current"
+    class="peek-sheet"
+    :title="peek.current.name"
+    @close="peek.close()"
+  >
     <template v-if="peek.current.kind === 'condition'">
-      <p v-if="condition"><LinkedText :text="condition.text" /></p>
-      <p v-else class="mute">No entry for this condition.</p>
+      <p v-if="condition">
+        <LinkedText :text="condition.text" />
+      </p>
+      <p
+        v-else
+        class="mute"
+      >
+        No entry for this condition.
+      </p>
     </template>
 
     <template v-else-if="peek.current.kind === 'monster'">
-      <CombatCard v-if="card" :card="card" />
-      <p v-else-if="monsterState === 'loading'" class="mute">Loading…</p>
-      <p v-else class="mute">Not found in the bestiary.</p>
+      <CombatCard
+        v-if="card"
+        :card="card"
+      />
+      <p
+        v-else-if="monsterState === 'loading'"
+        class="mute"
+      >
+        Loading…
+      </p>
+      <p
+        v-else
+        class="mute"
+      >
+        Not found in the bestiary.
+      </p>
 
-      <section v-if="appearsIn.length" class="peek-uses">
+      <section
+        v-if="appearsIn.length"
+        class="peek-uses"
+      >
         <h3>Appears in</h3>
         <ul class="peek-list">
-          <li v-for="(r, i) in appearsIn" :key="i">{{ r.code }} · {{ r.title }} <span class="mute">({{ r.book }})</span></li>
+          <li
+            v-for="(r, i) in appearsIn"
+            :key="i"
+          >
+            {{ r.code }} · {{ r.title }} <span class="mute">({{ r.book }})</span>
+          </li>
         </ul>
       </section>
     </template>
 
-    <p v-else-if="loading" class="mute">Loading…</p>
+    <p
+      v-else-if="loading"
+      class="mute"
+    >
+      Loading…
+    </p>
     <template v-else-if="spell">
       <SpellInfo :spell="spell" />
 
       <section class="peek-uses">
         <h3>Used by</h3>
-        <p v-if="ownItems.length"><b>In your inventory:</b> {{ ownItems.map((i) => i.n).join(', ') }}</p>
-        <p v-if="usesLoading" class="mute">Looking up catalog items…</p>
+        <p v-if="ownItems.length">
+          <b>In your inventory:</b> {{ ownItems.map((i) => i.n).join(', ') }}
+        </p>
+        <p
+          v-if="usesLoading"
+          class="mute"
+        >
+          Looking up catalog items…
+        </p>
         <template v-else-if="catalogItems.length">
           <p><b>Catalog items:</b></p>
           <ul class="peek-list">
-            <li v-for="it in catalogItems" :key="it.id">
+            <li
+              v-for="it in catalogItems"
+              :key="it.id"
+            >
               {{ it.name }}<span class="mute"> · {{ it.category || 'Equipment' }}<template v-if="it.price_gp != null"> · {{ fmtGp(it.price_gp) }}</template></span>
             </li>
           </ul>
         </template>
-        <p v-else-if="!ownItems.length" class="mute">No items use this spell.</p>
+        <p
+          v-else-if="!ownItems.length"
+          class="mute"
+        >
+          No items use this spell.
+        </p>
       </section>
     </template>
-    <p v-else class="mute">Not found in the spell database.</p>
+    <p
+      v-else
+      class="mute"
+    >
+      Not found in the spell database.
+    </p>
   </Sheet>
 </template>
 

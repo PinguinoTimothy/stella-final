@@ -20,21 +20,38 @@ const slots = computed(() => slotInfo(c.value, props.level))
   <section class="panel lvs">
     <template v-if="slots">
       <LevelHeader :level="level" />
-      <SlotPips v-if="!slots.atWill" :level="level" />
-      <DomainSpell v-if="c.dom && level >= 1 && !cast.prepareMode" :level="level" />
+      <SlotPips
+        v-if="!slots.atWill"
+        :level="level"
+      />
+      <DomainSpell
+        v-if="c.dom && level >= 1 && !cast.prepareMode"
+        :level="level"
+      />
 
-      <p v-if="c.type === 'prep' && !slots.atWill" class="mute note">
+      <p
+        v-if="c.type === 'prep' && !slots.atWill"
+        class="mute note"
+      >
         Preparados: {{ preparedCount(c, level) }} de {{ slots.regular }} espacios normales.
       </p>
 
-      <PrepCatalog v-if="cast.prepareMode && c.all" :level="level" />
-      <KnownCatalog v-if="c.type === 'spont' && level === cast.selectedLevel" :level="level" />
+      <PrepCatalog
+        v-if="cast.prepareMode && c.all"
+        :level="level"
+      />
+      <KnownCatalog
+        v-if="c.type === 'spont' && level === cast.selectedLevel"
+        :level="level"
+      />
       <SpellList :level="level" />
     </template>
 
     <template v-else>
       <h2>Nivel {{ level }}</h2>
-      <p class="mute">No hay espacios disponibles para este nivel con la configuración actual.</p>
+      <p class="mute">
+        No hay espacios disponibles para este nivel con la configuración actual.
+      </p>
     </template>
   </section>
 </template>
