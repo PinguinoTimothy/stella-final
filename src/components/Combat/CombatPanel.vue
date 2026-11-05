@@ -115,6 +115,66 @@ function toggleDetail(f) {
   }
 }
 
+/* ----- moving the stat block popup: drag its header; the position is kept in this browser ----- */
+const popEl = ref(null);
+const POS_KEY = 'stella-combat-pop-pos-v1';
+const KEEP = 60; // px of the popup that must stay on screen, so it can always be grabbed again
+function readPos() {
+  try {
+    const p = JSON.parse(localStorage.getItem(POS_KEY));
+    return p && Number.isFinite(p.x) && Number.isFinite(p.y) ? p : { x: 0, y: 0 };
+  } catch {
+    return { x: 0, y: 0 };
+  }
+}
+const pos = ref(readPos()); // offset from the default place, in px
+watch(pos, p => {
+  try {
+    localStorage.setItem(POS_KEY, JSON.stringify(p));
+  } catch {
+    // Storage disabled: the position only lasts for this session.
+  }
+});
+
+/** Clamps an offset so that the popup keeps KEEP px on screen. Uses the popup as it is drawn now. */
+function clampPos(x, y) {
+  const el = popEl.value;
+  if (!el) return { x, y };
+  const r = el.getBoundingClientRect();
+  const baseLeft = r.left - pos.value.x; // where the popup sits without the offset
+  const baseTop = r.top - pos.value.y;
+  const minX = KEEP - r.width - baseLeft;
+  const maxX = window.innerWidth - KEEP - baseLeft;
+  const minY = -baseTop;
+  const maxY = window.innerHeight - KEEP - baseTop;
+  return {
+    x: Math.round(Math.min(Math.max(x, minX), maxX)),
+    y: Math.round(Math.min(Math.max(y, minY), maxY)),
+  };
+}
+
+// A saved position can be off screen after the window is resized: bring it back when a popup opens.
+watch(detail, async d => {
+  if (!d) return;
+  await nextTick();
+  pos.value = clampPos(pos.value.x, pos.value.y);
+});
+
+let drag = null;
+function onDragDown(e) {
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  if (e.target.closest('button, input, select, textarea, a, label')) return; // tabs, close and the rest keep working
+  drag = { id: e.pointerId, sx: e.clientX, sy: e.clientY, x: pos.value.x, y: pos.value.y };
+  e.currentTarget.setPointerCapture?.(e.pointerId);
+}
+function onDragMove(e) {
+  if (!drag || e.pointerId !== drag.id) return;
+  pos.value = clampPos(drag.x + e.clientX - drag.sx, drag.y + e.clientY - drag.sy);
+}
+function onDragEnd(e) {
+  if (drag && e.pointerId === drag.id) drag = null;
+}
+
 /* ----- damage / heal a custom amount on the selected monster ----- */
 const amount = ref(5);
 const amt = computed(() => Math.max(1, Math.abs(Math.round(Number(amount.value)) || 0)));
@@ -320,14 +380,30 @@ async function clearAll() {
   <!-- Stat block popup: to the left of the panel on desktop (it stays open while you apply damage), a centred card on phones. -->
   <template v-if="detail">
     <div class="cp-pop-bg" aria-hidden="true" @click="closeAll"></div>
-    <section class="cp-pop" :class="{ alone: hidden && !sheet }" role="dialog" aria-label="Stat blocks">
-      <header class="cp-pop-head">
+    <section
+      ref="popEl"
+      class="cp-pop"
+      :class="{ alone: hidden && !sheet }"
+      :style="{ transform: `translate(${pos.x}px, ${pos.y}px)` }"
+      role="dialog"
+      aria-label="Stat blocks"
+    >
+      <header
+        class="cp-pop-head"
+        title="Drag to move"
+        @pointerdown="onDragDown"
+        @pointermove="onDragMove"
+        @pointerup="onDragEnd"
+        @pointercancel="onDragEnd"
+      >
+        <span class="cp-grip" aria-hidden="true"></span>
         <div class="cp-tabs" role="tablist">
           <div v-for="t in tabs" :key="t.uid" class="cp-t" :class="{ active: t.uid === activeTab, down: isDown(t) }">
             <button
               type="button"
               role="tab"
               class="cp-t-btn"
+              :title="t.name"
               :aria-selected="t.uid === activeTab"
               @click="activeTab = t.uid"
             >
@@ -504,9 +580,8 @@ async function clearAll() {
   font: inherit;
   font-weight: 700;
   text-align: left;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  /* Long names wrap onto more lines instead of being cut off. */
+  overflow-wrap: anywhere;
 }
 
 .cp-name.pc {
@@ -616,12 +691,34 @@ span.cp-info {
   width: min(440px, calc(100vw - 24px));
 }
 
+/* The header is the handle for moving the popup. Buttons inside it keep their own clicks. */
 .cp-pop-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   gap: 6px;
-  padding: 8px 8px 0;
+  padding: 6px 8px 0;
   border-bottom: 1px solid var(--acc, #a99bff);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.cp-pop-head:active {
+  cursor: grabbing;
+}
+.cp-grip {
+  flex: 0 0 100%;
+  height: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cp-grip::before {
+  content: '';
+  width: 44px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line, #264452);
 }
 .cp-pop-x {
   flex: none;
@@ -632,19 +729,19 @@ span.cp-info {
 }
 
 /* One tab per open monster */
+/* Tabs wrap onto new lines when they do not fit, so every open monster stays visible. */
 .cp-tabs {
-  flex: 1;
+  flex: 1 1 0;
   min-width: 0;
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
-  overflow-x: auto;
-  scrollbar-width: thin;
 }
 .cp-t {
   flex: none;
   display: flex;
   align-items: center;
-  max-width: 220px;
+  max-width: 100%;
   border: 1px solid var(--line, #264452);
   border-bottom: 0;
   border-radius: 12px 12px 0 0;
@@ -669,10 +766,9 @@ span.cp-info {
   font-weight: 700;
 }
 .cp-t-name {
-  max-width: 110px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-align: left;
 }
 .cp-t.active .cp-t-name {
   color: var(--acc, #a99bff);
