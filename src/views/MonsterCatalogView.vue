@@ -191,13 +191,6 @@ function addFromStats() {
 </template>
 
 <style scoped>
-/* Phones: no combat controls (the combat panel is desktop only). */
-@media (max-width: 899px) {
-  .combat-add {
-    display: none !important;
-  }
-}
-
 .cat-row {
   display: flex;
   gap: 6px;

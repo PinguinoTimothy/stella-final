@@ -167,7 +167,7 @@ export const useAppStore = defineStore('app', () => {
     if (!viewer.value) return;
 
     try {
-      const result = await fetchLiveView();
+      const result = await fetchLiveView(viewerRevision.value);
 
       if (!result) {
         viewerStatus.value = 'error';
@@ -175,7 +175,11 @@ export const useAppStore = defineStore('app', () => {
         return;
       }
 
-      if (viewerRevision.value === result.revision) return;
+      if (result.unchanged) {
+        viewerStatus.value = 'ok';
+        viewerError.value = '';
+        return;
+      }
 
       replace(result.data, result.data.party);
 

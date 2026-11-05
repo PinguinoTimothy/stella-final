@@ -140,7 +140,10 @@ export const useCloudStore = defineStore('cloud', () => {
     if (b.mig) push(false);
   }
 
-  function schedule() {
+  let diffTimer = 0;
+  function checkNow() {
+    clearTimeout(diffTimer);
+    diffTimer = 0;
     if (!diff(rows(), snap).n) return;
     dirty.value = true;
     saveMeta();
@@ -148,6 +151,13 @@ export const useCloudStore = defineStore('cloud', () => {
     clearTimeout(timer);
     timer = setTimeout(() => push(false), 1500);
   }
+  function schedule() {
+    clearTimeout(diffTimer);
+    diffTimer = setTimeout(checkNow, 120);
+  }
+  const flushDiff = () => {
+    if (diffTimer) checkNow();
+  };
 
   async function push(full = false) {
     if (busy || !session.value) return;
@@ -299,6 +309,7 @@ export const useCloudStore = defineStore('cloud', () => {
       saveSnap();
     }
     watch(() => [app.S, app.party], schedule, { deep: true });
+    addEventListener('pagehide', flushDiff);
     addEventListener('online', sync);
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden && !dirty.value) sync();

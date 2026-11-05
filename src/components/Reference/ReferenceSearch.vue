@@ -386,8 +386,8 @@ onBeforeUnmount(() => {
 <style>
 /* Keeps the search button clear of the combat panel on desktop. */
 @media (min-width: 900px) {
-  body.has-tray .ref-open {
-    right: calc(var(--tray-w, 340px) + 10px);
+  body.has-combat .ref-open {
+    right: calc(var(--combat-w, 380px) + 10px);
   }
 }
 </style>

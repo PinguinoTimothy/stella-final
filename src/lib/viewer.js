@@ -1,10 +1,13 @@
 import { SB_ANON, fetchRev, fetchAll } from './supabase';
 import { fromRow, M_ITEM } from './mapping';
 
-export async function fetchLiveView() {
+export async function fetchLiveView(knownRevision = null) {
   const revision = await fetchRev(SB_ANON);
 
   if (!revision) return null;
+  if (knownRevision !== null && Number(revision.rev) === knownRevision) {
+    return { unchanged: true, revision: knownRevision };
+  }
 
   const [characters, wallets, items, effects, settings] = await Promise.all([
     fetchAll(SB_ANON, 'characters', 'select=*', 'name'),

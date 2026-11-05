@@ -69,10 +69,16 @@ export const useMonsterFights = defineStore('monsterFights', () => {
     }
   }
 
-  /** Adds one fight. Copies of the same monster are numbered: Wolf, Wolf 2, Wolf 3… */
+  function uniqueName(base) {
+    const taken = new Set(fights.value.map(f => f.name));
+    if (!taken.has(base)) return base;
+    let i = 2;
+    while (taken.has(`${base} ${i}`)) i++;
+    return `${base} ${i}`;
+  }
+
   async function add(url, baseName) {
-    const copies = fights.value.filter(f => f.url === url).length;
-    const entry = make({ url, name: copies ? `${baseName} ${copies + 1}` : baseName });
+    const entry = make({ url, name: uniqueName(baseName) });
     fights.value.push(entry);
     activeUid.value = entry.uid;
     await fetchCard(entry, true);
@@ -83,7 +89,7 @@ export const useMonsterFights = defineStore('monsterFights', () => {
   function addCustom(name, hp) {
     const clean = String(name || '').trim() || 'Creature';
     const max = Math.max(1, Math.round(Number(hp) || 0));
-    const entry = make({ url: null, name: clean, hp: max, maxHp: max });
+    const entry = make({ url: null, name: uniqueName(clean), hp: max, maxHp: max });
     entry.loading = false;
     fights.value.push(entry);
     activeUid.value = entry.uid;
@@ -93,11 +99,12 @@ export const useMonsterFights = defineStore('monsterFights', () => {
   /** Brings back the fights saved in this browser. */
   function restore() {
     readSaved()
-      .filter(s => s && s.url)
+      .filter(s => s && (s.url || s.name))
       .forEach(s => {
         const entry = make(s);
         fights.value.push(entry);
-        fetchCard(entry, false);
+        if (s.url) fetchCard(entry, false);
+        else entry.loading = false;
       });
     if (fights.value.length) activeUid.value = fights.value[0].uid;
   }

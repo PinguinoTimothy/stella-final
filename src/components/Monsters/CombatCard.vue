@@ -160,7 +160,7 @@ onUnmounted(() => {
     <!-- DEFENSE -->
     <section class="sb-sec">
       <h4 class="sb-h">Defense</h4>
-      <div class="sb-tiles">
+      <div class="sb-tiles sb-tiles-3">
         <div class="sb-tile">
           <span>AC</span><b>{{ card.ac ?? '—' }}</b>
           <small>touch {{ card.touch ?? '—' }}</small>
@@ -170,6 +170,12 @@ onUnmounted(() => {
           <span>HP</span><b>{{ card.hp ?? '—' }}</b>
           <small v-if="card.hpLong">{{ card.hpLong }}</small>
         </div>
+        <div class="sb-tile">
+          <span>CMD</span><b>{{ card.cmd ?? '—' }}</b>
+          <small v-if="card.cmdOther">{{ card.cmdOther }}</small>
+        </div>
+      </div>
+      <div class="sb-tiles sb-tiles-3 sb-tiles-saves">
         <div class="sb-tile">
           <span>Fort</span><b>{{ signed(card.saves.fort) }}</b>
         </div>
@@ -219,6 +225,13 @@ onUnmounted(() => {
         <div>
           <dt>Space / Reach</dt>
           <dd>{{ card.reachText }}</dd>
+        </div>
+        <div>
+          <dt>CMB</dt>
+          <dd>
+            {{ card.cmb != null ? signed(card.cmb) : '—'
+            }}<small v-if="card.cmbOther" class="sb-inline-note"> {{ card.cmbOther }}</small>
+          </dd>
         </div>
       </dl>
 
@@ -270,14 +283,6 @@ onUnmounted(() => {
       <div class="sb-tiles sb-tiles-combat">
         <div class="sb-tile">
           <span>Base Atk</span><b>{{ signed(card.bab) }}</b>
-        </div>
-        <div class="sb-tile">
-          <span>CMB</span><b>{{ signed(card.cmb) }}</b>
-          <small v-if="card.cmbOther">{{ card.cmbOther }}</small>
-        </div>
-        <div class="sb-tile">
-          <span>CMD</span><b>{{ card.cmd ?? '—' }}</b>
-          <small v-if="card.cmdOther">{{ card.cmdOther }}</small>
         </div>
       </div>
       <dl class="sb-lines">
@@ -550,8 +555,18 @@ onUnmounted(() => {
 .sb-tile-hp {
   border-color: color-mix(in srgb, var(--acc, #a99bff) 40%, var(--line, #264452));
 }
-.sb-tiles-combat {
-  margin-top: 12px;
+.sb-tiles-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.sb-tiles-saves {
+  margin-top: 8px;
+}
+.sb-tile small {
+  overflow-wrap: anywhere;
+}
+.sb-inline-note {
+  color: var(--mute, #93b6ba);
+  font-size: 13px;
 }
 
 /* ---------- attacks and spells ---------- */

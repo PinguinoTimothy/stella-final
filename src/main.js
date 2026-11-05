@@ -9,6 +9,17 @@ import { useAppStore } from './stores/app';
 import { useCloudStore } from './stores/cloud';
 import { useSpells } from './stores/spells';
 
+window.addEventListener('vite:preloadError', event => {
+  event.preventDefault();
+  try {
+    if (Date.now() - (+sessionStorage.getItem('pf1e-preload-reload') || 0) < 10000) return;
+    sessionStorage.setItem('pf1e-preload-reload', String(Date.now()));
+  } catch {
+    /* storage off: reload anyway */
+  }
+  location.reload();
+});
+
 const app = createApp(App);
 app.use(createPinia());
 

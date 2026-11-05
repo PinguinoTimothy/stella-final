@@ -1,5 +1,5 @@
 <script setup>
-import { computed, watchEffect } from 'vue';
+import { computed, defineAsyncComponent, watchEffect } from 'vue';
 import { useAppStore } from './stores/app';
 import { useCloudStore } from './stores/cloud';
 import { useViewerPolling } from './composables/useViewerPolling';
@@ -7,34 +7,35 @@ import BottomNav from './components/BottomNav.vue';
 import MascotBar from './components/MascotBar.vue';
 import ConfirmDialog from './components/ConfirmDialog.vue';
 import ToastHost from './components/ToastHost.vue';
-import CombatTray from './components/Monsters/CombatTray.vue';
 import LoginView from './views/LoginView.vue';
 import PlaceholderView from './views/PlaceholderView.vue';
-import CastView from './views/CastView.vue';
-import ConditionsView from './views/ConditionsView.vue';
-import FxPlayerView from './views/FxPlayerView.vue';
-import FxView from './views/FxView.vue';
-import GrappleView from './views/GrappleView.vue';
-import HistoryView from './views/HistoryView.vue';
-import ItemsView from './views/ItemsView.vue';
-import EquipmentCatalogView from './views/EquipmentCatalogView.vue';
-import MagicCatalogView from './views/MagicCatalogView.vue';
-import MonsterCatalogView from './views/MonsterCatalogView.vue';
-import MoreView from './views/MoreView.vue';
-import PartyView from './views/PartyView.vue';
-import PlayerView from './views/PlayerView.vue';
-import SetupView from './views/SetupView.vue';
-import SkillsView from './views/SkillsView.vue';
-import SpellsView from './views/SpellsView.vue';
-import UmrView from './views/UmrView.vue';
+import CombatPanel from './components/Combat/CombatPanel.vue';
 import PeekSheet from './components/Refs/PeekSheet.vue';
-import MapsView from './views/MapsView.vue';
 import DmLoginView from './views/DmLoginView.vue';
 import ReferenceSearch from './components/Reference/ReferenceSearch.vue';
-import FeatsView from './views/FeatsView.vue';
-import RulesView from './views/RulesView.vue';
 import { useTabHistory } from './composables/useTabHistory';
 
+const lazyView = loader => defineAsyncComponent(loader);
+const CastView = lazyView(() => import('./views/CastView.vue'));
+const ConditionsView = lazyView(() => import('./views/ConditionsView.vue'));
+const FxPlayerView = lazyView(() => import('./views/FxPlayerView.vue'));
+const FxView = lazyView(() => import('./views/FxView.vue'));
+const GrappleView = lazyView(() => import('./views/GrappleView.vue'));
+const HistoryView = lazyView(() => import('./views/HistoryView.vue'));
+const ItemsView = lazyView(() => import('./views/ItemsView.vue'));
+const EquipmentCatalogView = lazyView(() => import('./views/EquipmentCatalogView.vue'));
+const MagicCatalogView = lazyView(() => import('./views/MagicCatalogView.vue'));
+const MonsterCatalogView = lazyView(() => import('./views/MonsterCatalogView.vue'));
+const MoreView = lazyView(() => import('./views/MoreView.vue'));
+const PartyView = lazyView(() => import('./views/PartyView.vue'));
+const PlayerView = lazyView(() => import('./views/PlayerView.vue'));
+const SetupView = lazyView(() => import('./views/SetupView.vue'));
+const SkillsView = lazyView(() => import('./views/SkillsView.vue'));
+const SpellsView = lazyView(() => import('./views/SpellsView.vue'));
+const UmrView = lazyView(() => import('./views/UmrView.vue'));
+const MapsView = lazyView(() => import('./views/MapsView.vue'));
+const FeatsView = lazyView(() => import('./views/FeatsView.vue'));
+const RulesView = lazyView(() => import('./views/RulesView.vue'));
 const app = useAppStore();
 const cloud = useCloudStore();
 useViewerPolling();
@@ -109,9 +110,7 @@ const title = computed(() => titles[app.ui.tab] || (app.viewer ? app.ui.tab : ''
       <PlaceholderView v-else :key="`placeholder-${app.ui.tab}`" :title="title" />
     </Transition>
     <ToastHost />
-    <template v-if="app.mode !== 'player'">
-      <CombatTray />
-    </template>
+    <CombatPanel v-if="app.mode !== 'player'" />
     <ConfirmDialog />
     <ReferenceSearch />
     <PeekSheet />
