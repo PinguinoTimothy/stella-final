@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from 'vue';
 import { useAppStore } from '../stores/app';
 import { ICON } from '../lib/constants';
 
@@ -30,6 +31,16 @@ function active(key) {
   return app.ui.tab === key || (key === 'more' && moreTabs.includes(app.ui.tab));
 }
 
+const activeIndex = computed(() => tabs.findIndex(([key]) => active(key)));
+const indicatorStyle = computed(() => {
+  const i = activeIndex.value;
+  const n = tabs.length;
+  return {
+    opacity: i < 0 ? 0 : 1,
+    left: `calc(${Math.max(i, 0)} * 100% / ${n} + (100% / ${n} - 34px) / 2)`,
+  };
+});
+
 function go(tab) {
   app.ui.tab = tab;
   window.scrollTo(0, 0);
@@ -39,6 +50,7 @@ function go(tab) {
 <template>
   <nav class="nav" aria-label="Sections">
     <div class="nav-in" :style="{ gridTemplateColumns: `repeat(${tabs.length},1fr)` }">
+      <span class="ind" :style="indicatorStyle" aria-hidden="true" />
       <button
         v-for="[key, label] in tabs"
         :key="key"
@@ -54,3 +66,32 @@ function go(tab) {
     </div>
   </nav>
 </template>
+
+<style scoped>
+.nav-in {
+  position: relative;
+}
+
+/* the sliding bar replaces the per-button bar */
+.nav-in button::before {
+  content: none;
+}
+
+.ind {
+  position: absolute;
+  top: 0;
+  width: 34px;
+  height: 3px;
+  border-radius: 0 0 3px 3px;
+  background: var(--acc);
+  box-shadow: 0 0 12px var(--acc);
+  pointer-events: none;
+  transition: left 0.45s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ind {
+    transition: none;
+  }
+}
+</style>

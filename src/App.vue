@@ -105,8 +105,10 @@ const title = computed(() => titles[app.ui.tab] || (app.viewer ? app.ui.tab : ''
   <template v-else>
     <BottomNav />
     <MascotBar />
-    <component :is="view" v-if="view" v-bind="viewProps" />
-    <PlaceholderView v-else :title="title" />
+    <Transition name="page" mode="out-in">
+      <component :is="view" v-if="view" :key="`view-${app.ui.tab}`" v-bind="viewProps" />
+      <PlaceholderView v-else :key="`placeholder-${app.ui.tab}`" :title="title" />
+    </Transition>
     <ToastHost />
     <template v-if="app.mode !== 'player'">
       <CombatTray />
