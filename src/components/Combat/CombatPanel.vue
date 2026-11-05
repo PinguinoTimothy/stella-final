@@ -87,6 +87,13 @@ function windowArea() {
   return { left: 8, top: 8, right: window.innerWidth - panel - 8, bottom: window.innerHeight - 8 };
 }
 
+/* ----- editing a monster's current HP by hand ----- */
+/** An empty field changes nothing. The store keeps the value between -max and max. The field then shows the stored value. */
+function editHp(f, e) {
+  if (e.target.value.trim() !== '') fights.setHp(f.uid, e.target.value);
+  e.target.value = f.hp;
+}
+
 /* ----- damage / heal a custom amount on the selected monster ----- */
 const amount = ref(5);
 const amt = computed(() => Math.max(1, Math.abs(Math.round(Number(amount.value)) || 0)));
@@ -180,10 +187,19 @@ async function clearAll() {
             @change="init.setInit(r.e.key, $event.target.value)"
           />
           <span class="cp-name" :class="{ pc: !r.f }">{{ r.e.label }}</span>
-          <span v-if="r.f" class="cp-hp"
-            ><b>{{ r.f.hp }}</b
-            >/{{ r.f.maxHp }}</span
-          >
+          <span v-if="r.f" class="cp-hp">
+            <input
+              class="cp-hp-in"
+              type="number"
+              inputmode="numeric"
+              :value="r.f.hp"
+              :aria-label="`Current HP of ${r.e.label}`"
+              :title="`Current HP (max ${r.f.maxHp})`"
+              @change="editHp(r.f, $event)"
+              @keydown.enter="$event.target.blur()"
+            />
+            <span class="mute">/{{ r.f.maxHp }}</span>
+          </span>
           <button
             v-if="r.f && r.f.url"
             type="button"
@@ -242,7 +258,10 @@ async function clearAll() {
       />
       <button type="button" class="danger" :disabled="!fights.active" @click="applyToActive(-1)">Damage</button>
       <button type="button" class="cast" :disabled="!fights.active" @click="applyToActive(1)">Heal</button>
-      <span v-if="fights.active" class="mute cp-target">→ {{ fights.active.name }}</span>
+      <span v-if="fights.active" class="cp-target">
+        Target: <b>{{ fights.active.name }}</b> {{ fights.active.hp }}/{{ fights.active.maxHp }}
+      </span>
+      <span v-else class="mute cp-target">Tap a monster in the list to select it.</span>
     </div>
 
     <details class="cp-add">
@@ -353,13 +372,17 @@ async function clearAll() {
 .cp-row {
   min-width: 0;
   padding: 6px 8px;
+  cursor: pointer;
   border: 1px solid transparent;
   border-radius: 12px;
   background: var(--raise, #172e3b);
 }
 
+/* The monster the damage and heal buttons apply to. */
 .cp-row.sel {
-  border-color: var(--line, #264452);
+  border-color: var(--acc, #a99bff);
+  background: color-mix(in srgb, var(--acc, #a99bff) 14%, var(--raise, #172e3b));
+  box-shadow: 0 0 0 1px var(--acc, #a99bff) inset;
 }
 
 
@@ -406,11 +429,20 @@ async function clearAll() {
 }
 
 .cp-hp {
+  display: flex;
+  align-items: center;
+  gap: 2px;
   flex: none;
   font-variant-numeric: tabular-nums;
 }
-.cp-hp b {
+.cp-hp-in {
+  width: 58px;
+  min-height: 32px;
+  padding: 0 4px;
+  text-align: center;
   font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 .cp-present {
