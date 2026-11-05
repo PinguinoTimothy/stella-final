@@ -61,6 +61,11 @@ const monsterOf = e => (e && e.kind === 'mon' ? fights.fights.find(f => f.name =
 const rows = computed(() => init.ordered.map(e => ({ e, f: monsterOf(e) })));
 const selectedUid = computed(() => fights.active?.uid ?? null);
 
+/** Tapping a monster row selects it: the damage and heal buttons apply to the selected monster. Party rows have no HP. */
+function select(row) {
+  if (row.f) fights.show(row.f.uid);
+}
+
 const pct = f => (f.maxHp ? Math.max(0, Math.min(100, Math.round((100 * f.hp) / f.maxHp))) : 0);
 const isDown = f => !f.loading && f.maxHp > 0 && f.hp <= 0;
 
@@ -83,7 +88,7 @@ watch(
 /** The area the windows may use: the page, minus the combat column while it is docked on the right. */
 function windowArea() {
   const docked = !hidden.value && window.innerWidth >= 900;
-  const panel = docked ? document.querySelector('.cp')?.getBoundingClientRect().width || 0 : 0;
+  const panel = docked ? document.querySelector('.combat-panel')?.getBoundingClientRect().width || 0 : 0;
   return { left: 8, top: 8, right: window.innerWidth - panel - 8, bottom: window.innerHeight - 8 };
 }
 
@@ -149,7 +154,7 @@ async function clearAll() {
 </script>
 
 <template>
-  <aside class="cp" :class="{ hidden, sheet }" aria-label="Combat">
+  <aside class="combat-panel" :class="{ hidden, sheet }" aria-label="Combat">
     <header class="cp-head">
       <b>Combat</b>
       <button v-if="fights.fights.length" type="button" class="danger cp-small" @click="clearAll">Clear</button>
@@ -312,7 +317,7 @@ async function clearAll() {
 
 <style scoped>
 /* Desktop: floats over the page (the page never moves) and stops above the bottom navigation, which stays usable. */
-.cp {
+.combat-panel {
   position: fixed;
   top: 0;
   right: 0;
@@ -329,7 +334,7 @@ async function clearAll() {
   box-shadow: -8px 0 24px rgba(0, 0, 0, 0.25);
 }
 
-.cp.hidden {
+.combat-panel.hidden {
   display: none;
 }
 
@@ -654,7 +659,7 @@ span.cp-info {
     display: none;
   }
 
-  .cp {
+  .combat-panel {
     display: none;
     top: auto;
     left: 0;
@@ -668,7 +673,7 @@ span.cp-info {
     border-radius: 18px 18px 0 0;
   }
 
-  .cp.sheet {
+  .combat-panel.sheet {
     display: flex;
   }
   .cp-hide {
