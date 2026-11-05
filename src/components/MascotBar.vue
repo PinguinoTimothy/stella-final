@@ -1,18 +1,35 @@
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue';
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
 
-// Sprite sheet: 6 columns × 5 rows of 176×176 cells, shown at 96px.
+// Sprite sheets. Every cell is 176×176 and is shown at 96px.
 const CELL = 96;
 const HOLD_MS = 250; // how long to hold before the mascot can be dragged
 const BASE_BOTTOM = 68; // px above the bottom of the screen, matches the nav bar
 
-const ANIMS = {
-  idle: { row: 0, frames: 4, speed: 0.9, time: 1600 },
-  walk: { row: 1, frames: 6, speed: 0.6, time: 0 },
-  react: { row: 2, frames: 4, speed: 0.5, time: 1600 },
-  react2: { row: 3, frames: 6, speed: 0.5, time: 1600 },
-  rage: { row: 4, frames: 6, speed: 0.4, time: 0 }, // held while dragging
+const SHEETS = {
+  main: { src: '/mascot-sheet.png', cols: 6, rows: 5 },
+  extra: { src: '/mascot-sheet-2.png', cols: 12, rows: 3 }, // dance, record, sleep
 };
+
+// Each animation is one row of its sheet. `time` is how long it lasts before going back to idle (0 = until something ends it).
+const ANIMS = {
+  idle: { sheet: 'main', row: 0, frames: 4, speed: 0.9, time: 1600 },
+  walk: { sheet: 'main', row: 1, frames: 6, speed: 0.6, time: 0 },
+  react: { sheet: 'main', row: 2, frames: 4, speed: 0.5, time: 1600 },
+  react2: { sheet: 'main', row: 3, frames: 6, speed: 0.5, time: 1600 },
+  rage: { sheet: 'main', row: 4, frames: 6, speed: 0.4, time: 0 }, // held while dragging
+  dance: { sheet: 'extra', row: 0, frames: 12, speed: 1.2, time: 0 }, // while the song plays
+  vinyl: { sheet: 'extra', row: 1, frames: 8, speed: 1.6, time: 0 }, // putting the record on
+  sleep: { sheet: 'extra', row: 2, frames: 8, speed: 2.4, time: 0 }, // until the user interacts
+};
+
+// Music: put the record on, then dance until the song ends. There is no audio yet, so a song is a timed span.
+const VINYL_MS = ANIMS.vinyl.speed * 1000; // one pass of the record animation
+const SONG_MIN = 60000; // a song lasts between 1 and 2 minutes
+const SONG_RANGE = 60000;
+const NEXT_SONG_MIN = 120000; // the next one starts 2 to 5 minutes later
+const NEXT_SONG_RANGE = 180000;
+const SLEEP_CHANCE = 0.15; // each time it pauses while idle, the chance it falls asleep instead of walking
 
 const REACTIONS = [
   { anim: 'react', line: '¿Quieres leer la verdad?' },
@@ -35,6 +52,8 @@ let target = null;
 let pauseUntil = 0;
 let frameId;
 let actionTimer;
+let songTimer;
+let nextSongAt = 0;
 let holdTimer;
 let dragged = false;
 let startX = 0;
@@ -51,6 +70,8 @@ function setAnim(name, text = '') {
   bubble.value = text;
   target = null;
   clearTimeout(actionTimer);
+  clearTimeout(songTimer); // anything that interrupts the music (a tap, a drag) also stops the song
+  songTimer = null;
   const time = ANIMS[name].time;
   if (!time) return;
   actionTimer = setTimeout(() => {
@@ -58,6 +79,33 @@ function setAnim(name, text = '') {
     bubble.value = '';
     pauseUntil = performance.now() + 2000 + Math.random() * 4000;
   }, time);
+}
+
+function startSleep() {
+  setAnim('sleep');
+}
+
+function startSong() {
+  nextSongAt = performance.now() + NEXT_SONG_MIN + Math.random() * NEXT_SONG_RANGE;
+  setAnim('vinyl', '¡Un poco de música!');
+  songTimer = setTimeout(startDance, VINYL_MS);
+}
+
+function startDance() {
+  setAnim('dance', '¡Esta me encanta!');
+  songTimer = setTimeout(endSong, SONG_MIN + Math.random() * SONG_RANGE);
+}
+
+function endSong() {
+  setAnim('idle');
+  pauseUntil = performance.now() + 2000 + Math.random() * 4000;
+}
+
+/** Called when the mascot pauses while idle: it may put on a record, fall asleep, or walk somewhere. */
+function chooseIdleAction(now) {
+  if (now >= nextSongAt) return startSong();
+  if (Math.random() < SLEEP_CHANCE) return startSleep();
+  pickTarget();
 }
 
 function onTap() {
@@ -126,7 +174,7 @@ function tick(now) {
   const busy = anim.value !== 'walk' && anim.value !== 'idle';
   if (!reduced && !busy && !dragging.value) {
     if (target === null && now > pauseUntil) {
-      pickTarget();
+      chooseIdleAction(now);
     } else if (target !== null) {
       x.value += 42 * dt * face.value;
       if ((face.value > 0 && x.value >= target) || (face.value < 0 && x.value <= target)) {
@@ -146,15 +194,30 @@ function tick(now) {
   frameId = requestAnimationFrame(tick);
 }
 
+const sprite = computed(() => {
+  const a = ANIMS[anim.value];
+  const sheet = SHEETS[a.sheet];
+  return {
+    backgroundImage: `url('${sheet.src}')`,
+    backgroundSize: `${sheet.cols * CELL}px ${sheet.rows * CELL}px`,
+    backgroundPosition: `0px ${-a.row * CELL}px`,
+    '--n': a.frames,
+    '--dur': a.speed + 's',
+    '--face': face.value,
+  };
+});
+
 onMounted(() => {
   last = performance.now();
   pauseUntil = last + 2500;
+  nextSongAt = last + NEXT_SONG_MIN / 2 + Math.random() * NEXT_SONG_RANGE / 2; // the first song comes sooner
   frameId = requestAnimationFrame(tick);
 });
 
 onBeforeUnmount(() => {
   cancelAnimationFrame(frameId);
   clearTimeout(actionTimer);
+  clearTimeout(songTimer);
   clearTimeout(holdTimer);
 });
 </script>
@@ -172,15 +235,7 @@ onBeforeUnmount(() => {
     @pointercancel="onPointerUp"
   >
     <span v-if="bubble" class="bubble" role="status">{{ bubble }}</span>
-    <span
-      class="sprite"
-      :style="{
-        backgroundPosition: `0px ${-ANIMS[anim].row * CELL}px`,
-        '--n': ANIMS[anim].frames,
-        '--dur': ANIMS[anim].speed + 's',
-        '--face': face,
-      }"
-    />
+    <span class="sprite" :style="sprite" />
   </button>
 </template>
 
@@ -209,8 +264,6 @@ onBeforeUnmount(() => {
   display: block;
   width: 96px;
   height: 96px;
-  background-image: url('/mascot-sheet.png');
-  background-size: calc(6 * 96px) calc(5 * 96px);
   transform: scaleX(var(--face));
   pointer-events: none;
   animation: play var(--dur) steps(var(--n)) infinite;
