@@ -23,10 +23,11 @@ const ANIMS = {
   sleep: { sheet: 'extra', row: 2, frames: 8, speed: 2.4, time: 0 }, // until the user interacts
 };
 
-// Music: put the record on, then dance until the song ends. There is no audio yet, so a song is a timed span.
+// Music: put the record on, then dance until the song ends. Songs come from a YouTube playlist, played in shuffle order.
+const PLAYLIST_ID = 'PLbd9yHyOxA03B9Y71cDbtGaHKlN3VulgA';
 const VINYL_MS = ANIMS.vinyl.speed * 1000; // one pass of the record animation
-const SONG_MIN = 60000; // a song lasts between 1 and 2 minutes
-const SONG_RANGE = 60000;
+const SONG_CHECK_MS = 5000; // if the song has not started by then (sound blocked, player not loaded), stop dancing
+const SONG_MAX_MS = 15 * 60000; // safety net: never dance longer than this
 const NEXT_SONG_MIN = 120000; // the next one starts 2 to 5 minutes later
 const NEXT_SONG_RANGE = 180000;
 const SLEEP_CHANCE = 0.15; // each time it pauses while idle, the chance it falls asleep instead of walking
@@ -53,7 +54,11 @@ let pauseUntil = 0;
 let frameId;
 let actionTimer;
 let songTimer;
+let checkTimer;
 let nextSongAt = 0;
+let player = null;
+let playerPromise = null;
+let playing = false;
 let holdTimer;
 let dragged = false;
 let startX = 0;
@@ -65,13 +70,70 @@ let last = 0;
 const GRAVITY = 2;
 const GROUND_Y = 0;
 
+function loadYouTubeApi() {
+  return new Promise(resolve => {
+    if (window.YT?.Player) return resolve(window.YT);
+    const previous = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => {
+      previous?.();
+      resolve(window.YT);
+    };
+    if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) {
+      const s = document.createElement('script');
+      s.src = 'https://www.youtube.com/iframe_api';
+      document.head.appendChild(s);
+    }
+  });
+}
+
+/** Creates the hidden player once, on first use. The playlist is shuffled, so each song is a random one. */
+function ensurePlayer() {
+  if (!playerPromise) {
+    playerPromise = loadYouTubeApi().then(
+      YT =>
+        new Promise(ready => {
+          const el = document.createElement('div');
+          el.style.cssText = 'position:fixed;left:-10px;top:-10px;width:1px;height:1px;opacity:0;pointer-events:none';
+          document.body.appendChild(el);
+          player = new YT.Player(el, {
+            height: '1',
+            width: '1',
+            playerVars: { listType: 'playlist', list: PLAYLIST_ID, playsinline: 1 },
+            events: {
+              onReady: e => {
+                e.target.setShuffle(true);
+                ready();
+              },
+              onStateChange: onPlayerState,
+            },
+          });
+        }),
+    );
+  }
+  return playerPromise;
+}
+
+function onPlayerState(e) {
+  const S = window.YT.PlayerState;
+  if (e.data === S.PLAYING) {
+    playing = true;
+    clearTimeout(checkTimer);
+  }
+  if (e.data === S.ENDED && anim.value === 'dance') endSong();
+}
+
 function setAnim(name, text = '') {
+  if (anim.value === 'dance' && name !== 'dance') {
+    player?.pauseVideo?.(); // a tap, a drag or any other animation stops the song
+  }
   anim.value = name;
   bubble.value = text;
   target = null;
   clearTimeout(actionTimer);
-  clearTimeout(songTimer); // anything that interrupts the music (a tap, a drag) also stops the song
+  clearTimeout(songTimer);
+  clearTimeout(checkTimer);
   songTimer = null;
+  playing = false;
   const time = ANIMS[name].time;
   if (!time) return;
   actionTimer = setTimeout(() => {
@@ -88,12 +150,23 @@ function startSleep() {
 function startSong() {
   nextSongAt = performance.now() + NEXT_SONG_MIN + Math.random() * NEXT_SONG_RANGE;
   setAnim('vinyl', '¡Un poco de música!');
+  ensurePlayer().catch(() => {}); // load the player while the record is going on
   songTimer = setTimeout(startDance, VINYL_MS);
 }
 
 function startDance() {
   setAnim('dance', '¡Esta me encanta!');
-  songTimer = setTimeout(endSong, SONG_MIN + Math.random() * SONG_RANGE);
+  songTimer = setTimeout(endSong, SONG_MAX_MS);
+  ensurePlayer()
+    .then(() => {
+      if (anim.value !== 'dance') return;
+      player.playVideo();
+      // Browsers block sound until the user has interacted with the page. If the song has not started, stop dancing.
+      checkTimer = setTimeout(() => {
+        if (!playing) endSong();
+      }, SONG_CHECK_MS);
+    })
+    .catch(endSong);
 }
 
 function endSong() {
@@ -218,7 +291,9 @@ onBeforeUnmount(() => {
   cancelAnimationFrame(frameId);
   clearTimeout(actionTimer);
   clearTimeout(songTimer);
+  clearTimeout(checkTimer);
   clearTimeout(holdTimer);
+  player?.destroy?.();
 });
 </script>
 
