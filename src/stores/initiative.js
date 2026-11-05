@@ -1,4 +1,4 @@
-// Initiative order: party members and combat monsters, with who is present and whose turn it is.
+// Initiative: party members and combat monsters, with their initiative and who is present.
 // Saved in this browser's localStorage. Not synced to the cloud.
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
@@ -25,8 +25,6 @@ function write(state) {
 export const useInitiative = defineStore('initiative', () => {
   const saved = read();
   const entries = ref(Array.isArray(saved.entries) ? saved.entries : []); // { key, label, kind, init, present }
-  const round = ref(Number(saved.round) || 1);
-  const currentKey = ref(saved.currentKey ?? null);
 
   // Everyone, in display order: present first, then with an initiative (highest first), PCs before monsters on ties.
   const ordered = computed(() =>
@@ -39,9 +37,6 @@ export const useInitiative = defineStore('initiative', () => {
         a.label.localeCompare(b.label),
     ),
   );
-
-  // The turn order: present people with an initiative.
-  const order = computed(() => ordered.value.filter(e => e.present && e.init != null));
 
   /** Keeps one entry per party member and per combat monster. Keeps the initiative of those still around. */
   function sync(party, monsters) {
@@ -74,31 +69,7 @@ export const useInitiative = defineStore('initiative', () => {
     if (e) e.present = !!on;
   }
 
-  /** Moves to the next turn. After the last one, the round goes up and the order starts again. */
-  function next() {
-    const list = order.value;
-    if (!list.length) return;
-    const i = list.findIndex(e => e.key === currentKey.value);
-    if (i < 0) {
-      currentKey.value = list[0].key;
-    } else if (i === list.length - 1) {
-      round.value += 1;
-      currentKey.value = list[0].key;
-    } else {
-      currentKey.value = list[i + 1].key;
-    }
-  }
+  watch(entries, list => write({ entries: list }), { deep: true });
 
-  function newRound() {
-    round.value = 1;
-    currentKey.value = null;
-  }
-
-  watch(
-    [entries, round, currentKey],
-    () => write({ entries: entries.value, round: round.value, currentKey: currentKey.value }),
-    { deep: true },
-  );
-
-  return { entries, round, currentKey, ordered, order, sync, setInit, setPresent, next, newRound };
+  return { entries, ordered, sync, setInit, setPresent };
 });
