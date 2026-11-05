@@ -13,7 +13,7 @@ const list = computed(() => filterConditions(query.value));
   <input v-model="query" class="sr" type="search" placeholder="Search conditions…" aria-label="Search conditions" />
 
   <div>
-    <article v-for="c in list" :key="c.name" class="cond" :class="{ on: on.has(c.name) }">
+    <article v-for="c in list" :key="c.name" class="cond">
       <div class="row">
         <b>{{ c.name }}</b>
       </div>

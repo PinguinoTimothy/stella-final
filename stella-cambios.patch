@@ -1,0 +1,900 @@
+diff -ruN a/src/App.vue b/src/App.vue
+--- a/src/App.vue
++++ b/src/App.vue
+@@ -1,41 +1,43 @@
+ <script setup>
+-import { computed, watchEffect } from 'vue'
++import { computed, defineAsyncComponent, watchEffect } from 'vue'
+ import { useAppStore } from './stores/app'
+ import { useCloudStore } from './stores/cloud'
+ import { useViewerPolling } from './composables/useViewerPolling'
+ import BottomNav from './components/BottomNav.vue'
+ import ConfirmDialog from './components/ConfirmDialog.vue'
+ import ToastHost from './components/ToastHost.vue'
+-import CombatTray from './components/Monsters/CombatTray.vue'
+-import InitiativeRail from './components/Initiative/InitiativeRail.vue'
++import CombatPanel from './components/Combat/CombatPanel.vue'
+ import LoginView from './views/LoginView.vue'
+ import PlaceholderView from './views/PlaceholderView.vue'
+-import CastView from './views/CastView.vue'
+-import ConditionsView from './views/ConditionsView.vue'
+-import FxPlayerView from './views/FxPlayerView.vue'
+-import FxView from './views/FxView.vue'
+-import GrappleView from './views/GrappleView.vue'
+-import HistoryView from './views/HistoryView.vue'
+-import ItemsView from './views/ItemsView.vue'
+-import EquipmentCatalogView from './views/EquipmentCatalogView.vue'
+-import MagicCatalogView from './views/MagicCatalogView.vue'
+-import MonsterCatalogView from './views/MonsterCatalogView.vue'
+-import MoreView from './views/MoreView.vue'
+-import PartyView from './views/PartyView.vue'
+-import PlayerView from './views/PlayerView.vue'
+-import SetupView from './views/SetupView.vue'
+-import SkillsView from './views/SkillsView.vue'
+-import SpellsView from './views/SpellsView.vue'
+-import UmrView from './views/UmrView.vue'
+ import PeekSheet from './components/Refs/PeekSheet.vue'
+-import MapsView from './views/MapsView.vue'
+   import DmLoginView from './views/DmLoginView.vue'
+   import ReferenceSearch from './components/Reference/ReferenceSearch.vue'
+-import FeatsView from './views/FeatsView.vue'
+-  import RulesView from './views/RulesView.vue'
+    import { useTabHistory } from './composables/useTabHistory'
+ 
+ 
++// Each view is its own chunk, downloaded the first time its tab opens (and precached by the service worker for offline use).
++const lazyView = (loader) => defineAsyncComponent(loader)
++const CastView = lazyView(() => import('./views/CastView.vue'))
++const ConditionsView = lazyView(() => import('./views/ConditionsView.vue'))
++const FxPlayerView = lazyView(() => import('./views/FxPlayerView.vue'))
++const FxView = lazyView(() => import('./views/FxView.vue'))
++const GrappleView = lazyView(() => import('./views/GrappleView.vue'))
++const HistoryView = lazyView(() => import('./views/HistoryView.vue'))
++const ItemsView = lazyView(() => import('./views/ItemsView.vue'))
++const EquipmentCatalogView = lazyView(() => import('./views/EquipmentCatalogView.vue'))
++const MagicCatalogView = lazyView(() => import('./views/MagicCatalogView.vue'))
++const MonsterCatalogView = lazyView(() => import('./views/MonsterCatalogView.vue'))
++const MoreView = lazyView(() => import('./views/MoreView.vue'))
++const PartyView = lazyView(() => import('./views/PartyView.vue'))
++const PlayerView = lazyView(() => import('./views/PlayerView.vue'))
++const SetupView = lazyView(() => import('./views/SetupView.vue'))
++const SkillsView = lazyView(() => import('./views/SkillsView.vue'))
++const SpellsView = lazyView(() => import('./views/SpellsView.vue'))
++const UmrView = lazyView(() => import('./views/UmrView.vue'))
++const MapsView = lazyView(() => import('./views/MapsView.vue'))
++const FeatsView = lazyView(() => import('./views/FeatsView.vue'))
++const RulesView = lazyView(() => import('./views/RulesView.vue'))
++
+ const app = useAppStore()
+ const cloud = useCloudStore()
+ useViewerPolling()
+@@ -109,10 +111,7 @@
+     <component :is="view" v-if="view" v-bind="viewProps" />
+     <PlaceholderView v-else :title="title" />
+     <ToastHost />
+-    <template v-if="app.mode !== 'player'">
+-      <CombatTray />
+-      <InitiativeRail />
+-    </template>
++    <CombatPanel v-if="app.mode !== 'player'" />
+     <ConfirmDialog />
+     <ReferenceSearch />
+           <PeekSheet />
+diff -ruN a/src/components/Combat/CombatPanel.vue b/src/components/Combat/CombatPanel.vue
+--- a/src/components/Combat/CombatPanel.vue
++++ b/src/components/Combat/CombatPanel.vue
+@@ -0,0 +1,525 @@
++<script setup>
++// Combat panel: initiative order and monsters in ONE list, so you read turn, HP and the stat block in one place.
++// Desktop: a column on the right (the page makes room for it). Phones/tablets: a button that opens a bottom sheet.
++// Initiative, rounds and fights are kept in this browser (see the initiative and monsterFights stores).
++import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
++import { useAppStore } from '../../stores/app'
++import { useMonsterFights } from '../../stores/monsterFights'
++import { useInitiative } from '../../stores/initiative'
++import CombatCard from '../Monsters/CombatCard.vue'
++import { fetchMonsterPage } from '../../lib/monsters'
++
++const app = useAppStore()
++const fights = useMonsterFights()
++const init = useInitiative()
++
++// One initiative entry per party member and per monster in combat.
++watch(
++  () => [[...app.party], fights.fights.map((f) => f.name)],
++  ([party, monsters]) => init.sync(party, monsters),
++  { immediate: true, deep: true },
++)
++
++/* ----- visibility ----- */
++const HIDE_KEY = 'stella-combat-panel-hidden-v1'
++function readHidden() {
++  try {
++    return localStorage.getItem(HIDE_KEY) === '1'
++  } catch {
++    return false
++  }
++}
++const hidden = ref(readHidden())   // desktop: collapsed to a small tab
++watch(hidden, (v) => {
++  try {
++    localStorage.setItem(HIDE_KEY, v ? '1' : '0')
++  } catch {
++    // Storage disabled: the choice only lasts for this session.
++  }
++})
++const sheet = ref(false)           // phones: bottom sheet open
++
++// The page reserves room for the panel only while it is visible (see the unscoped style below).
++watch(() => !hidden.value, (v) => document.body.classList.toggle('has-combat', v), { immediate: true })
++onUnmounted(() => document.body.classList.remove('has-combat'))
++
++/* ----- the list ----- */
++const monsterOf = (e) => (e && e.kind === 'mon' ? fights.fights.find((f) => f.name === e.label) || null : null)
++const rows = computed(() => init.ordered.map((e) => ({ e, f: monsterOf(e) })))
++const turnEntry = computed(() => init.order.find((e) => e.key === init.currentKey) || null)
++const isCurrent = (e) => e.present && e.key === init.currentKey
++const selectedUid = computed(() => fights.active?.uid ?? null)
++
++const pct = (f) => (f.maxHp ? Math.max(0, Math.min(100, Math.round((100 * f.hp) / f.maxHp))) : 0)
++const isDown = (f) => !f.loading && f.maxHp > 0 && f.hp <= 0
++
++// When the turn moves to a monster it becomes the target of the damage buttons, and the row scrolls into view.
++const listEl = ref(null)
++watch(
++  () => init.currentKey,
++  async (key) => {
++    const f = monsterOf(init.entries.find((e) => e.key === key))
++    if (f) fights.show(f.uid)
++    await nextTick()
++    listEl.value?.querySelector('.cp-row.current')?.scrollIntoView?.({ block: 'nearest' })
++  },
++)
++
++/* ----- stat block (inline, one at a time) ----- */
++const openUid = ref(null)
++watch(
++  () => fights.fights.map((f) => f.uid),
++  (uids) => { if (openUid.value !== null && !uids.includes(openUid.value)) openUid.value = null },
++)
++function select(row) {
++  if (row.f) fights.show(row.f.uid)
++}
++function toggleDetail(f) {
++  fights.show(f.uid)
++  openUid.value = openUid.value === f.uid ? null : f.uid
++}
++
++/* ----- damage / heal a custom amount on the selected monster ----- */
++const amount = ref(5)
++const amt = computed(() => Math.max(1, Math.abs(Math.round(Number(amount.value)) || 0)))
++function applyToActive(sign) {
++  if (fights.active) fights.change(fights.active.uid, sign * amt.value)
++}
++
++/* ----- adding creatures ----- */
++const addQuery = ref('')
++const addRows = ref([])
++const addBusy = ref(false)
++let addTimer = 0
++watch(addQuery, (q) => {
++  clearTimeout(addTimer)
++  const term = q.trim()
++  if (term.length < 2) { addRows.value = []; return }
++  addTimer = setTimeout(async () => {
++    try {
++      addRows.value = (await fetchMonsterPage({ query: term, limit: 8 })).rows
++    } catch {
++      addRows.value = []
++    }
++  }, 250)
++})
++async function addMonster(row) {
++  addBusy.value = true
++  await fights.add(row.url, row.name)
++  addBusy.value = false
++  addQuery.value = ''
++  addRows.value = []
++}
++const customName = ref('')
++const customHp = ref(10)
++function addCustomCreature() {
++  if (!customName.value.trim() || !(Number(customHp.value) > 0)) return
++  fights.addCustom(customName.value, customHp.value)
++  customName.value = ''
++  customHp.value = 10
++}
++
++async function clearAll() {
++  const ok = await app.ask({
++    title: 'Clear all fights?',
++    msg: 'All open monsters and their HP will be removed.',
++    ok: 'Clear',
++    danger: true,
++  })
++  if (ok) fights.clearAll()
++}
++</script>
++
++<template>
++  <aside class="cp" :class="{ hidden, sheet }" aria-label="Combat">
++    <header class="cp-head">
++      <b>Combat</b>
++      <span class="mute">Round {{ init.round }}</span>
++      <button v-if="fights.fights.length" type="button" class="danger cp-small" @click="clearAll">Clear</button>
++      <button type="button" class="cp-small cp-hide" aria-label="Hide combat" @click="hidden = true">Hide</button>
++      <button type="button" class="cp-small cp-close" aria-label="Close combat" @click="sheet = false">Close</button>
++    </header>
++
++    <div class="cp-turn">
++      <button type="button" class="cast cp-next" :disabled="!init.order.length" @click="init.next()">Next turn</button>
++      <button type="button" class="cp-newround" :disabled="!init.currentKey && init.round === 1" @click="init.newRound()">New round</button>
++      <p class="cp-now">
++        <template v-if="turnEntry">Turn: <b>{{ turnEntry.label }}</b></template>
++        <template v-else-if="init.order.length">Press Next turn to start.</template>
++        <template v-else>Enter initiatives to set the turn order.</template>
++      </p>
++    </div>
++
++    <ol ref="listEl" class="cp-list">
++      <li
++        v-for="r in rows"
++        :key="r.e.key"
++        class="cp-row"
++        :class="{
++          current: isCurrent(r.e),
++          away: !r.e.present,
++          mon: r.e.kind === 'mon',
++          down: r.f && isDown(r.f),
++          sel: r.f && r.f.uid === selectedUid,
++        }"
++        @click="select(r)"
++      >
++        <div class="cp-main">
++          <span class="cp-mark" aria-hidden="true">{{ isCurrent(r.e) ? '▶' : '' }}</span>
++          <input
++            class="cp-init"
++            type="number"
++            inputmode="numeric"
++            placeholder="—"
++            :value="r.e.init ?? ''"
++            :aria-label="`Initiative of ${r.e.label}`"
++            @change="init.setInit(r.e.key, $event.target.value)"
++          >
++          <button v-if="r.f" type="button" class="cp-name" :aria-expanded="openUid === r.f.uid" @click="toggleDetail(r.f)">
++            {{ r.e.label }}
++          </button>
++          <span v-else class="cp-name pc">{{ r.e.label }}</span>
++          <span v-if="r.f" class="cp-hp"><b>{{ r.f.hp }}</b>/{{ r.f.maxHp }}</span>
++          <input
++            class="cp-present"
++            type="checkbox"
++            :checked="r.e.present"
++            :title="r.e.present ? 'Present' : 'Absent'"
++            :aria-label="`${r.e.label} present`"
++            @change="init.setPresent(r.e.key, $event.target.checked)"
++          >
++          <button v-if="r.f" type="button" class="cp-x" :aria-label="`Remove ${r.e.label} from combat`" @click.stop="fights.remove(r.f.uid)">×</button>
++          <span v-else class="cp-x"></span>
++        </div>
++
++        <template v-if="r.f">
++          <div class="cp-bar" aria-hidden="true"><i :class="{ low: pct(r.f) <= 25 }" :style="{ width: pct(r.f) + '%' }"></i></div>
++
++          <div v-if="r.f.uid === selectedUid" class="cp-btns">
++            <button type="button" aria-label="Minus 5" @click="fights.change(r.f.uid, -5)">−5</button>
++            <button type="button" aria-label="Minus 1" @click="fights.change(r.f.uid, -1)">−1</button>
++            <button type="button" aria-label="Plus 1" @click="fights.change(r.f.uid, 1)">+1</button>
++            <button type="button" aria-label="Plus 5" @click="fights.change(r.f.uid, 5)">+5</button>
++            <button type="button" aria-label="Reset HP" @click="fights.reset(r.f.uid)">↺</button>
++          </div>
++
++          <p v-if="r.f.loading" class="mute">Loading…</p>
++          <p v-else-if="r.f.error" class="mute" role="alert">{{ r.f.error }}</p>
++
++          <div v-if="openUid === r.f.uid && r.f.card" class="cp-stat" @click.stop>
++            <CombatCard :card="r.f.card" />
++          </div>
++        </template>
++      </li>
++    </ol>
++
++    <p v-if="!rows.length" class="mute cp-empty">
++      Add characters in More → Party, and monsters below.
++    </p>
++
++    <div v-if="fights.fights.length" class="cp-amount">
++      <input v-model.number="amount" type="number" min="1" inputmode="numeric" aria-label="Amount">
++      <button type="button" class="danger" :disabled="!fights.active" @click="applyToActive(-1)">Damage</button>
++      <button type="button" class="cast" :disabled="!fights.active" @click="applyToActive(1)">Heal</button>
++      <span v-if="fights.active" class="mute cp-target">→ {{ fights.active.name }}</span>
++    </div>
++
++    <details class="cp-add">
++      <summary>+ Add monster</summary>
++      <input v-model="addQuery" type="search" placeholder="Search the bestiary…" aria-label="Add a monster to combat">
++      <ul v-if="addRows.length" class="cp-add-list">
++        <li v-for="row in addRows" :key="row.name + row.url">
++          <button type="button" :disabled="addBusy" @click="addMonster(row)">
++            <span>{{ row.name }}</span>
++            <span class="mute">CR {{ row.cr }}</span>
++          </button>
++        </li>
++      </ul>
++      <div class="cp-custom">
++        <input v-model="customName" type="text" placeholder="Not in the bestiary: name" aria-label="Creature name">
++        <input v-model.number="customHp" type="number" min="1" inputmode="numeric" placeholder="HP" aria-label="Creature HP">
++        <button type="button" class="cast" :disabled="!customName.trim() || !(customHp > 0)" @click="addCustomCreature">Add</button>
++      </div>
++    </details>
++  </aside>
++
++  <!-- Desktop, hidden: a small tab on the right edge. -->
++  <button v-if="hidden" type="button" class="cp-tab" aria-label="Show combat" @click="hidden = false">
++    Combat
++    <span v-if="fights.fights.length">{{ fights.fights.length }}</span>
++  </button>
++
++  <!-- Phones and tablets: a button that opens the panel as a bottom sheet. -->
++  <template v-if="!sheet">
++    <button type="button" class="cp-fab" aria-label="Open combat" @click="sheet = true">
++      Combat
++      <span v-if="fights.fights.length">{{ fights.fights.length }}</span>
++      <small>R{{ init.round }}</small>
++    </button>
++  </template>
++  <div v-else class="cp-back" aria-hidden="true" @click="sheet = false"></div>
++</template>
++
++<style scoped>
++.cp {
++  position: fixed;
++  top: 0;
++  right: 0;
++  bottom: 0;
++  z-index: 60;
++  width: var(--combat-w, 380px);
++  display: flex;
++  flex-direction: column;
++  background: var(--surface, #11222d);
++  border-left: 1px solid var(--line, #264452);
++  box-shadow: -8px 0 24px rgba(0, 0, 0, .25);
++}
++
++.cp.hidden { display: none; }
++
++.cp-head {
++  display: flex;
++  align-items: baseline;
++  gap: 8px;
++  padding: 12px 12px 8px;
++}
++
++.cp-head b { flex: 1; font-size: 18px; }
++
++.cp-small { min-height: 34px; padding: 0 10px; }
++.cp-close { display: none; }
++
++.cp-turn {
++  display: grid;
++  grid-template-columns: 1fr 1fr;
++  gap: 6px;
++  padding: 0 12px 8px;
++}
++
++.cp-turn button { min-height: 42px; padding: 0 6px; }
++
++.cp-now { grid-column: 1 / -1; margin: 2px 2px 0; font-size: 14px; }
++
++.cp-list {
++  flex: 1;
++  min-height: 0;
++  margin: 0;
++  padding: 4px 12px 12px;
++  list-style: none;
++  display: grid;
++  align-content: start;
++  gap: 6px;
++  overflow-y: auto;
++  overscroll-behavior: contain;
++}
++
++.cp-row {
++  padding: 6px 8px;
++  border: 1px solid transparent;
++  border-radius: 12px;
++  background: var(--raise, #172e3b);
++}
++
++.cp-row.sel { border-color: var(--line, #264452); }
++
++.cp-row.current {
++  border-color: var(--acc, #a99bff);
++  background: color-mix(in srgb, var(--acc, #a99bff) 14%, var(--raise, #172e3b));
++}
++
++.cp-row.away { opacity: .5; }
++
++.cp-main { display: flex; align-items: center; gap: 6px; }
++
++.cp-mark { width: 14px; flex: none; color: var(--acc, #a99bff); font-size: 12px; text-align: center; }
++
++.cp-init { width: 52px; flex: none; min-height: 34px; padding: 0 4px; text-align: center; }
++
++.cp-name {
++  flex: 1;
++  min-width: 0;
++  padding: 0;
++  border: 0;
++  background: none;
++  color: inherit;
++  font: inherit;
++  font-weight: 700;
++  text-align: left;
++  overflow: hidden;
++  text-overflow: ellipsis;
++  white-space: nowrap;
++}
++
++.cp-name.pc { color: var(--acc, #62bd91); }
++button.cp-name { text-decoration: underline dotted; }
++.cp-row.down .cp-name { text-decoration: line-through; opacity: .6; }
++
++.cp-hp { flex: none; font-variant-numeric: tabular-nums; }
++.cp-hp b { font-size: 18px; }
++
++.cp-present { flex: none; width: 18px; height: 18px; }
++
++.cp-x { flex: none; width: 32px; min-width: 32px; min-height: 32px; padding: 0; }
++span.cp-x { visibility: hidden; }
++
++.cp-bar {
++  height: 5px;
++  margin: 6px 0 2px;
++  border-radius: 4px;
++  background: var(--spent, #2a4755);
++  overflow: hidden;
++}
++
++.cp-bar i { display: block; height: 100%; background: var(--acc, #62bd91); transition: width .2s ease; }
++.cp-bar i.low { background: var(--warn, #ff8f86); }
++
++.cp-btns {
++  display: grid;
++  grid-template-columns: repeat(4, minmax(0, 1fr)) 40px;
++  gap: 6px;
++  margin-top: 8px;
++}
++
++.cp-btns button { min-height: 40px; padding: 0 4px; }
++
++.cp-stat { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line, #264452); cursor: default; }
++
++.cp-empty { padding: 0 12px; }
++
++.cp-amount {
++  display: flex;
++  align-items: center;
++  flex-wrap: wrap;
++  gap: 6px;
++  padding: 8px 12px;
++  border-top: 1px solid var(--line, #264452);
++}
++
++.cp-amount input { width: 70px; }
++.cp-amount button { flex: 1; min-height: 40px; }
++.cp-target { flex-basis: 100%; font-size: 13px; }
++
++.cp-add { padding: 6px 12px 10px; border-top: 1px solid var(--line, #264452); font-size: 14px; }
++.cp-add summary { cursor: pointer; min-height: 36px; display: flex; align-items: center; color: var(--acc, #a99bff); font-weight: 700; }
++.cp-add input[type='search'], .cp-custom input { min-height: 36px; border-radius: 10px; min-width: 0; }
++.cp-add input[type='search'] { width: 100%; margin-top: 4px; }
++.cp-custom { display: grid; grid-template-columns: 1fr 64px auto; gap: 6px; margin-top: 8px; }
++
++.cp-add-list { list-style: none; margin: 6px 0 0; padding: 0; max-height: 200px; overflow-y: auto; display: grid; gap: 2px; }
++.cp-add-list button {
++  width: 100%;
++  display: flex;
++  justify-content: space-between;
++  gap: 8px;
++  min-height: 36px;
++  padding: 4px 8px;
++  border: 0;
++  border-radius: 8px;
++  background: none;
++  color: inherit;
++  font: inherit;
++  text-align: left;
++}
++.cp-add-list button:hover, .cp-add-list button:focus-visible { background: var(--raise, #172e3b); outline: none; }
++
++/* Desktop, hidden: a tab on the right edge. */
++.cp-tab {
++  position: fixed;
++  z-index: 60;
++  top: 50%;
++  right: 0;
++  transform: translateY(-50%);
++  writing-mode: vertical-rl;
++  display: flex;
++  align-items: center;
++  gap: 6px;
++  min-height: 0;
++  padding: 14px 8px;
++  border: 1px solid var(--line, #264452);
++  border-right: 0;
++  border-radius: 12px 0 0 12px;
++  background: var(--raise, #172e3b);
++  color: inherit;
++  font: inherit;
++  font-weight: 700;
++  letter-spacing: .04em;
++  box-shadow: -6px 0 18px rgba(0, 0, 0, .25);
++}
++
++.cp-tab span, .cp-fab span {
++  writing-mode: horizontal-tb;
++  min-width: 20px;
++  padding: 1px 6px;
++  border-radius: 10px;
++  background: var(--acc, #a99bff);
++  color: var(--acc-ink, #120a33);
++  font-size: 12px;
++  text-align: center;
++}
++
++.cp-fab, .cp-back { display: none; }
++
++/* Phones and tablets: a floating button above the bottom navigation opens the panel as a sheet. */
++@media (max-width: 899px) {
++  .cp-tab { display: none; }
++
++  .cp {
++    display: none;
++    top: auto;
++    left: 0;
++    right: 0;
++    bottom: 0;
++    width: auto;
++    height: min(82vh, 680px);
++    padding-bottom: env(safe-area-inset-bottom, 0px);
++    border-left: 0;
++    border-top: 1px solid var(--line, #264452);
++    border-radius: 18px 18px 0 0;
++  }
++
++  .cp.sheet { display: flex; }
++  .cp-hide { display: none; }
++  .cp-close { display: inline-flex; }
++
++  .cp-fab {
++    position: fixed;
++    z-index: 58;
++    right: 12px;
++    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
++    display: flex;
++    align-items: center;
++    gap: 6px;
++    min-height: 44px;
++    padding: 0 14px;
++    border: 1px solid var(--line, #264452);
++    border-radius: 999px;
++    background: var(--raise, #172e3b);
++    color: inherit;
++    font: inherit;
++    font-weight: 700;
++    box-shadow: 0 6px 18px rgba(0, 0, 0, .35);
++  }
++
++  .cp-fab small { color: var(--mute, #9db4c0); font-weight: 400; }
++
++  .cp-back { display: block; position: fixed; inset: 0; z-index: 59; background: rgba(0, 0, 0, .45); }
++}
++</style>
++
++<style>
++/* Unscoped on purpose: these target the page. One variable, defined here, used everywhere. */
++:root {
++  --combat-w: clamp(320px, 30vw, 400px);
++}
++
++@media (min-width: 900px) {
++  body.has-combat {
++    padding-right: var(--combat-w);
++  }
++
++  /* The bottom navigation is centred in the free area, not behind the panel. */
++  body.has-combat .nav {
++    right: var(--combat-w);
++  }
++}
++</style>
+diff -ruN a/src/components/Reference/ReferenceSearch.vue b/src/components/Reference/ReferenceSearch.vue
+--- a/src/components/Reference/ReferenceSearch.vue
++++ b/src/components/Reference/ReferenceSearch.vue
+@@ -355,8 +355,8 @@
+ <style>
+ /* Keeps the search button clear of the combat panel on desktop. */
+ @media (min-width: 900px) {
+-  body.has-tray .ref-open {
+-    right: calc(var(--tray-w, 340px) + 10px);
++  body.has-combat .ref-open {
++    right: calc(var(--combat-w, 380px) + 10px);
+   }
+ }
+ </style>
+\ No newline at end of file
+diff -ruN a/src/lib/viewer.js b/src/lib/viewer.js
+--- a/src/lib/viewer.js
++++ b/src/lib/viewer.js
+@@ -2,10 +2,14 @@
+ import { SB_ANON, fetchRev, fetchAll } from './supabase'
+ import { fromRow, M_ITEM } from './mapping'
+ 
+-export async function fetchLiveView() {
++// `knownRevision`: the revision the player already shows. If the cloud still has it, only that tiny request is made.
++export async function fetchLiveView(knownRevision = null) {
+   const revision = await fetchRev(SB_ANON)
+ 
+   if (!revision) return null
++  if (knownRevision !== null && Number(revision.rev) === knownRevision) {
++    return { unchanged: true, revision: knownRevision }
++  }
+ 
+   const [characters, wallets, items, effects, settings] = await Promise.all([
+     fetchAll(SB_ANON, 'characters', 'select=*', 'name'),
+diff -ruN a/src/main.js b/src/main.js
+--- a/src/main.js
++++ b/src/main.js
+@@ -7,6 +7,17 @@
+ import { useCloudStore } from './stores/cloud'
+ import { useSpells } from './stores/spells'
+ 
++// After a deploy, an old open tab asks for chunk files that no longer exist: reload once to get the new version
++// (local data is already saved; the 10 s guard prevents a reload loop).
++window.addEventListener('vite:preloadError', (event) => {
++  event.preventDefault()
++  try {
++    if (Date.now() - (+sessionStorage.getItem('pf1e-preload-reload') || 0) < 10000) return
++    sessionStorage.setItem('pf1e-preload-reload', String(Date.now()))
++  } catch { /* storage off: reload anyway */ }
++  location.reload()
++})
++
+ const app = createApp(App)
+ app.use(createPinia())
+ 
+diff -ruN a/src/stores/app.js b/src/stores/app.js
+--- a/src/stores/app.js
++++ b/src/stores/app.js
+@@ -120,7 +120,7 @@
+   if (!viewer.value) return
+ 
+   try {
+-    const result = await fetchLiveView()
++    const result = await fetchLiveView(viewerRevision.value)
+ 
+     if (!result) {
+       viewerStatus.value = 'error'
+@@ -128,7 +128,11 @@
+       return
+     }
+ 
+-    if (viewerRevision.value === result.revision) return
++    if (result.unchanged) {                 // nothing new; also clears an old connection error
++      viewerStatus.value = 'ok'
++      viewerError.value = ''
++      return
++    }
+ 
+     replace(result.data, result.data.party)
+ 
+diff -ruN a/src/stores/cloud.js b/src/stores/cloud.js
+--- a/src/stores/cloud.js
++++ b/src/stores/cloud.js
+@@ -75,12 +75,18 @@
+     if (b.mig) push(false)
+   }
+ 
+-  function schedule() {
++  // Typing fires this on every keystroke; diffing every row each time is wasteful, so wait a beat.
++  // pagehide runs it at once, so a change made just before closing is still marked as pending.
++  let diffTimer = 0
++  function checkNow() {
++    clearTimeout(diffTimer); diffTimer = 0
+     if (!diff(rows(), snap).n) return
+     dirty.value = true; saveMeta()
+     if (!session.value || state.value === 'conflict') return
+     clearTimeout(timer); timer = setTimeout(() => push(false), 1500)
+   }
++  function schedule() { clearTimeout(diffTimer); diffTimer = setTimeout(checkNow, 120) }
++  const flushDiff = () => { if (diffTimer) checkNow() }
+ 
+   async function push(full = false) {
+     if (busy || !session.value) return
+@@ -171,6 +177,7 @@
+     if (app.viewer) return
+     if (!snap && !dirty.value) { snap = snapOf(rows()); saveSnap() }
+     watch(() => [app.S, app.party], schedule, { deep: true })
++    addEventListener('pagehide', flushDiff)
+     addEventListener('online', sync)
+     document.addEventListener('visibilitychange', () => { if (!document.hidden && !dirty.value) sync() })
+     if (session.value) sync()
+diff -ruN a/src/stores/monsterFights.js b/src/stores/monsterFights.js
+--- a/src/stores/monsterFights.js
++++ b/src/stores/monsterFights.js
+@@ -69,10 +69,18 @@
+     }
+   }
+ 
+-  /** Adds one fight. Copies of the same monster are numbered: Wolf, Wolf 2, Wolf 3… */
++  /** Copies of the same creature are numbered with the first free number: Wolf, Wolf 2, Wolf 3… */
++  function uniqueName(base) {
++    const taken = new Set(fights.value.map((f) => f.name))
++    if (!taken.has(base)) return base
++    let i = 2
++    while (taken.has(`${base} ${i}`)) i++
++    return `${base} ${i}`
++  }
++
++  /** Adds one fight. */
+   async function add(url, baseName) {
+-    const copies = fights.value.filter((f) => f.url === url).length
+-    const entry = make({ url, name: copies ? `${baseName} ${copies + 1}` : baseName })
++    const entry = make({ url, name: uniqueName(baseName) })
+     fights.value.push(entry)
+     activeUid.value = entry.uid
+     await fetchCard(entry, true)
+@@ -83,7 +91,7 @@
+   function addCustom(name, hp) {
+     const clean = String(name || '').trim() || 'Creature'
+     const max = Math.max(1, Math.round(Number(hp) || 0))
+-    const entry = make({ url: null, name: clean, hp: max, maxHp: max })
++    const entry = make({ url: null, name: uniqueName(clean), hp: max, maxHp: max })
+     entry.loading = false
+     fights.value.push(entry)
+     activeUid.value = entry.uid
+@@ -93,11 +101,12 @@
+   /** Brings back the fights saved in this browser. */
+   function restore() {
+     readSaved()
+-      .filter((s) => s && s.url)
++      .filter((s) => s && (s.url || s.name))
+       .forEach((s) => {
+         const entry = make(s)
+         fights.value.push(entry)
+-        fetchCard(entry, false)
++        if (s.url) fetchCard(entry, false)
++        else entry.loading = false          // a custom creature has no stat block to load
+       })
+     if (fights.value.length) activeUid.value = fights.value[0].uid
+   }
+diff -ruN a/src/views/MonsterCatalogView.vue b/src/views/MonsterCatalogView.vue
+--- a/src/views/MonsterCatalogView.vue
++++ b/src/views/MonsterCatalogView.vue
+@@ -183,13 +183,6 @@
+ </template>
+ 
+ <style scoped>
+-/* Phones: no combat controls (the combat panel is desktop only). */
+-@media (max-width: 899px) {
+-  .combat-add {
+-    display: none !important;
+-  }
+-}
+-
+ .cat-row {
+   display: flex;
+   gap: 6px;
+diff -ruN a/tests/App.test.js b/tests/App.test.js
+--- a/tests/App.test.js
++++ b/tests/App.test.js
+@@ -1,4 +1,4 @@
+-import { describe, expect, it, beforeEach } from 'vitest'
++import { describe, expect, it, beforeEach, vi } from 'vitest'
+ import { mount } from '@vue/test-utils'
+ import { createPinia, setActivePinia } from 'pinia'
+ import App from '../src/App.vue'
+@@ -12,20 +12,28 @@
+   return { app, w: mount(App, { global: { plugins: [pinia] } }) }
+ }
+ 
++// Views are lazy chunks: they show up a moment after the app mounts.
++const until = (check) => vi.waitFor(check, { timeout: 5000 })
++
+ describe('App routing', () => {
+   beforeEach(() => { document.body.innerHTML = '' })
+ 
+-  it('editor mode: each tab renders its view, with toast and confirm host', () => {
+-    expect(setup('skills', false).w.find('input[aria-label="Search skills"]').exists()).toBe(true)
++  it('editor mode: each tab renders its view, with toast and confirm host', async () => {
++    const skills = setup('skills', false).w
++    await until(() => expect(skills.find('input[aria-label="Search skills"]').exists()).toBe(true))
+     const { w } = setup('fx', false)
+-    expect(w.text()).toContain('Hechizos activos')
+-    expect(setup('items', false).w.find('.ic').exists()).toBe(true)
++    await until(() => expect(w.text()).toContain('Hechizos activos'))
++    const items = setup('items', false).w
++    await until(() => expect(items.find('.ic').exists()).toBe(true))
+   })
+ 
+-  it('player mode: fx is read only, party is read only, unknown tabs show the placeholder', () => {
++  it('player mode: fx is read only, party is read only, unknown tabs show the placeholder', async () => {
+     const fx = setup('fx', true).w
+-    expect(fx.text()).toContain('Bless'); expect(fx.find('.fx-end').exists()).toBe(false)
+-    expect(setup('party', true).w.find('button.danger.wide').exists()).toBe(false)
++    await until(() => expect(fx.text()).toContain('Bless'))
++    expect(fx.find('.fx-end').exists()).toBe(false)
++    const party = setup('party', true).w
++    await until(() => expect(party.findComponent({ name: 'PartyView' }).exists()).toBe(true))
++    expect(party.find('button.danger.wide').exists()).toBe(false)
+     expect(setup('setup', true).w.text()).toContain('Not ported')
+   })
+ 
+diff -ruN a/tests/CombatPanel.test.js b/tests/CombatPanel.test.js
+--- a/tests/CombatPanel.test.js
++++ b/tests/CombatPanel.test.js
+@@ -0,0 +1,50 @@
++import { describe, expect, it, beforeEach } from 'vitest'
++import { mount } from '@vue/test-utils'
++import { nextTick } from 'vue'
++import { createPinia, setActivePinia } from 'pinia'
++import CombatPanel from '../src/components/Combat/CombatPanel.vue'
++import { useAppStore } from '../src/stores/app'
++import { useMonsterFights } from '../src/stores/monsterFights'
++import { useInitiative } from '../src/stores/initiative'
++import { sampleParty, sampleState } from './helpers'
++
++function setup() {
++  localStorage.clear()
++  const pinia = createPinia(); setActivePinia(pinia)
++  const app = useAppStore(); app.replace(sampleState(), sampleParty())
++  const fights = useMonsterFights()
++  fights.addCustom('Goblin', 7); fights.addCustom('Goblin', 7)
++  const init = useInitiative()
++  const w = mount(CombatPanel, { global: { plugins: [pinia] } })
++  return { app, fights, init, w }
++}
++const names = (w) => w.findAll('.cp-row').map((r) => r.find('.cp-name').text())
++
++describe('combat panel', () => {
++  beforeEach(() => { document.body.innerHTML = '' })
++
++  it('two creatures with the same name get different names', () => {
++    const { fights } = setup()
++    expect(fights.fights.map((f) => f.name)).toEqual(['Goblin', 'Goblin 2'])
++  })
++
++  it('shows party and monsters in one list, ordered by initiative', async () => {
++    const { init, w } = setup()
++    init.setInit('mon:Goblin', 15); init.setInit('pc:Bob', 12); init.setInit('pc:Ann', 10); init.setInit('mon:Goblin 2', 8)
++    await nextTick()
++    expect(names(w)).toEqual(['Goblin', 'Bob', 'Ann', 'Goblin 2'])
++    expect(w.find('.cp-row.mon .cp-hp').text()).toContain('7/7')   // HP is on the same row as the turn order
++  })
++
++  it('Next turn marks the row and aims the damage buttons at that monster', async () => {
++    const { fights, init, w } = setup()
++    init.setInit('mon:Goblin', 15); init.setInit('pc:Bob', 12); init.setInit('pc:Ann', 10); init.setInit('mon:Goblin 2', 8)
++    await nextTick()
++    await w.find('.cp-next').trigger('click')
++    await nextTick()
++    expect(w.find('.cp-row.current .cp-name').text()).toBe('Goblin')
++    expect(fights.active.name).toBe('Goblin')
++    await w.find('button[aria-label="Minus 5"]').trigger('click')
++    expect(fights.fights[0].hp).toBe(2)
++  })
++})
+diff -ruN a/vite.config.js b/vite.config.js
+--- a/vite.config.js
++++ b/vite.config.js
+@@ -28,7 +28,8 @@
+         ],
+       },
+       workbox: {
+-        globPatterns: ['**/*.{js,css,html,png,svg,ico,woff2}'],
++        globPatterns: ['**/*.{js,mjs,css,html,png,svg,ico,woff2}'], // .mjs = the pdf.js worker, needed offline for maps
++        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+         navigateFallback: 'index.html',
+         cleanupOutdatedCaches: true,
+         runtimeCaching: [

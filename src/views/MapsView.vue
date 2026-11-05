@@ -112,9 +112,9 @@ onMounted(refresh);
 <template>
   <main class="page maps-page">
     <header class="maps-head">
-      <h2 class="pg">Adventures</h2>
+      <h2 class="pg">Aventuras</h2>
       <label class="btn-like">
-        Import PDF
+        Importar PDF
         <input type="file" accept="application/pdf,.pdf" multiple hidden @change="importFiles" />
       </label>
     </header>
@@ -127,9 +127,9 @@ onMounted(refresh);
     </p>
 
     <section v-if="!adventures.length && !busy" class="panel item-empty">
-      <p>No adventures yet.</p>
+      <p>Ningun aventura importada.</p>
       <p class="mute">
-        Import the book and the maps of an adventure together. Files with the same name are one adventure.
+        Importa el libro y los mapas de una aventura juntos. Los archivos con el mismo nombre se unirán.
       </p>
     </section>
 
@@ -138,16 +138,16 @@ onMounted(refresh);
         <button type="button" class="adv-open" :disabled="!a.book && !a.map" @click="open(a)">
           <span class="adv-name">{{ a.name }}</span>
           <span class="adv-parts">
-            <span :class="{ ok: a.book }">Book{{ a.book ? '' : ' missing' }}</span>
-            <span :class="{ ok: a.map }">Maps{{ a.map ? '' : ' missing' }}</span>
+            <span :class="{ ok: a.book }">Libro{{ a.book ? '' : ' missing' }}</span>
+            <span :class="{ ok: a.map }">Mapas{{ a.map ? '' : ' missing' }}</span>
           </span>
         </button>
         <label v-if="a.book" class="adv-act">
-          Improve
+          Mejorar
           <input type="file" accept="application/json,.json" hidden @change="improve(a.book, $event)" />
         </label>
-        <button type="button" class="adv-act" aria-label="Rename adventure" @click="rename(a)">Rename</button>
-        <button type="button" class="adv-act adv-del" aria-label="Delete adventure" @click="remove(a)">Delete</button>
+        <button type="button" class="adv-act" aria-label="Rename adventure" @click="rename(a)">Renombrar</button>
+        <button type="button" class="adv-act adv-del" aria-label="Delete adventure" @click="remove(a)">Borrar</button>
       </li>
     </ul>
 

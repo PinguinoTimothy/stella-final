@@ -118,25 +118,25 @@ function addFromStats() {
 </script>
 
 <template>
-  <h2 class="pg">Monsters</h2>
-  <p class="mute">{{ total }} creatures in the bestiary. Tap a name to read it; + adds it to combat.</p>
+  <h2 class="pg">Bestiario</h2>
+  <p class="mute">{{ total }} monstruos en el bestiario.</p>
 
   <div class="grid">
     <input v-model="query" class="sr" type="search" placeholder="Search monsters…" aria-label="Search monsters" />
     <div class="grid g2">
       <select v-model="type" aria-label="Type">
-        <option value="">All types</option>
+        <option value="">Todos los tipos</option>
         <option v-for="t in types" :key="t" :value="t">
           {{ t }}
         </option>
       </select>
       <select v-model="cr" aria-label="Challenge rating">
-        <option value="">Any CR</option>
+        <option value="">Cualquier CR</option>
         <option v-for="c in CR_OPTIONS" :key="c" :value="String(c)">CR {{ crLabel(c) }}</option>
       </select>
       <select v-model="mythic" aria-label="Mythic status">
-        <option value="">All monsters</option>
-        <option value="mythic">Mythic only</option>
+        <option value="">Todos los monstruos</option>
+        <option value="mythic">Solo miticos</option>
       </select>
     </div>
   </div>
@@ -144,7 +144,7 @@ function addFromStats() {
   <p v-if="error" class="mute" role="alert">
     {{ error }}
   </p>
-  <section v-else-if="!loading && !rows.length" class="panel item-empty">No monster matches.</section>
+  <section v-else-if="!loading && !rows.length" class="panel item-empty">Sin coincidencias</section>
 
   <div class="grid" style="margin-top: 12px">
     <div v-for="m in rows" :key="m.url" class="cat-row">
@@ -176,7 +176,7 @@ function addFromStats() {
       </header>
 
       <div class="mc-body">
-        <p v-if="stats.loading" class="mute">Loading…</p>
+        <p v-if="stats.loading" class="mute">Buscando...</p>
         <p v-else-if="stats.error" class="mute" role="alert">
           {{ stats.error }}
         </p>
