@@ -86,7 +86,7 @@ function loadYouTubeApi() {
   });
 }
 
-/** Creates the hidden player once, on first use. The playlist is shuffled, so each song is a random one. */
+/** Creates the hidden player once, on first use. */
 function ensurePlayer() {
   if (!playerPromise) {
     playerPromise = loadYouTubeApi().then(
@@ -100,10 +100,7 @@ function ensurePlayer() {
             width: '1',
             playerVars: { listType: 'playlist', list: PLAYLIST_ID, playsinline: 1 },
             events: {
-              onReady: e => {
-                e.target.setShuffle(true);
-                ready();
-              },
+              onReady: () => ready(),
               onStateChange: onPlayerState,
             },
           });
@@ -160,7 +157,10 @@ function startDance() {
   ensurePlayer()
     .then(() => {
       if (anim.value !== 'dance') return;
-      player.playVideo();
+      // Start at a random track. Without a known list length, play from the start of the playlist.
+      const count = player.getPlaylist?.()?.length;
+      if (count) player.playVideoAt(Math.floor(Math.random() * count));
+      else player.playVideo();
       // Browsers block sound until the user has interacted with the page. If the song has not started, stop dancing.
       checkTimer = setTimeout(() => {
         if (!playing) endSong();
