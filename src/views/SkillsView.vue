@@ -2,7 +2,6 @@
 // More › Skills: quick DCs and modifiers (single-file version: vSkills).
 import { computed, ref } from 'vue';
 import { filterSkills } from '../lib/skills';
-import BackButton from '../components/BackButton.vue';
 import SkillCard from '../components/Skills/SkillCard.vue';
 
 const query = ref('');
@@ -15,7 +14,6 @@ const toggle = name => {
 </script>
 
 <template>
-  <BackButton />
   <h2 class="pg">Skills</h2>
   <p class="mute">
     Quick DCs and modifiers. Search a DC, a number or a situation (“ladder”, “manacles”, “wind”), or tap a skill.

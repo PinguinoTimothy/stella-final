@@ -2,7 +2,6 @@
 // More › Monster rules: universal monster rules (single-file version: vUmr).
 import { computed, ref } from 'vue';
 import { filterUmr, umrIsOpen } from '../lib/umr';
-import BackButton from '../components/BackButton.vue';
 import UmrFilters from '../components/Umr/UmrFilters.vue';
 import UmrCard from '../components/Umr/UmrCard.vue';
 
@@ -16,7 +15,6 @@ const toggle = name => {
 </script>
 
 <template>
-  <BackButton />
   <h2 class="pg">Monster rules</h2>
   <p class="mute">
     Universal monster rules: special abilities, defenses and traits. Search a rule or a word (“paralysis”, “DC”,

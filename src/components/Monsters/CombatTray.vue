@@ -5,10 +5,23 @@ import { computed, onUnmounted, ref, watch } from 'vue';
 import { useAppStore } from '../../stores/app';
 import { useMonsterFights } from '../../stores/monsterFights';
 import CombatCard from './CombatCard.vue';
+import { useInitiative } from '../../stores/initiative';
 import { fetchMonsterPage } from '../../lib/monsters';
 
 const app = useAppStore();
 const fights = useMonsterFights();
+const init = useInitiative();
+
+// Initiative is for the DM app only (not the player view), as the separate rail was.
+const showInit = computed(() => app.mode !== 'player');
+// Keeps one entry per party member and per combat monster.
+watch(
+  () => [showInit.value, showInit.value ? [...app.party] : [], fights.fights.map(f => f.name)],
+  ([on, party, monsters]) => {
+    if (on) init.sync(party, monsters);
+  },
+  { immediate: true, deep: true },
+);
 
 // Add any creature from the bestiary: the original of a variant, or one not in the room.
 const addQuery = ref('');
@@ -139,6 +152,43 @@ async function clearAll() {
         <button class="ct-hide" aria-label="Hide combat" @click="hide">Hide</button>
       </div>
     </header>
+
+    <details v-if="showInit" class="ct-init" open aria-label="Initiative">
+      <summary class="ct-init-head">
+        <b>Initiative</b>
+        <span class="mute">Round {{ init.round }}</span>
+      </summary>
+
+      <div class="ir-actions">
+        <button class="cast" :disabled="!init.order.length" @click="init.next()">Next turn</button>
+        <button :disabled="!init.currentKey && init.round === 1" @click="init.newRound()">New round</button>
+      </div>
+
+      <ol class="ir-list">
+        <li
+          v-for="e in init.ordered"
+          :key="e.key"
+          :class="{ current: e.key === init.currentKey && e.present, away: !e.present }"
+        >
+          <label class="ir-present" :title="e.present ? 'Present' : 'Absent'">
+            <input type="checkbox" :checked="e.present" @change="init.setPresent(e.key, $event.target.checked)" />
+          </label>
+          <span class="ir-kind" :class="e.kind">{{ e.kind === 'pc' ? 'PC' : 'Mon' }}</span>
+          <span class="ir-name">{{ e.label }}</span>
+          <input
+            class="ir-init"
+            type="number"
+            inputmode="numeric"
+            :value="e.init ?? ''"
+            placeholder="—"
+            aria-label="Initiative"
+            @change="init.setInit(e.key, $event.target.value)"
+          />
+        </li>
+      </ol>
+
+      <p v-if="!init.entries.length" class="mute">Add characters in More → Party, and monsters to combat.</p>
+    </details>
 
     <div v-if="!readonly" class="ct-amount">
       <input v-model.number="amount" type="number" min="1" inputmode="numeric" aria-label="Amount" />
@@ -310,8 +360,41 @@ async function clearAll() {
   min-height: 40px;
 }
 
-.ct-body {
+/* Initiative: compact, can be folded away so the fights get the room. */
+.ct-init {
+  flex: 0 1 auto;
+  min-height: 0;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line, #264452);
+  max-height: 34vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.ct-init[open] > .ct-init-head {
+  margin-bottom: 8px;
+}
+
+.ct-init-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.ct-init-head::-webkit-details-marker {
+  display: none;
+}
+
+.ct-init-head b {
   flex: 1;
+}
+
+.ct-body {
+  /* A scroll area may shrink to nothing in a flex column: keep a minimum so the fights stay visible. */
+  flex: 1 1 auto;
+  min-height: 200px;
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 10px 12px 24px;
@@ -611,6 +694,93 @@ async function clearAll() {
 .ct-add-list button:focus-visible {
   background: var(--raise);
   outline: none;
+}
+.ir-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.ir-head b {
+  flex: 1;
+}
+
+.ir-hide {
+  min-height: 32px;
+  padding: 0 10px;
+}
+
+.ir-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.ir-actions button {
+  min-height: 40px;
+  padding: 0 6px;
+}
+
+.ir-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.ir-list li {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) 56px;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: var(--raise, #172e3b);
+}
+
+.ir-list li.current {
+  border-color: var(--acc, #a99bff);
+}
+
+.ir-list li.away {
+  opacity: 0.5;
+}
+
+.ir-present input {
+  width: 18px;
+  height: 18px;
+}
+
+.ir-kind {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 6px;
+  background: var(--spent, #2a4755);
+}
+
+.ir-kind.pc {
+  color: var(--acc, #62bd91);
+}
+
+.ir-kind.mon {
+  color: var(--warn, #ff8f86);
+}
+
+.ir-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ir-init {
+  width: 56px;
+  min-height: 34px;
+  padding: 0 4px;
+  text-align: center;
 }
 </style>
 

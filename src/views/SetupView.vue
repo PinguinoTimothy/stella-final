@@ -3,7 +3,6 @@
 // Every change goes through the store (snapshot → edit → log → undo toast), like the other screens.
 import { computed } from 'vue';
 import { useAppStore } from '../stores/app';
-import BackButton from '../components/BackButton.vue';
 import {
   CLASS_TABLES,
   applyClassPreset,
@@ -232,7 +231,6 @@ function removeSchool(index, schoolIndex) {
 </script>
 
 <template>
-  <BackButton />
   <h2 class="pg">Setup</h2>
   <p class="mute">Character, spellcasting classes, slots, domains and school DC bonuses.</p>
 

@@ -3,14 +3,12 @@
 // Markup and class names are the original ones (h2.pg, .chips/.chip, article.cond, ul.grl).
 import { computed, ref } from 'vue';
 import { GRAPPLE_STEPS, GRAPPLE_VIEWS } from '../lib/grapple';
-import BackButton from '../components/BackButton.vue';
 
 const view = ref(GRAPPLE_VIEWS[0].id);
 const steps = computed(() => GRAPPLE_STEPS[view.value] || []);
 </script>
 
 <template>
-  <BackButton />
   <h2 class="pg">Grapple</h2>
   <p class="mute">
     A grapple check is a combat maneuver: d20 + CMB against the target’s CMD. Pick where you are in the grapple.

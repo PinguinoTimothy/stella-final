@@ -1,7 +1,6 @@
 <script setup>
 // More › Feats: searchable list. Opening a feat shows its details and a graph of what it requires and unlocks.
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import BackButton from '../components/BackButton.vue';
 import FeatGraph from '../components/Feats/FeatGraph.vue';
 import { featGraph, fetchFeatFacets, fetchFeatPage } from '../lib/feats';
 
@@ -108,8 +107,6 @@ onBeforeUnmount(() => clearTimeout(debounce));
 </script>
 
 <template>
-  <BackButton v-if="!graph && !graphLoading && !graphError" />
-
   <template v-if="!graph && !graphLoading && !graphError">
     <h2 class="pg">Feats</h2>
     <p class="mute">{{ total }} feats. Tap one to see what it requires and what it unlocks.</p>

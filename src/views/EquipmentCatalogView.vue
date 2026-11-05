@@ -6,7 +6,6 @@ import { toInventoryItem } from '../lib/equipment';
 import { useAppStore } from '../stores/app';
 import { useInventory } from '../stores/inventory';
 import { useEquipmentCatalog } from '../stores/equipmentCatalog';
-import BackButton from '../components/BackButton.vue';
 import MagicCatalogPager from '../components/MagicCatalog/MagicCatalogPager.vue';
 import EquipmentFilters from '../components/Equipment/EquipmentFilters.vue';
 import EquipmentList from '../components/Equipment/EquipmentList.vue';
@@ -34,12 +33,8 @@ onMounted(catalog.start);
 
 <template>
   <main class="page magic-catalog-page" :aria-busy="catalog.loading">
-    <BackButton />
-
     <header class="magic-catalog-heading">
-      <p class="magic-eyebrow">PATHFINDER · EQUIPMENT</p>
-      <h1 class="pg">Equipment catalog</h1>
-      <p class="mute">Weapons, armor, tools, alchemical goods and more. Add them to your inventory.</p>
+      <h1 class="pg">Objetos mundanos</h1>
     </header>
 
     <EquipmentFilters

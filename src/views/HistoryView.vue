@@ -3,7 +3,6 @@
 import { computed } from 'vue';
 import { useAppStore } from '../stores/app';
 import { filterLog, groupByDay, HISTORY_SHOWN } from '../lib/history';
-import BackButton from '../components/BackButton.vue';
 import HistoryFilters from '../components/History/HistoryFilters.vue';
 import HistoryEntry from '../components/History/HistoryEntry.vue';
 
@@ -34,7 +33,6 @@ async function clear() {
 </script>
 
 <template>
-  <BackButton />
   <h2 class="pg">History</h2>
   <HistoryFilters v-model="kind" />
 

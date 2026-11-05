@@ -6,7 +6,6 @@ import { toInventoryItem } from '../lib/magic';
 import { useAppStore } from '../stores/app';
 import { useInventory } from '../stores/inventory';
 import { useMagicCatalog } from '../stores/magicCatalog';
-import BackButton from '../components/BackButton.vue';
 import MagicCatalogFilters from '../components/MagicCatalog/MagicCatalogFilters.vue';
 import MagicCatalogList from '../components/MagicCatalog/MagicCatalogList.vue';
 import MagicItemDetails from '../components/MagicCatalog/MagicItemDetails.vue';
@@ -68,12 +67,8 @@ onBeforeUnmount(() => observer?.disconnect());
 
 <template>
   <main class="page magic-catalog-page" :aria-busy="catalog.loading">
-    <BackButton />
-
     <header class="magic-catalog-heading">
-      <p class="magic-eyebrow">PATHFINDER · EQUIPMENT</p>
-      <h1 class="pg">Magic catalog</h1>
-      <p class="mute">Browse magical items and add them to your inventory.</p>
+      <h1 class="pg" style="margin-bottom: 1rem">Objetos magicos</h1>
     </header>
 
     <MagicCatalogFilters

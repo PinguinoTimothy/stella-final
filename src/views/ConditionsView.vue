@@ -3,14 +3,12 @@
 // Markup and class names are the original ones (h2.pg, input.sr, article.cond, button.ic-eq), so app.css applies.
 import { computed, ref } from 'vue';
 import { filterConditions } from '../lib/conditions';
-import BackButton from '../components/BackButton.vue';
 
 const query = ref('');
 const list = computed(() => filterConditions(query.value));
 </script>
 
 <template>
-  <BackButton />
   <h2 class="pg">Conditions</h2>
   <input v-model="query" class="sr" type="search" placeholder="Search conditions…" aria-label="Search conditions" />
 

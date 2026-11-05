@@ -8,7 +8,6 @@ import MascotBar from './components/MascotBar.vue';
 import ConfirmDialog from './components/ConfirmDialog.vue';
 import ToastHost from './components/ToastHost.vue';
 import CombatTray from './components/Monsters/CombatTray.vue';
-import InitiativeRail from './components/Initiative/InitiativeRail.vue';
 import LoginView from './views/LoginView.vue';
 import PlaceholderView from './views/PlaceholderView.vue';
 import CastView from './views/CastView.vue';
@@ -112,7 +111,6 @@ const title = computed(() => titles[app.ui.tab] || (app.viewer ? app.ui.tab : ''
     <ToastHost />
     <template v-if="app.mode !== 'player'">
       <CombatTray />
-      <InitiativeRail />
     </template>
     <ConfirmDialog />
     <ReferenceSearch />

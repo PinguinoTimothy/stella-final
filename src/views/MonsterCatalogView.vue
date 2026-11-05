@@ -1,7 +1,6 @@
 <script setup>
 // More › Monsters: the bestiary. Tap a name to read it in a centred panel; + adds it to combat.
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import BackButton from '../components/BackButton.vue';
 import CombatCard from '../components/Monsters/CombatCard.vue';
 import { useAppStore } from '../stores/app';
 import { useMonsterFights } from '../stores/monsterFights';
@@ -119,7 +118,6 @@ function addFromStats() {
 </script>
 
 <template>
-  <BackButton />
   <h2 class="pg">Monsters</h2>
   <p class="mute">{{ total }} creatures in the bestiary. Tap a name to read it; + adds it to combat.</p>
 
