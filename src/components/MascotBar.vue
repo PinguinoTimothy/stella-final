@@ -20,7 +20,6 @@ const ANIMS = {
   rage: { sheet: 'main', row: 4, frames: 6, speed: 0.4, time: 0 }, // held while dragging
   dance: { sheet: 'extra', row: 0, frames: 12, speed: 1.2, time: 0 }, // while the song plays
   vinyl: { sheet: 'extra', row: 1, frames: 8, speed: 4.8, time: 0 }, // putting the record on (0.6s per frame)
-  sleep: { sheet: 'extra', row: 2, frames: 8, speed: 2.4, time: 0 }, // until the user interacts
 };
 
 // Music: put the record on, then dance until the song ends. Songs come from a YouTube playlist, played in shuffle order.
@@ -28,9 +27,8 @@ const PLAYLIST_ID = 'PLbd9yHyOxA03B9Y71cDbtGaHKlN3VulgA';
 const VINYL_MS = ANIMS.vinyl.speed * 1000; // one pass of the record animation
 const SONG_CHECK_MS = 5000; // if the song has not started by then (sound blocked, player not loaded), stop dancing
 const SONG_MAX_MS = 15 * 60000; // safety net: never dance longer than this
-const NEXT_SONG_MIN = 120000; // the next one starts 2 to 5 minutes later
-const NEXT_SONG_RANGE = 180000;
-const SLEEP_CHANCE = 0.15; // each time it pauses while idle, the chance it falls asleep instead of walking
+const NEXT_SONG_MIN = 600000; // the next one starts 2 to 5 minutes later
+const NEXT_SONG_RANGE = 3000000;
 
 const REACTIONS = [
   { anim: 'react', line: '¿Quieres leer la verdad?' },
@@ -140,10 +138,6 @@ function setAnim(name, text = '') {
   }, time);
 }
 
-function startSleep() {
-  setAnim('sleep');
-}
-
 function startSong() {
   nextSongAt = performance.now() + NEXT_SONG_MIN + Math.random() * NEXT_SONG_RANGE;
   setAnim('vinyl', '¡Un poco de música!');
@@ -177,7 +171,6 @@ function endSong() {
 /** Called when the mascot pauses while idle: it may put on a record, fall asleep, or walk somewhere. */
 function chooseIdleAction(now) {
   if (now >= nextSongAt) return startSong();
-  if (Math.random() < SLEEP_CHANCE) return startSleep();
   pickTarget();
 }
 
@@ -283,7 +276,7 @@ const sprite = computed(() => {
 onMounted(() => {
   last = performance.now();
   pauseUntil = last + 2500;
-  nextSongAt = last + NEXT_SONG_MIN / 2 + Math.random() * NEXT_SONG_RANGE / 2; // the first song comes sooner
+  nextSongAt = last + NEXT_SONG_MIN / 2 + (Math.random() * NEXT_SONG_RANGE) / 2; // the first song comes sooner
   frameId = requestAnimationFrame(tick);
 });
 
