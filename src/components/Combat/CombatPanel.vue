@@ -6,12 +6,14 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useAppStore } from '../../stores/app';
 import { useMonsterFights } from '../../stores/monsterFights';
 import { useInitiative } from '../../stores/initiative';
-import CombatCard from '../Monsters/CombatCard.vue';
+import StatWindows from './StatWindows.vue';
+import { useStatWindows } from '../../stores/statWindows';
 import { fetchMonsterPage } from '../../lib/monsters';
 
 const app = useAppStore();
 const fights = useMonsterFights();
 const init = useInitiative();
+const wins = useStatWindows();
 
 // One initiative entry per party member and per monster in combat.
 watch(
@@ -46,7 +48,7 @@ watch(
   { immediate: true },
 );
 const onKey = e => {
-  if (e.key === 'Escape' && activeTab.value !== null) closeTab(activeTab.value);
+  if (e.key === 'Escape' && wins.topUid() !== null) wins.close(wins.topUid());
 };
 onMounted(() => window.addEventListener('keydown', onKey));
 onUnmounted(() => {
@@ -76,103 +78,25 @@ watch(
   },
 );
 
-/* ----- stat blocks: a popup outside the panel, one tab per monster ----- */
-const openUids = ref([]); // tabs, in the order they were opened
-const activeTab = ref(null);
-const tabs = computed(() => openUids.value.map(uid => fights.fights.find(f => f.uid === uid)).filter(Boolean));
-const detail = computed(() => tabs.value.find(f => f.uid === activeTab.value) || null);
-const isOpen = f => openUids.value.includes(f.uid);
-watch(
-  () => fights.fights.map(f => f.uid),
-  uids => {
-    openUids.value = openUids.value.filter(u => uids.includes(u));
-    if (!openUids.value.includes(activeTab.value)) activeTab.value = openUids.value.at(-1) ?? null;
-  },
-);
-function select(row) {
-  if (row.f) fights.show(row.f.uid);
-}
-function closeTab(uid) {
-  const i = openUids.value.indexOf(uid);
-  if (i < 0) return;
-  openUids.value.splice(i, 1);
-  if (activeTab.value === uid) activeTab.value = openUids.value[Math.min(i, openUids.value.length - 1)] ?? null;
-}
-function closeAll() {
-  openUids.value = [];
-  activeTab.value = null;
-}
-/** The (i) button: opens a new tab; on an open one it switches to it, and on the visible one it closes it. */
+/* ----- stat blocks: one floating window per open monster (see stores/statWindows.js) ----- */
+const isOpen = f => wins.isOpen(f.uid);
+/** The (i) button: opens a window. On a window behind others it brings it to the front; on the top one it closes it. */
 function toggleDetail(f) {
   fights.show(f.uid);
-  if (!isOpen(f)) {
-    openUids.value.push(f.uid);
-    activeTab.value = f.uid;
-  } else if (activeTab.value !== f.uid) {
-    activeTab.value = f.uid;
-  } else {
-    closeTab(f.uid);
-  }
+  if (!wins.isOpen(f.uid)) wins.open(f.uid);
+  else if (wins.topUid() !== f.uid) wins.focus(f.uid);
+  else wins.close(f.uid);
 }
-
-/* ----- moving the stat block popup: drag its header; the position is kept in this browser ----- */
-const popEl = ref(null);
-const POS_KEY = 'stella-combat-pop-pos-v1';
-const KEEP = 60; // px of the popup that must stay on screen, so it can always be grabbed again
-function readPos() {
-  try {
-    const p = JSON.parse(localStorage.getItem(POS_KEY));
-    return p && Number.isFinite(p.x) && Number.isFinite(p.y) ? p : { x: 0, y: 0 };
-  } catch {
-    return { x: 0, y: 0 };
-  }
-}
-const pos = ref(readPos()); // offset from the default place, in px
-watch(pos, p => {
-  try {
-    localStorage.setItem(POS_KEY, JSON.stringify(p));
-  } catch {
-    // Storage disabled: the position only lasts for this session.
-  }
-});
-
-/** Clamps an offset so that the popup keeps KEEP px on screen. Uses the popup as it is drawn now. */
-function clampPos(x, y) {
-  const el = popEl.value;
-  if (!el) return { x, y };
-  const r = el.getBoundingClientRect();
-  const baseLeft = r.left - pos.value.x; // where the popup sits without the offset
-  const baseTop = r.top - pos.value.y;
-  const minX = KEEP - r.width - baseLeft;
-  const maxX = window.innerWidth - KEEP - baseLeft;
-  const minY = -baseTop;
-  const maxY = window.innerHeight - KEEP - baseTop;
-  return {
-    x: Math.round(Math.min(Math.max(x, minX), maxX)),
-    y: Math.round(Math.min(Math.max(y, minY), maxY)),
-  };
-}
-
-// A saved position can be off screen after the window is resized: bring it back when a popup opens.
-watch(detail, async d => {
-  if (!d) return;
-  await nextTick();
-  pos.value = clampPos(pos.value.x, pos.value.y);
-});
-
-let drag = null;
-function onDragDown(e) {
-  if (e.pointerType === 'mouse' && e.button !== 0) return;
-  if (e.target.closest('button, input, select, textarea, a, label')) return; // tabs, close and the rest keep working
-  drag = { id: e.pointerId, sx: e.clientX, sy: e.clientY, x: pos.value.x, y: pos.value.y };
-  e.currentTarget.setPointerCapture?.(e.pointerId);
-}
-function onDragMove(e) {
-  if (!drag || e.pointerId !== drag.id) return;
-  pos.value = clampPos(drag.x + e.clientX - drag.sx, drag.y + e.clientY - drag.sy);
-}
-function onDragEnd(e) {
-  if (drag && e.pointerId === drag.id) drag = null;
+// A window goes away with its monster.
+watch(
+  () => fights.fights.map(f => f.uid),
+  uids => wins.prune(uids),
+);
+/** The area the windows may use: the page, minus the combat column while it is docked on the right. */
+function windowArea() {
+  const docked = !hidden.value && window.innerWidth >= 900;
+  const panel = docked ? document.querySelector('.cp')?.getBoundingClientRect().width || 0 : 0;
+  return { left: 8, top: 8, right: window.innerWidth - panel - 8, bottom: window.innerHeight - 8 };
 }
 
 /* ----- damage / heal a custom amount on the selected monster ----- */
@@ -258,6 +182,12 @@ async function clearAll() {
       </p>
     </div>
 
+    <div v-if="wins.list.length > 1" class="cp-wins">
+      <span class="mute">{{ wins.list.length }} windows</span>
+      <button type="button" class="cp-small" @click="wins.tile(windowArea())">Grid</button>
+      <button type="button" class="cp-small" @click="wins.cascade(windowArea())">Cascade</button>
+      <button type="button" class="cp-small" @click="wins.closeAll()">Close all</button>
+    </div>
     <ol ref="listEl" class="cp-list">
       <li
         v-for="r in rows"
@@ -377,61 +307,7 @@ async function clearAll() {
     </details>
   </aside>
 
-  <!-- Stat block popup: to the left of the panel on desktop (it stays open while you apply damage), a centred card on phones. -->
-  <template v-if="detail">
-    <div class="cp-pop-bg" aria-hidden="true" @click="closeAll"></div>
-    <section
-      ref="popEl"
-      class="cp-pop"
-      :class="{ alone: hidden && !sheet }"
-      :style="{ transform: `translate(${pos.x}px, ${pos.y}px)` }"
-      role="dialog"
-      aria-label="Stat blocks"
-    >
-      <header
-        class="cp-pop-head"
-        title="Drag to move"
-        @pointerdown="onDragDown"
-        @pointermove="onDragMove"
-        @pointerup="onDragEnd"
-        @pointercancel="onDragEnd"
-      >
-        <span class="cp-grip" aria-hidden="true"></span>
-        <div class="cp-tabs" role="tablist">
-          <div v-for="t in tabs" :key="t.uid" class="cp-t" :class="{ active: t.uid === activeTab, down: isDown(t) }">
-            <button
-              type="button"
-              role="tab"
-              class="cp-t-btn"
-              :title="t.name"
-              :aria-selected="t.uid === activeTab"
-              @click="activeTab = t.uid"
-            >
-              <span class="cp-t-name">{{ t.name }}</span>
-              <small>{{ t.hp }}/{{ t.maxHp }}</small>
-            </button>
-            <button type="button" class="cp-t-x" :aria-label="`Close ${t.name}`" @click="closeTab(t.uid)">×</button>
-          </div>
-        </div>
-        <button
-          v-if="tabs.length > 1"
-          type="button"
-          class="cp-pop-x"
-          aria-label="Close all"
-          title="Close all"
-          @click="closeAll"
-        >
-          ×
-        </button>
-      </header>
-      <div class="cp-pop-body" role="tabpanel">
-        <p v-if="detail.loading" class="mute">Loading…</p>
-        <p v-else-if="detail.error" class="mute" role="alert">{{ detail.error }}</p>
-        <CombatCard v-else-if="detail.card" :card="detail.card" />
-        <p v-else class="mute">This creature is not from the bestiary, so it has no stat block.</p>
-      </div>
-    </section>
-  </template>
+  <StatWindows />
 
   <!-- Desktop, hidden: a small tab on the right edge. -->
   <button v-if="hidden" type="button" class="cp-tab" aria-label="Show combat" @click="hidden = false">
@@ -666,137 +542,16 @@ span.cp-info {
   background: var(--warn, #ff8f86);
 }
 
-.cp-pop-bg {
-  display: none;
-}
-
-.cp-pop {
-  position: fixed;
-  z-index: 62;
-  top: 72px;
-  right: calc(var(--combat-w, 380px) + 12px);
-  width: min(440px, calc(100vw - var(--combat-w, 380px) - 40px));
-  max-height: calc(100vh - 96px);
-  display: flex;
-  flex-direction: column;
-  background: var(--surface, #11222d);
-  border: 1px solid var(--line, #264452);
-  border-radius: 18px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
-}
-
-/* Panel hidden on desktop: the popup goes to the edge. */
-.cp-pop.alone {
-  right: 12px;
-  width: min(440px, calc(100vw - 24px));
-}
-
-/* The header is the handle for moving the popup. Buttons inside it keep their own clicks. */
-.cp-pop-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 6px;
-  padding: 6px 8px 0;
-  border-bottom: 1px solid var(--acc, #a99bff);
-  cursor: grab;
-  touch-action: none;
-  user-select: none;
-}
-.cp-pop-head:active {
-  cursor: grabbing;
-}
-.cp-grip {
-  flex: 0 0 100%;
-  height: 10px;
+.cp-wins {
   display: flex;
   align-items: center;
-  justify-content: center;
-}
-.cp-grip::before {
-  content: '';
-  width: 44px;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--line, #264452);
-}
-.cp-pop-x {
-  flex: none;
-  align-self: center;
-  min-width: 34px;
-  min-height: 34px;
-  padding: 0;
-}
-
-/* One tab per open monster */
-/* Tabs wrap onto new lines when they do not fit, so every open monster stays visible. */
-.cp-tabs {
-  flex: 1 1 0;
-  min-width: 0;
-  display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-}
-.cp-t {
-  flex: none;
-  display: flex;
-  align-items: center;
-  max-width: 100%;
-  border: 1px solid var(--line, #264452);
-  border-bottom: 0;
-  border-radius: 12px 12px 0 0;
-  background: var(--raise, #172e3b);
-}
-.cp-t.active {
-  border-color: var(--acc, #a99bff);
-  background: var(--surface, #11222d);
-  margin-bottom: -1px;
-  padding-bottom: 1px;
-}
-.cp-t-btn {
-  min-width: 0;
-  min-height: 38px;
-  padding: 0 4px 0 12px;
-  display: flex;
-  align-items: baseline;
   gap: 6px;
-  border: 0;
-  border-radius: 0;
-  background: none;
-  font-weight: 700;
+  padding: 0 12px 8px;
+  font-size: 13px;
 }
-.cp-t-name {
-  min-width: 0;
-  overflow-wrap: anywhere;
-  text-align: left;
-}
-.cp-t.active .cp-t-name {
-  color: var(--acc, #a99bff);
-}
-.cp-t.down .cp-t-name {
-  text-decoration: line-through;
-  opacity: 0.6;
-}
-.cp-t-btn small {
-  color: var(--mute, #93b6ba);
-  font-weight: 400;
-  font-variant-numeric: tabular-nums;
-}
-.cp-t-x {
-  flex: none;
-  min-width: 28px;
-  min-height: 28px;
-  margin-right: 4px;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background: none;
-}
-.cp-pop-body {
-  min-width: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 12px 14px 18px;
+.cp-wins .mute {
+  margin-right: auto;
 }
 
 .cp-empty {
@@ -986,23 +741,6 @@ span.cp-info {
     background: rgba(0, 0, 0, 0.45);
   }
 
-  .cp-pop-bg {
-    display: block;
-    position: fixed;
-    inset: 0;
-    z-index: 61;
-    background: rgba(0, 0, 0, 0.5);
-  }
-
-  .cp-pop,
-  .cp-pop.alone {
-    top: 8vh;
-    left: 8px;
-    right: 8px;
-    width: auto;
-    max-height: 84vh;
-    z-index: 63;
-  }
 }
 </style>
 
