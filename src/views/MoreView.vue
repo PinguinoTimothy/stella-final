@@ -20,7 +20,8 @@ function openTab(
     | 'history'
     | 'monsters'
     | 'feats'
-    | 'rules',
+    | 'rules'
+    | 'creator',
 ) {
   if (app.viewer && tab === 'setup') return;
   app.ui.tab = tab;
@@ -29,10 +30,9 @@ function openTab(
 </script>
 
 <template>
-  <h2 class="pg">More</h2>
-  <p class="sub">The stars were right. They are still listening.</p>
+  <h2 class="pg">Mas</h2>
 
-  <details v-if="app.mode === 'dev'" class="panel fold" data-k="share" open>
+  <details v-if="app.mode === 'dev'" class="panel fold" data-k="share">
     <summary>Cloud save</summary>
 
     <div class="grid">
@@ -60,12 +60,9 @@ function openTab(
   </details>
 
   <template v-if="!app.viewer">
-    <h2 class="pg" style="font-size: 22px; margin-top: 18px">Character configuration</h2>
-
-    <button v-if="app.mode !== 'player'" class="more-row setup-link" @click="openTab('monsters')">
+    <button v-if="app.mode !== 'player'" class="more-row setup-link" @click="openTab('setup')">
       <span>
         <b>Setup</b>
-        <small> Character, spellcasting classes, slots, domains and DC bonuses </small>
       </span>
       <span aria-hidden="true">›</span>
     </button>
@@ -74,39 +71,41 @@ function openTab(
   <button class="more-row setup-link" @click="openTab('party')">
     <span>
       <b>Party</b>
-      <small>Characters and who carries what.</small>
-    </span>
-    <span aria-hidden="true">›</span>
-  </button>
-
-  <button class="more-row setup-link" @click="openTab('magicCatalog')">
-    <span>
-      <b>Magic catalog</b>
-      <small>Browse magic items and add them to inventory</small>
     </span>
     <span aria-hidden="true">›</span>
   </button>
 
   <button v-if="!app.viewer" class="more-row setup-link" @click="openTab('maps')">
     <span>
-      <b>Maps</b>
-      <small>Your adventure PDFs, on this device</small>
+      <b>Aventuras</b>
+    </span>
+    <span aria-hidden="true">›</span>
+  </button>
+
+  <button class="more-row setup-link" @click="openTab('monsters')">
+    <span>
+      <b>Bestiario</b>
+    </span>
+    <span aria-hidden="true">›</span>
+  </button>
+
+  <button class="more-row setup-link" @click="openTab('magicCatalog')">
+    <span>
+      <b>Objetos magicos</b>
     </span>
     <span aria-hidden="true">›</span>
   </button>
 
   <button class="more-row setup-link" @click="openTab('equipmentCatalog')">
     <span>
-      <b>Equipment catalog</b>
-      <small>Weapons, armor, tools and alchemical goods</small>
+      <b>Objetos mundanos</b>
     </span>
     <span aria-hidden="true">›</span>
   </button>
 
-  <button class="more-row setup-link" @click="openTab('feats')">
+  <button class="more-row setup-link" @click="openTab('rules')">
     <span>
-      <b>Feats</b>
-      <small>Search feats and see what they require and unlock</small>
+      <b>AOO y Concentracion</b>
     </span>
     <span aria-hidden="true">›</span>
   </button>
@@ -114,54 +113,41 @@ function openTab(
   <button class="more-row setup-link" @click="openTab('skills')">
     <span>
       <b>Skills</b>
-      <small>Quick DCs for every skill</small>
     </span>
     <span aria-hidden="true">›</span>
   </button>
 
   <button class="more-row setup-link" @click="openTab('umr')">
     <span>
-      <b>Monster rules</b>
-      <small>Universal monster rules, auras, traits and abilities</small>
+      <b>Universal Monster Rules</b>
     </span>
     <span aria-hidden="true">›</span>
   </button>
+
   <button class="more-row setup-link" @click="openTab('grapple')">
     <span>
       <b>Grapple</b>
-      <small>Start, hold, escape and pin, step by step</small>
     </span>
     <span aria-hidden="true">›</span>
   </button>
 
   <button class="more-row setup-link" @click="openTab('conditions')">
     <span>
-      <b>Conditions</b>
-      <small>Rules reminders for blinded, shaken, fatigued…</small>
+      <b>Condiciones</b>
+    </span>
+    <span aria-hidden="true">›</span>
+  </button>
+
+  <button class="more-row setup-link" @click="openTab('feats')">
+    <span>
+      <b>Feats</b>
     </span>
     <span aria-hidden="true">›</span>
   </button>
 
   <button class="more-row setup-link" @click="openTab('history')">
     <span>
-      <b>History</b>
-      <small>Casts, item uses, money and rests</small>
-    </span>
-    <span aria-hidden="true">›</span>
-  </button>
-
-  <button class="more-row setup-link" @click="openTab('monsters')">
-    <span>
-      <b>Monsters</b>
-      <small>Bestiary: quick combat stats</small>
-    </span>
-    <span aria-hidden="true">›</span>
-  </button>
-
-  <button class="more-row setup-link" @click="openTab('rules')">
-    <span>
-      <b>Rules</b>
-      <small>Attacks of opportunity, concentration</small>
+      <b>Historico</b>
     </span>
     <span aria-hidden="true">›</span>
   </button>

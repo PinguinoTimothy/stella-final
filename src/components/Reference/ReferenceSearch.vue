@@ -284,7 +284,7 @@ onBeforeUnmount(() => {
           <p v-if="query.trim().length < 2" class="mute">
             Type at least 2 letters. Tip: press / anywhere to open this search.
           </p>
-          <p v-else-if="busy" class="mute">Searching…</p>
+          <p v-else-if="busy" class="mute">Buscando...</p>
 
           <section v-for="g in groups" v-show="g.items.length" :key="g.kind" class="ref-group">
             <h3>{{ g.label }}</h3>

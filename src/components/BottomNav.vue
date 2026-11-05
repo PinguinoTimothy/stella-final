@@ -11,16 +11,16 @@ const isPlayerMode = Boolean(params.get('src') || params.has('view'));
 const tabs = isPlayerMode
   ? [
       ['items', 'Items'],
-      ['fx', 'Active'],
+      ['fx', 'Efectos Activos'],
       ['party', 'Party'],
-      ['more', 'More'],
+      ['more', 'Mas'],
     ]
   : [
       ['cast', 'Cast'],
-      ['fx', 'Active'],
+      ['fx', 'Efectos Activos'],
       ['db', 'Spells'],
       ['items', 'Items'],
-      ['more', 'More'],
+      ['more', 'Mas'],
     ];
 
 const moreTabs = isPlayerMode
@@ -86,7 +86,9 @@ function go(tab) {
   background: var(--acc);
   box-shadow: 0 0 12px var(--acc);
   pointer-events: none;
-  transition: left 0.45s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s ease;
+  transition:
+    left 0.45s cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 0.2s ease;
 }
 
 @media (prefers-reduced-motion: reduce) {

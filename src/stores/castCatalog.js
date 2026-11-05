@@ -31,7 +31,7 @@ export const useCastCatalog = defineStore('castCatalog', () => {
   const spells = useSpells();
 
   const search = ref('');
-  const showKnown = ref(true);
+  const showKnown = ref(false);
   const rows = ref([]);
   const loading = ref(false);
   const scrollReset = ref(0); // bumped after a reload so the list goes back to the top

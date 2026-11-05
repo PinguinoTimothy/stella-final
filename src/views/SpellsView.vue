@@ -121,7 +121,6 @@ onBeforeUnmount(() => {
     <header class="spells-heading">
       <div>
         <h1>Spells</h1>
-        <p class="mute">Catálogo de conjuros · Pathfinder 1.ª edición</p>
       </div>
       <span class="spells-count">{{ count }}</span>
     </header>

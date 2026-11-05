@@ -129,7 +129,7 @@ function spendMoney() {
 <template>
   <section class="panel wal pot money-panel">
     <button class="wal-h" type="button" :aria-expanded="expanded" @click="readonly ? '' : (expanded = !expanded)">
-      <span class="wal-n">Party money</span>
+      <span class="wal-n">Efectivo</span>
       <span class="wal-t">{{ totalGp }} gp</span>
     </button>
 

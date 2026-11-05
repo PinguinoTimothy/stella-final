@@ -53,7 +53,6 @@ const cast = useCast();
 
       <div>
         <h1>{{ app.S.name || 'Stella' }}</h1>
-        <p class="mute">Lanzamiento de conjuros</p>
       </div>
     </div>
   </header>
