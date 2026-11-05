@@ -19,7 +19,7 @@ const ANIMS = {
   react2: { sheet: 'main', row: 3, frames: 6, speed: 0.5, time: 1600 },
   rage: { sheet: 'main', row: 4, frames: 6, speed: 0.4, time: 0 }, // held while dragging
   dance: { sheet: 'extra', row: 0, frames: 12, speed: 1.2, time: 0 }, // while the song plays
-  vinyl: { sheet: 'extra', row: 1, frames: 8, speed: 1.6, time: 0 }, // putting the record on
+  vinyl: { sheet: 'extra', row: 1, frames: 8, speed: 4.8, time: 0 }, // putting the record on (0.6s per frame)
   sleep: { sheet: 'extra', row: 2, frames: 8, speed: 2.4, time: 0 }, // until the user interacts
 };
 
