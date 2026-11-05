@@ -2,7 +2,7 @@
 // Combat panel: initiative order and monsters in ONE list, so you read turn, HP and the stat block in one place.
 // Desktop: a column on the right (the page makes room for it). Phones/tablets: a button that opens a bottom sheet.
 // Initiative, rounds and fights are kept in this browser (see the initiative and monsterFights stores).
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useAppStore } from '../../stores/app';
 import { useMonsterFights } from '../../stores/monsterFights';
 import { useInitiative } from '../../stores/initiative';
@@ -48,7 +48,7 @@ watch(
   { immediate: true },
 );
 const onKey = e => {
-  if (e.key === 'Escape' && wins.topUid() !== null) wins.close(wins.topUid());
+  if (e.key === 'Escape' && wins.topWindow()) wins.closeTab(wins.topWindow().active);
 };
 onMounted(() => window.addEventListener('keydown', onKey));
 onUnmounted(() => {
@@ -59,33 +59,21 @@ onUnmounted(() => {
 /* ----- the list ----- */
 const monsterOf = e => (e && e.kind === 'mon' ? fights.fights.find(f => f.name === e.label) || null : null);
 const rows = computed(() => init.ordered.map(e => ({ e, f: monsterOf(e) })));
-const turnEntry = computed(() => init.order.find(e => e.key === init.currentKey) || null);
-const isCurrent = e => e.present && e.key === init.currentKey;
 const selectedUid = computed(() => fights.active?.uid ?? null);
 
 const pct = f => (f.maxHp ? Math.max(0, Math.min(100, Math.round((100 * f.hp) / f.maxHp))) : 0);
 const isDown = f => !f.loading && f.maxHp > 0 && f.hp <= 0;
 
-// When the turn moves to a monster it becomes the target of the damage buttons, and the row scrolls into view.
-const listEl = ref(null);
-watch(
-  () => init.currentKey,
-  async key => {
-    const f = monsterOf(init.entries.find(e => e.key === key));
-    if (f) fights.show(f.uid);
-    await nextTick();
-    listEl.value?.querySelector('.cp-row.current')?.scrollIntoView?.({ block: 'nearest' });
-  },
-);
 
 /* ----- stat blocks: one floating window per open monster (see stores/statWindows.js) ----- */
 const isOpen = f => wins.isOpen(f.uid);
 /** The (i) button: opens a window. On a window behind others it brings it to the front; on the top one it closes it. */
 function toggleDetail(f) {
   fights.show(f.uid);
-  if (!wins.isOpen(f.uid)) wins.open(f.uid);
-  else if (wins.topUid() !== f.uid) wins.focus(f.uid);
-  else wins.close(f.uid);
+  const w = wins.windowOf(f.uid);
+  if (!w) return wins.open(f.uid);
+  if (wins.topWindow().id !== w.id || w.active !== f.uid) return wins.activate(f.uid);
+  wins.closeTab(f.uid);
 }
 // A window goes away with its monster.
 watch(
@@ -157,30 +145,10 @@ async function clearAll() {
   <aside class="cp" :class="{ hidden, sheet }" aria-label="Combat">
     <header class="cp-head">
       <b>Combat</b>
-      <span class="mute">Round {{ init.round }}</span>
       <button v-if="fights.fights.length" type="button" class="danger cp-small" @click="clearAll">Clear</button>
       <button type="button" class="cp-small cp-hide" aria-label="Hide combat" @click="hidden = true">Hide</button>
       <button type="button" class="cp-small cp-close" aria-label="Close combat" @click="sheet = false">Close</button>
     </header>
-
-    <div class="cp-turn">
-      <button type="button" class="cast cp-next" :disabled="!init.order.length" @click="init.next()">Next turn</button>
-      <button
-        type="button"
-        class="cp-newround"
-        :disabled="!init.currentKey && init.round === 1"
-        @click="init.newRound()"
-      >
-        New round
-      </button>
-      <p class="cp-now">
-        <template v-if="turnEntry"
-          >Turn: <b>{{ turnEntry.label }}</b></template
-        >
-        <template v-else-if="init.order.length">Press Next turn to start.</template>
-        <template v-else>Enter initiatives to set the turn order.</template>
-      </p>
-    </div>
 
     <div v-if="wins.list.length > 1" class="cp-wins">
       <span class="mute">{{ wins.list.length }} windows</span>
@@ -188,13 +156,12 @@ async function clearAll() {
       <button type="button" class="cp-small" @click="wins.cascade(windowArea())">Cascade</button>
       <button type="button" class="cp-small" @click="wins.closeAll()">Close all</button>
     </div>
-    <ol ref="listEl" class="cp-list">
+    <ol class="cp-list">
       <li
         v-for="r in rows"
         :key="r.e.key"
         class="cp-row"
         :class="{
-          current: isCurrent(r.e),
           away: !r.e.present,
           mon: r.e.kind === 'mon',
           down: r.f && isDown(r.f),
@@ -203,7 +170,6 @@ async function clearAll() {
         @click="select(r)"
       >
         <div class="cp-main">
-          <span class="cp-mark" aria-hidden="true">{{ isCurrent(r.e) ? '▶' : '' }}</span>
           <input
             class="cp-init"
             type="number"
@@ -320,7 +286,6 @@ async function clearAll() {
     <button type="button" class="cp-fab" aria-label="Open combat" @click="sheet = true">
       Combat
       <span v-if="fights.fights.length">{{ fights.fights.length }}</span>
-      <small>R{{ init.round }}</small>
     </button>
   </template>
   <div v-else class="cp-back" aria-hidden="true" @click="sheet = false"></div>
@@ -369,23 +334,6 @@ async function clearAll() {
   display: none;
 }
 
-.cp-turn {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  padding: 0 12px 8px;
-}
-
-.cp-turn button {
-  min-height: 42px;
-  padding: 0 6px;
-}
-
-.cp-now {
-  grid-column: 1 / -1;
-  margin: 2px 2px 0;
-  font-size: 14px;
-}
 
 .cp-list {
   flex: 1;
@@ -414,10 +362,6 @@ async function clearAll() {
   border-color: var(--line, #264452);
 }
 
-.cp-row.current {
-  border-color: var(--acc, #a99bff);
-  background: color-mix(in srgb, var(--acc, #a99bff) 14%, var(--raise, #172e3b));
-}
 
 .cp-row.away {
   opacity: 0.5;
@@ -429,13 +373,6 @@ async function clearAll() {
   gap: 6px;
 }
 
-.cp-mark {
-  width: 14px;
-  flex: none;
-  color: var(--acc, #a99bff);
-  font-size: 12px;
-  text-align: center;
-}
 
 .cp-init {
   width: 52px;
@@ -728,10 +665,6 @@ span.cp-info {
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
   }
 
-  .cp-fab small {
-    color: var(--mute, #9db4c0);
-    font-weight: 400;
-  }
 
   .cp-back {
     display: block;
