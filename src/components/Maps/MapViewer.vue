@@ -221,7 +221,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 14px;
+  padding: 8px 96px 8px 14px; /* room for the floating Search button */
   border-bottom: 1px solid var(--line);
 }
 .mv-foot {

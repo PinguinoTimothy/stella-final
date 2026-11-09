@@ -309,7 +309,7 @@ onBeforeUnmount(() => {
   position: fixed;
   top: 10px;
   right: 10px;
-  z-index: 35;
+  z-index: 62; /* above the adventure viewer (55) and combat (60), below the open search (70) */
   min-height: 36px;
   padding: 0 12px;
   border-radius: 999px;
