@@ -145,7 +145,7 @@ function openTab(
     <span aria-hidden="true">›</span>
   </button>
 
-  <button v-if="app.mode === 'dev'" class="more-row setup-link" @click="openTab('slayer')">
+  <button class="more-row setup-link" @click="openTab('slayer')">
     <span>
       <b>Slayer calculator</b>
     </span>
