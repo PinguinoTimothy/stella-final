@@ -20,6 +20,7 @@ function loadSaved() {
 const sheet = ref(loadSaved());
 const loading = ref(false);
 const error = ref('');
+const fieldCount = ref(0); // how many filled fields the last PDF gave, shown to help check a sheet
 
 watch(sheet, v => {
   try {
@@ -38,7 +39,8 @@ async function onFile(e) {
   error.value = '';
   try {
     const fields = await readFormFields(file);
-    if (!Object.keys(fields).length) {
+    fieldCount.value = Object.keys(fields).length;
+    if (!fieldCount.value) {
       error.value = 'This PDF has no filled-in form fields, so it cannot be read.';
       return;
     }
@@ -130,6 +132,9 @@ function clear() {
         <h3 class="slayer-h">{{ sheet.name || 'Character' }}</h3>
         <p class="mute slayer-meta">
           {{ sheet.race }} · {{ sheet.classes.map(c => `${c.name} ${c.level}`).join(', ') }} · AC {{ sheet.ac }} · HP {{ sheet.hp }}
+        </p>
+        <p class="mute slayer-meta">
+          Read {{ fieldCount || 'saved' }} fields · {{ sheet.weapons.length }} weapon{{ sheet.weapons.length === 1 ? '' : 's' }}
         </p>
         <div class="slayer-abil">
           <span v-for="(a, k) in sheet.abilities" :key="k">{{ k }} <b>{{ signed(a.mod) }}</b></span>
