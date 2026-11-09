@@ -36,6 +36,7 @@ const UmrView = lazyView(() => import('./views/UmrView.vue'));
 const MapsView = lazyView(() => import('./views/MapsView.vue'));
 const FeatsView = lazyView(() => import('./views/FeatsView.vue'));
 const RulesView = lazyView(() => import('./views/RulesView.vue'));
+const SlayerCalcView = lazyView(() => import('./views/SlayerCalcView.vue'));
 const app = useAppStore();
 const cloud = useCloudStore();
 useViewerPolling();
@@ -65,6 +66,7 @@ const editorViews = {
   maps: MapsView,
   feats: FeatsView,
   rules: RulesView,
+  slayer: SlayerCalcView,
 };
 
 const playerViews = {

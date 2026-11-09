@@ -21,6 +21,7 @@ function openTab(
     | 'monsters'
     | 'feats'
     | 'rules'
+    | 'slayer'
     | 'creator',
 ) {
   if (app.viewer && tab === 'setup') return;
@@ -140,6 +141,13 @@ function openTab(
   <button class="more-row setup-link" @click="openTab('feats')">
     <span>
       <b>Feats</b>
+    </span>
+    <span aria-hidden="true">›</span>
+  </button>
+
+  <button v-if="app.mode === 'dev'" class="more-row setup-link" @click="openTab('slayer')">
+    <span>
+      <b>Slayer calculator</b>
     </span>
     <span aria-hidden="true">›</span>
   </button>
