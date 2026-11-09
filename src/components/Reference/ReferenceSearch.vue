@@ -3,6 +3,7 @@
 // Matches names only. Read-only in every mode. Opens with the "/" key or the Search button.
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import CombatCard from '../Monsters/CombatCard.vue';
+import SkillRows from '../Skills/SkillRows.vue';
 import SpellInfo from '../SpellInfo.vue';
 import { combatSummary, crLabel, fetchMonsterDetail, fetchMonsterPage } from '../../lib/monsters';
 import { M_SPELL, fromRow } from '../../lib/mapping';
@@ -263,14 +264,13 @@ onBeforeUnmount(() => {
             <p class="mute">
               {{ detail.data.tags.join(' · ') }}
             </p>
-            <section v-for="[title, items] in detail.data.sections" :key="title" class="ref-sec">
-              <h3>{{ title }}</h3>
-              <ul class="grl">
-                <li v-for="(it, i) in items" :key="i">
-                  {{ it.t ?? [it.l, it.v, it.x, it.n && `(${it.n})`].filter(Boolean).join(' ') }}
-                </li>
-              </ul>
-            </section>
+            <!-- same rows and section titles as More › Skills -->
+            <template v-for="[title, items] in detail.data.sections" :key="title">
+              <div class="sk-st">
+                {{ title }}
+              </div>
+              <SkillRows :items="items" />
+            </template>
           </template>
 
           <template v-else-if="detail.kind === 'rule'">
