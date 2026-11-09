@@ -18,7 +18,9 @@ export function sneakDice(level) {
 
 /** Reads "1d6+4", "1d8", "2d4-1". Returns null for anything else. */
 export function parseDice(text) {
+  // Notes in brackets, such as "(+1 close)", are not part of the dice expression.
   const m = String(text ?? '')
+    .replace(/\([^)]*\)/g, '')
     .replace(/\s+/g, '')
     .match(/^(\d+)d(\d+)([+-]\d+)?$/i);
   if (!m) return null;
@@ -36,13 +38,6 @@ export function parseCrit(text) {
 export function diceAverage(dice) {
   if (!dice) return 0;
   return (dice.count * (dice.sides + 1)) / 2 + dice.flat;
-}
-
-/** Chance to hit an armour class with a total attack bonus. A natural 1 always misses and a natural 20 always hits. */
-export function hitChance(attack, ac) {
-  if (!Number.isFinite(ac)) return null;
-  const needed = Math.min(20, Math.max(2, ac - attack));
-  return (21 - needed) / 20;
 }
 
 /**
@@ -73,7 +68,6 @@ export function focusBonus(focus, reduced) {
  *   sneak          sneak attack applies (target denied its Dex bonus, or flanked)
  *   focus          Legal Focused Target picks { attack, damage, skill, dc }
  *   reduced        targets given up for Legal Focused Target
- *   ac             target armour class, optional
  */
 export function calcWeapon(weapon, opts = {}) {
   const level = Number(opts.level) || 0;
@@ -95,10 +89,13 @@ export function calcWeapon(weapon, opts = {}) {
   const dice = parseDice(weapon.damage);
   const diceAvg = diceAverage(dice);
   const damageParts = [];
-  const damageStudied = studied ? studiedNow + focus.damage : 0;
-  if (damageStudied) damageParts.push({ label: 'Studied target', value: damageStudied });
+  // Legal Focused Target raises the studied target bonus itself, so its damage pick is part of that bonus.
+  // Seething Hatred doubles the whole studied bonus, including the focus pick, against undead.
+  const studiedDamage = studied ? studiedNow + focus.damage : 0;
+  if (studied && studiedNow) damageParts.push({ label: 'Studied target', value: studiedNow });
+  if (studied && focus.damage) damageParts.push({ label: 'Legal Focused Target', value: focus.damage });
   const hatredDoubles = !!opts.seethingHatred && undead && studied;
-  if (hatredDoubles && damageStudied) damageParts.push({ label: 'Seething Hatred (doubles studied bonus)', value: damageStudied });
+  if (hatredDoubles && studiedDamage) damageParts.push({ label: 'Seething Hatred (doubles studied bonus)', value: studiedDamage });
   if (lastwall) damageParts.push({ label: 'Lastwall Defender', value: lastwall });
   for (const e of activeEffects(effects, 'damage')) damageParts.push({ label: e.name, value: e.value });
   const bonusFlat = sumParts(damageParts);
@@ -109,10 +106,6 @@ export function calcWeapon(weapon, opts = {}) {
   const crit = parseCrit(weapon.crit);
   // Bonuses to damage rolls are multiplied on a critical. Sneak attack dice are not.
   const critAvg = (diceAvg + bonusFlat) * crit.mult + sneakAvg;
-
-  // Target armour class: the value given, lowered or raised by any effects on the target.
-  const acEffect = sumParts(activeEffects(effects, 'ac').map(e => ({ value: e.value })));
-  const targetAc = Number.isFinite(opts.ac) ? opts.ac + acEffect : undefined;
 
   return {
     name: weapon.name,
@@ -130,12 +123,10 @@ export function calcWeapon(weapon, opts = {}) {
       sneakAverage: sneakAvg,
     },
     critical: { threshold: crit.threshold, mult: crit.mult, average: critAvg },
-    hit: hitChance(attack, targetAc),
-    targetAc,
   };
 }
 
-/** Effects that are switched on and apply to a kind (attack, damage, skill, dc, ac). */
+/** Effects that are switched on and apply to a kind (attack, damage, skill, dc). */
 export function activeEffects(effects, kind) {
   return (effects || []).filter(e => e && e.on !== false && e.kind === kind && Number.isFinite(Number(e.value)) && Number(e.value) !== 0)
     .map(e => ({ name: e.name || 'Effect', value: Number(e.value) }));

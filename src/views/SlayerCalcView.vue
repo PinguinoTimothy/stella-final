@@ -5,6 +5,7 @@ import { computed, reactive, ref, watch } from 'vue';
 import { readSheet } from '../lib/sheetFields';
 import { readFormFields } from '../lib/sheetPdf';
 import { calcWeapon, dcBonus, skillBonus, studiedTargetSlots } from '../lib/slayer';
+import { attackModes } from '../lib/attacks';
 
 const KEY = 'pf1e-slayer-sheet-v1';
 const EFFECTS_KEY = 'pf1e-slayer-effects-v1';
@@ -13,7 +14,6 @@ const KINDS = [
   { value: 'damage', label: 'Damage' },
   { value: 'skill', label: 'Skills' },
   { value: 'dc', label: 'DCs' },
-  { value: 'ac', label: 'Target AC' },
 ];
 
 // Buffs and debuffs. Each has a name, the kind of roll it changes, a value (negative for a debuff) and an on switch.
@@ -93,6 +93,8 @@ async function onFile(e) {
     sheet.value = s;
     // Lastwall Defender found in the sheet notes starts switched on; the switch can still be changed.
     options.lastwall = s.hasLastwall;
+    // Point Blank Shot found in the sheet notes starts switched on for this fight.
+    options.pointBlank = s.hasPointBlank;
   } catch {
     error.value = 'Could not read this PDF.';
   } finally {
@@ -107,14 +109,29 @@ const options = reactive({
   sneak: false,
   lastwall: false,
   reduced: 0,
+  pointBlank: false,
   focus: { attack: false, damage: false, skill: false, dc: false },
-  ac: '',
 });
 
 const level = computed(() => sheet.value?.slayerLevel || 0);
 const slots = computed(() => studiedTargetSlots(level.value));
 const hasFocusFeat = computed(() => sheet.value?.hasLegalFocusedTarget || options.reduced > 0);
-const acNumber = computed(() => (options.ac === '' || options.ac == null ? undefined : Number(options.ac)));
+
+// One pick per target given up: a category stays open only while there are picks left.
+const focusPicked = computed(() => Object.values(options.focus).filter(Boolean).length);
+const focusLocked = key => !options.focus[key] && focusPicked.value >= (Number(options.reduced) || 0);
+watch(
+  () => options.reduced,
+  n => {
+    const limit = Number(n) || 0;
+    let kept = 0;
+    for (const key of Object.keys(options.focus)) {
+      if (!options.focus[key]) continue;
+      if (kept < limit) kept += 1;
+      else options.focus[key] = false;
+    }
+  },
+);
 
 const calc = computed(() => {
   if (!sheet.value) return [];
@@ -128,28 +145,80 @@ const calc = computed(() => {
     sneak: options.sneak,
     focus: options.focus,
     reduced: options.reduced,
-    ac: acNumber.value,
-    effects: effects.value,
   };
-  return sheet.value.weapons.map(w => calcWeapon(w, common));
+  return sheet.value.weapons.map(w => {
+    const ranged = Number(w.range) > 0;
+    const pointBlank = ranged && options.pointBlank;
+    // Point Blank Shot's +1 damage goes in as a damage effect; its +1 attack is added by attackModes.
+    const pbDamage = pointBlank ? [{ name: 'Point Blank Shot', kind: 'damage', value: 1, on: true }] : [];
+    const base = calcWeapon(w, { ...common, effects: [...effects.value, ...pbDamage] });
+
+    // Attack bonus = base attack bonus + ability modifier + everything the calculator adds (studied, buffs…).
+    // The sheet's own attack number is not used, because it is already a list of attacks.
+    const abilityMod = (ranged ? sheet.value.abilities.DEX?.mod : sheet.value.abilities.STR?.mod) ?? 0;
+    const extras = base.attackParts
+      .filter(p => p.label !== 'Sheet attack')
+      .reduce((sum, p) => sum + (Number(p.value) || 0), 0);
+    const modes = attackModes({
+      bab: sheet.value.bab,
+      mod: abilityMod + extras,
+      ranged,
+      // Rapid Shot and Manyshot come from the sheet's notes: they open attack options, not switches.
+      rapidShot: !!sheet.value.hasRapidShot,
+      manyShot: !!sheet.value.hasManyShot,
+      pointBlank,
+    });
+    const pb = pointBlank ? ' · Point Blank +1' : '';
+    const other = extras ? ` · other ${signed(extras)}` : '';
+    return {
+      name: w.name,
+      modes,
+      damage: base.damage,
+      critical: base.critical,
+      breakdown: `BAB ${signed(sheet.value.bab)} · ${ranged ? 'Dex' : 'Str'} ${signed(abilityMod)}${pb}${other}`,
+    };
+  });
 });
 
 const skills = computed(() => {
   if (!sheet.value) return [];
-  const wanted = ['Bluff', 'Knowledge (arcana)', 'Knowledge (religion)', 'Knowledge (nature)', 'Knowledge (planes)', 'Perception', 'Sense Motive', 'Survival'];
-  const common = { level: level.value, studied: options.studied, focus: options.focus, reduced: options.reduced, effects: effects.value };
+  const wanted = [
+    'Bluff',
+    'Knowledge (arcana)',
+    'Knowledge (religion)',
+    'Knowledge (nature)',
+    'Knowledge (planes)',
+    'Perception',
+    'Sense Motive',
+    'Survival',
+  ];
+  const common = {
+    level: level.value,
+    studied: options.studied,
+    focus: options.focus,
+    reduced: options.reduced,
+    effects: effects.value,
+  };
   return Object.entries(sheet.value.skills || {})
     .filter(([name]) => wanted.some(w => name.toLowerCase().startsWith(w.toLowerCase())))
     .map(([name, base]) => ({ name, bonus: skillBonus(base, common) }));
 });
 
 const dc = computed(() =>
-  sheet.value ? dcBonus({ level: level.value, studied: options.studied, focus: options.focus, reduced: options.reduced, effects: effects.value }) : 0,
+  sheet.value
+    ? dcBonus({
+        level: level.value,
+        studied: options.studied,
+        focus: options.focus,
+        reduced: options.reduced,
+        effects: effects.value,
+      })
+    : 0,
 );
 
 const kindLabel = kind => KINDS.find(k => k.value === kind)?.label || kind;
 const signed = n => (n >= 0 ? `+${n}` : `${n}`);
-const pct = p => (p == null ? '—' : `${Math.round(p * 100)}%`);
+const attackLine = modes => (modes[0] ? modes[0].attacks.map(a => signed(a.bonus)).join(' / ') : '');
 
 function clear() {
   if (window.confirm('Remove the saved sheet from this device?')) sheet.value = null;
@@ -174,13 +243,18 @@ function clear() {
       <section class="panel">
         <h3 class="slayer-h">{{ sheet.name || 'Character' }}</h3>
         <p class="mute slayer-meta">
-          {{ sheet.race }} · {{ sheet.classes.map(c => `${c.name} ${c.level}`).join(', ') }} · AC {{ sheet.ac }} · HP {{ sheet.hp }}
+          {{ sheet.race }} · {{ sheet.classes.map(c => `${c.name} ${c.level}`).join(', ') }} · AC {{ sheet.ac }} · HP
+          {{ sheet.hp }}
         </p>
         <p class="mute slayer-meta">
-          Read {{ fieldCount || 'saved' }} fields · {{ sheet.weapons.length }} weapon{{ sheet.weapons.length === 1 ? '' : 's' }}
+          Read {{ fieldCount || 'saved' }} fields · {{ sheet.weapons.length }} weapon{{
+            sheet.weapons.length === 1 ? '' : 's'
+          }}
         </p>
         <div class="slayer-abil">
-          <span v-for="(a, k) in sheet.abilities" :key="k">{{ k }} <b>{{ signed(a.mod) }}</b></span>
+          <span v-for="(a, k) in sheet.abilities" :key="k"
+            >{{ k }} <b>{{ signed(a.mod) }}</b></span
+          >
         </div>
         <button type="button" class="slayer-link" @click="clear">Remove sheet from this device</button>
       </section>
@@ -189,20 +263,39 @@ function clear() {
         <h3 class="slayer-h">This fight</h3>
         <label class="slayer-check"><input v-model="options.studied" type="checkbox" /> Target is studied</label>
         <label class="slayer-check"><input v-model="options.undead" type="checkbox" /> Target is undead</label>
-        <label class="slayer-check"><input v-model="options.sneak" type="checkbox" /> Sneak attack applies (flanked or denied Dex)</label>
-        <label class="slayer-check"><input v-model="options.lastwall" type="checkbox" /> Lastwall Defender (vs undead)</label>
-        <label class="slayer-num">Target AC (optional) <input v-model="options.ac" type="number" min="0" inputmode="numeric" /></label>
+        <label class="slayer-check"
+          ><input v-model="options.sneak" type="checkbox" /> Sneak attack applies (flanked or denied Dex)</label
+        >
+        <label class="slayer-check"
+          ><input v-model="options.lastwall" type="checkbox" /> Lastwall Defender (vs undead)</label
+        >
+        <label class="slayer-check"
+          ><input v-model="options.pointBlank" type="checkbox" /> Point Blank Shot (within 30 ft)</label
+        >
 
         <div v-if="hasFocusFeat" class="slayer-focus">
           <label class="slayer-num">
-            Targets given up (Legal Focused Target, up to {{ Math.max(0, slots - 1) }})
+            Focused Target: Targets given up, up to {{ Math.max(0, slots - 1) }}
             <input v-model.number="options.reduced" type="number" min="0" :max="Math.max(0, slots - 1)" />
           </label>
           <div class="slayer-cats">
-            <label class="slayer-check"><input v-model="options.focus.attack" type="checkbox" /> Attack +1</label>
-            <label class="slayer-check"><input v-model="options.focus.damage" type="checkbox" /> Damage +1</label>
-            <label class="slayer-check"><input v-model="options.focus.skill" type="checkbox" /> Skills +1</label>
-            <label class="slayer-check"><input v-model="options.focus.dc" type="checkbox" /> DC +1</label>
+            <p class="mute slayer-meta">
+              Each target given up gives +1 to one category. Pick as many as targets given up.
+            </p>
+            <label class="slayer-check"
+              ><input v-model="options.focus.attack" type="checkbox" :disabled="focusLocked('attack')" /> Attack
+              +1</label
+            >
+            <label class="slayer-check"
+              ><input v-model="options.focus.damage" type="checkbox" :disabled="focusLocked('damage')" /> Damage
+              +1</label
+            >
+            <label class="slayer-check"
+              ><input v-model="options.focus.skill" type="checkbox" :disabled="focusLocked('skill')" /> Skills +1</label
+            >
+            <label class="slayer-check"
+              ><input v-model="options.focus.dc" type="checkbox" :disabled="focusLocked('dc')" /> DC +1</label
+            >
           </div>
         </div>
       </section>
@@ -216,7 +309,9 @@ function clear() {
               <span :class="{ off: !e.on }">{{ e.name }}</span>
             </label>
             <span class="mute">{{ kindLabel(e.kind) }} {{ signed(e.value) }}</span>
-            <button type="button" class="slayer-link" :aria-label="`Remove ${e.name}`" @click="removeEffect(e.id)">Remove</button>
+            <button type="button" class="slayer-link" :aria-label="`Remove ${e.name}`" @click="removeEffect(e.id)">
+              Remove
+            </button>
           </li>
         </ul>
         <p v-else class="mute">No buffs or debuffs. Add one below.</p>
@@ -228,41 +323,60 @@ function clear() {
           <input v-model="draft.value" type="number" placeholder="+2 or -2" aria-label="Value" inputmode="numeric" />
           <button type="submit">Add</button>
         </form>
-        <p class="mute slayer-meta">Use a negative value for a debuff. A Target AC effect lowers or raises the target's AC.</p>
+        <p class="mute slayer-meta">Use a negative value for a debuff.</p>
       </section>
 
       <section class="panel">
         <h3 class="slayer-h">Weapons</h3>
-        <details v-for="w in calc" :key="w.name" class="slayer-weapon">
-          <summary>
+        <article v-for="w in calc" :key="w.name" class="slayer-weapon">
+          <header class="slayer-head">
             <b class="slayer-wname">{{ w.name }}</b>
-            <span class="slayer-atk">{{ signed(w.attack) }}</span>
-            <span class="slayer-dmg">
-              {{ w.damage.diceText }} {{ signed(w.damage.flat) }}<template v-if="w.damage.sneakDice"> + {{ w.damage.sneakDice }}d6 sneak</template>
-            </span>
-          </summary>
-          <div class="slayer-break">
-            <p><b>To hit:</b> {{ w.attackParts.map(p => `${p.label} ${signed(p.value)}`).join(' · ') }}</p>
+            <span class="slayer-dmg"
+              >{{ w.damage.diceText }} {{ signed(w.damage.flat)
+              }}<template v-if="w.damage.sneakDice"> + {{ w.damage.sneakDice }}d6 sneak</template></span
+            >
+          </header>
+          <ul class="slayer-options">
+            <li v-for="m in w.modes" :key="m.id" class="slayer-option">
+              <span class="slayer-opt-label">{{ m.label }}</span>
+              <span class="slayer-atk">{{
+                m.attacks.map(a => signed(a.bonus) + (a.arrows > 1 ? ` ×${a.arrows}` : '')).join(' / ')
+              }}</span>
+            </li>
+          </ul>
+          <details class="slayer-more">
+            <summary>Breakdown, damage and crit</summary>
+            <p class="mute slayer-meta">{{ w.breakdown }}</p>
+            <p v-for="m in w.modes" v-show="m.note" :key="m.id + '-note'" class="mute slayer-meta">
+              <b>{{ m.label }}:</b> {{ m.note }}
+            </p>
             <p>
-              <b>Damage:</b> {{ w.damage.diceText }}
-              <template v-if="w.damage.flat"> · dice bonus {{ signed(w.damage.flat) }}</template>
+              <b>Damage per hit:</b> {{ w.damage.diceText }}
+              <template v-if="w.damage.flat"> {{ signed(w.damage.flat) }}</template>
               <template v-for="p in w.damage.parts" :key="p.label"> · {{ p.label }} {{ signed(p.value) }}</template>
-              <template v-if="w.damage.sneakDice"> · sneak {{ w.damage.sneakDice }}d6 (not multiplied on a crit)</template>
+              <template v-if="w.damage.sneakDice">
+                · sneak {{ w.damage.sneakDice }}d6 (once per attack roll, not multiplied on a crit)</template
+              >
             </p>
             <p><b>Crit:</b> {{ w.critical.threshold }}–20, ×{{ w.critical.mult }} on dice and bonuses</p>
-            <p v-if="acNumber != null"><b>Hit:</b> {{ pct(w.hit) }} vs AC {{ w.targetAc }}</p>
-          </div>
-        </details>
+          </details>
+        </article>
         <p v-if="!calc.length" class="mute">No weapons on this sheet.</p>
       </section>
 
       <section class="panel">
         <h3 class="slayer-h">Skills and DCs against the studied target</h3>
-        <p class="mute slayer-meta">Ability DCs <b>{{ signed(dc) }}</b></p>
+        <p class="mute slayer-meta">
+          Ability DCs <b>{{ signed(dc) }}</b>
+        </p>
         <ul class="slayer-skills">
-          <li v-for="s in skills" :key="s.name"><span>{{ s.name }}</span> <b>{{ signed(s.bonus) }}</b></li>
+          <li v-for="s in skills" :key="s.name">
+            <span>{{ s.name }}</span> <b>{{ signed(s.bonus) }}</b>
+          </li>
         </ul>
-        <p v-if="!skills.length" class="mute">No Bluff, Knowledge, Perception, Sense Motive or Survival on this sheet.</p>
+        <p v-if="!skills.length" class="mute">
+          No Bluff, Knowledge, Perception, Sense Motive or Survival on this sheet.
+        </p>
       </section>
     </template>
   </main>
@@ -280,6 +394,30 @@ function clear() {
 }
 .slayer-meta {
   margin: 0 0 8px;
+}
+.slayer-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  align-items: baseline;
+}
+.slayer-options {
+  list-style: none;
+  margin: 6px 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.slayer-option {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding-left: 10px;
+  border-left: 2px solid var(--line);
+}
+.slayer-more {
+  margin-top: 6px;
 }
 .slayer-file {
   display: inline-flex;

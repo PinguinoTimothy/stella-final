@@ -13,6 +13,21 @@ export function num(v) {
   return Number.isFinite(n) ? n : 0;
 }
 
+/**
+ * Reads a sheet attack line such as "+9/+1", "+10(x2)/+8/+5" or "16".
+ * Each number is one attack bonus; "(xN)" repeats it N times. Returns [] if there is nothing readable.
+ */
+export function parseAttackList(v) {
+  const out = [];
+  const re = /([+-]?\d+)(?:\s*\(\s*x\s*(\d+)\s*\))?/gi;
+  for (const m of text(v).matchAll(re)) {
+    const bonus = parseInt(m[1], 10);
+    const times = m[2] ? Math.max(1, parseInt(m[2], 10)) : 1;
+    for (let k = 0; k < times; k++) out.push(bonus);
+  }
+  return out;
+}
+
 export function readSheet(f) {
   const classes = [];
   for (let i = 1; i <= MAX_CLASSES; i++) {
@@ -32,7 +47,8 @@ export function readSheet(f) {
     if (!name) continue;
     weapons.push({
       name,
-      attack: num(f[`Weapon_Attack_${i}`]),
+      attacks: parseAttackList(f[`Weapon_Attack_${i}`]),
+      attack: parseAttackList(f[`Weapon_Attack_${i}`])[0] ?? 0,
       damage: text(f[`Weapon_Damage_${i}`]),
       crit: text(f[`Weapon_Critical_${i}`]),
       range: text(f[`Weapon_Range_${i}`]),
@@ -64,6 +80,9 @@ export function readSheet(f) {
     hasSeethingHatred: hasNote('seething hatred'),
     hasLastwall: hasNote('lastwall'),
     hasLegalFocusedTarget: hasNote('legal focused target') || hasNote('focused target'),
+    hasRapidShot: hasNote('rapid shot'),
+    hasManyShot: hasNote('many shot') || hasNote('manyshot'),
+    hasPointBlank: hasNote('point blank') || hasNote('pointblank'),
     skills: readSkills(f),
   };
 }
