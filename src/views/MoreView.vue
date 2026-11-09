@@ -46,13 +46,12 @@ function openTab(
           {{ cloud.status }}
         </div>
 
-        <template v-if="cloud.state === 'conflict'">
-          <button class="cast" @click="cloud.pull()">Use the cloud version</button>
+        <p class="mute" style="margin: 0">
+          The server copy is always the one that counts. If another device saved in between, this device loads it and
+          keeps its unsaved changes in a local backup.
+        </p>
 
-          <button class="danger" @click="cloud.force()">Keep this device’s version</button>
-        </template>
-
-        <button v-else class="cast" @click="cloud.sync()">Sync now</button>
+        <button class="cast" @click="cloud.sync()">Sync now</button>
 
         <button class="danger" @click="cloud.signOut()">Sign out</button>
       </template>

@@ -3,7 +3,7 @@
 // two devices saving over each other; the user then chooses which copy to keep.
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
-import { KEY, useAppStore } from './app';
+import { useAppStore } from './app';
 import * as sb from '../lib/supabase';
 import { buildRows, buildState, diff, fullChanges, snapOf } from '../lib/mapping';
 
@@ -11,7 +11,8 @@ import { buildRows, buildState, diff, fullChanges, snapOf } from '../lib/mapping
 const DM_PIN_KEY = 'stella-dm-pin-v1';
 const SESS = 'pf1e-sb-session',
   META = 'pf1e-cloud-meta2',
-  SNAP = 'pf1e-cloud-snap2';
+  SNAP = 'pf1e-cloud-snap2',
+  BACKUPS = 'pf1e-local-backups'; // this device's unsynced edits, replaced by the server copy (newest first, max 3)
 const read = k => {
   try {
     return JSON.parse(localStorage.getItem(k) || 'null');
@@ -55,12 +56,14 @@ try {
   /* ignore */
 }
 
+const hasData = T => ['characters', 'items', 'caster_classes', 'effects', 'spells'].some(t => (T[t] || []).length > 0);
+
 export const useCloudStore = defineStore('cloud', () => {
   const app = useAppStore();
   const meta0 = read(META) || {};
   const session = ref(read(SESS));
   const dmPin = ref(pinGet());
-  const state = ref(''); // '' | sync | ok | err | conflict
+  const state = ref(''); // '' | sync | ok | err
   const code = ref('');
   const at = ref('');
   const dirty = ref(!!meta0.dirty);
@@ -76,7 +79,6 @@ export const useCloudStore = defineStore('cloud', () => {
   const status = computed(() => {
     if (!session.value) return 'Saved on this device only. Sign in to save to the cloud.';
     if (state.value === 'sync') return 'Saving to the cloud…';
-    if (state.value === 'conflict') return 'The cloud and this device both changed. Choose which one to keep.';
     if (state.value === 'err')
       return (
         'Couldn’t reach the cloud' +
@@ -110,24 +112,17 @@ export const useCloudStore = defineStore('cloud', () => {
     if (first) app.notify('Couldn’t save to the cloud. It will be retried.');
   }
 
-  function conflict() {
-    state.value = 'conflict';
-    app.notify('The cloud and this device both changed.', {
-      label: 'Use cloud',
-      run: pull,
-      label2: 'Keep mine',
-      run2: force,
-    });
+  // Unsynced edits on this device are never sent over the server copy. They are kept here, newest first.
+  function keepBackup() {
+    const list = read(BACKUPS) || [];
+    list.unshift({ at: new Date().toISOString(), S: JSON.parse(JSON.stringify(app.S)), party: [...app.party] });
+    write(BACKUPS, list.slice(0, 3));
   }
 
   function adopt(newRev, T) {
     const b = buildState(T);
-    try {
-      const old = localStorage.getItem(KEY);
-      if (old) localStorage.setItem(KEY + '-backup', old);
-    } catch {
-      /* ignore */
-    }
+    const hadEdits = dirty.value;
+    if (hadEdits) keepBackup(); // the server copy replaces this device's copy; the edits stay in the backup
     app.replace(b.s, b.party);
     rev = newRev;
     state.value = 'ok';
@@ -138,6 +133,7 @@ export const useCloudStore = defineStore('cloud', () => {
     saveSnap();
     saveMeta();
     if (b.mig) push(false);
+    if (hadEdits) app.notify('The server copy was loaded. Your unsaved changes are in the backup on this device.');
   }
 
   let diffTimer = 0;
@@ -147,7 +143,7 @@ export const useCloudStore = defineStore('cloud', () => {
     if (!diff(rows(), snap).n) return;
     dirty.value = true;
     saveMeta();
-    if (!session.value || state.value === 'conflict') return;
+    if (!session.value) return;
     clearTimeout(timer);
     timer = setTimeout(() => push(false), 1500);
   }
@@ -185,7 +181,8 @@ export const useCloudStore = defineStore('cloud', () => {
       if (dirty.value) timer = setTimeout(() => push(false), 800); // edited while saving
     } catch (e) {
       if (e && e.conflict) {
-        conflict();
+        // another device saved first: take the server copy
+        await syncFromServer().catch(fail);
       } else {
         fail(e);
       }
@@ -196,16 +193,23 @@ export const useCloudStore = defineStore('cloud', () => {
 
   async function sync() {
     if (app.mode === 'dm') return dmPull();
+    flushDiff(); // a change made in the last moment must count before deciding what to do
     if (!session.value || busy) return;
     state.value = 'sync';
     try {
       const tok = await token(),
         row = await sb.fetchRev(tok);
       if (!row) {
-        rev = null;
-        return await push(true);
-      } // empty cloud: upload everything
+        // No campaign row yet. Upload this device's copy only if the cloud tables are really empty.
+        const T = await sb.fetchState(tok);
+        if (!hasData(T)) {
+          rev = null;
+          return await push(true);
+        }
+        return adopt(0, T);
+      }
       if (rev === +row.rev) {
+        // the server has not changed since our last save: only send our own edits
         if (dirty.value) return await push(false);
         state.value = 'ok';
         if (!snap) {
@@ -214,22 +218,19 @@ export const useCloudStore = defineStore('cloud', () => {
         }
         return;
       }
-      if (dirty.value) return conflict(); // both sides changed
-      adopt(+row.rev, await sb.fetchState(tok)); // only the cloud changed
+      // the server changed (another device or the DM tool): its copy wins
+      await syncFromServer();
     } catch (e) {
       fail(e);
     }
   }
 
-  async function pull() {
-    try {
-      const tok = await token(),
-        row = await sb.fetchRev(tok);
-      if (!row) throw { code: 'the cloud is empty' };
-      adopt(+row.rev, await sb.fetchState(tok));
-    } catch (e) {
-      fail(e);
-    }
+  // Loads the server copy, keeping unsynced edits in the backup.
+  async function syncFromServer() {
+    const tok = await token(),
+      row = await sb.fetchRev(tok);
+    if (!row) return;
+    adopt(+row.rev, await sb.fetchState(tok));
   }
 
   // DM: the database checks the code and returns the campaign. The device keeps the code to read again.
@@ -260,17 +261,6 @@ export const useCloudStore = defineStore('cloud', () => {
     const ok = await dmPull();
     if (ok) pinSet(pin);
     return ok;
-  }
-
-  async function force() {
-    try {
-      const row = await sb.fetchRev(await token());
-      rev = row ? +row.rev : null;
-      state.value = '';
-      await push(true);
-    } catch (e) {
-      fail(e);
-    }
   }
 
   async function signIn(email, password) {
@@ -325,12 +315,12 @@ export const useCloudStore = defineStore('cloud', () => {
     signIn,
     signOut,
     sync,
-    pull,
-    force,
     init,
     dmPin,
     dmUnlock,
     dmPull,
+    syncFromServer,
+    push,
     code,
   };
 });

@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { useAppStore } from './app';
-import { fetchSpellCatalogPage, fetchSpellRatings, fetchSpellsByNames } from '../lib/supabase';
+import { fetchSpellCatalogAll, fetchSpellCatalogPage, fetchSpellRatings, fetchSpellsByNames } from '../lib/supabase';
 import { SEED } from '../lib/spellSeed';
 
 const PAGE_SIZE = 50;
@@ -189,13 +189,8 @@ export const useSpells = defineStore('spells', () => {
   }
 
   async function loadForCast({ classAliases = [], level = '', query = '', domains = [] } = {}) {
-    const normalResult = await fetchSpellCatalogPage({
-      offset: 0,
-      limit: 100,
-      classAliases,
-      level,
-      query,
-    });
+    // The whole class list, not just the first page: the search runs on it in the app.
+    const normalResult = await fetchSpellCatalogAll({ classAliases, level, query });
 
     const domainNames = domains.map(domain => (typeof domain === 'string' ? domain : domain.name)).filter(Boolean);
 

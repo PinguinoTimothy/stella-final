@@ -158,7 +158,10 @@ export async function fetchSpellCatalogPage({
   if (aliases.length && level !== '') {
     const n = safe(level);
 
-    conditions.push(`or(${aliases.map(alias => `lv.ilike.*${alias}${n}*`).join(',')})`);
+    // The level column is written both as "Sor1 Wiz1" and "Sor 1, Wiz 1": match both spellings.
+    conditions.push(
+      `or(${aliases.flatMap(alias => [`lv.ilike.*${alias}${n}*`, `lv.ilike.*${alias} ${n}*`]).join(',')})`,
+    );
   } else if (aliases.length) {
     conditions.push(`or(${aliases.map(alias => `lv.ilike.*${alias}*`).join(',')})`);
   } else if (level !== '' && !domainNames.length) {
@@ -229,6 +232,20 @@ export async function fetchSpellCatalogPage({
     total: Number.isFinite(total) ? total : rows.length,
     hasMore: offset + rows.length < total,
   };
+}
+
+/**
+ * Every spell that matches the filters, reading page after page. One request returns at most `pageSize` rows
+ * (PostgREST also caps it), so a class list with more spells than that would be cut off without this.
+ */
+export async function fetchSpellCatalogAll(filters = {}, pageSize = 500) {
+  const rows = [];
+  for (let offset = 0; offset < 20000; offset += pageSize) {
+    const page = await fetchSpellCatalogPage({ ...filters, offset, limit: pageSize });
+    rows.push(...page.rows);
+    if (!page.hasMore || page.rows.length < pageSize) break;
+  }
+  return { rows, total: rows.length, hasMore: false };
 }
 
 /**
@@ -521,7 +538,7 @@ export async function fetchItemsUsingSpell(slug, signal) {
   return [...byId.values()].sort((a, b) => String(a.name).localeCompare(String(b.name)));
 }
 
-/** DM read: the whole campaign, if the 4-digit code is right. Otherwise { error: 'wrong' | 'locked' }. */
+/** DM read: the whole campaign, if the 6-digit code is right. Otherwise { error: 'wrong' | 'locked' }. */
 export async function dmRead(pin) {
   const r = await fetch(SB_URL + '/rest/v1/rpc/dm_read', {
     method: 'POST',

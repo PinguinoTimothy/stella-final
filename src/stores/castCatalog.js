@@ -144,7 +144,7 @@ export const useCastCatalog = defineStore('castCatalog', () => {
     { immediate: true },
   );
 
-  /** Catalog spells of `level` for class `c` that match the search and are not already in its list (max 40). */
+  /** Catalog spells of `level` for class `c` that match the search and are not already in its list. */
   function catalogFor(c, level) {
     const q = search.value.trim().toLowerCase();
     return rows.value
@@ -153,8 +153,7 @@ export const useCastCatalog = defineStore('castCatalog', () => {
         if (!name || spell.dom || spellLevelFor(spell, c) !== Number(level)) return false;
         if (q && !name.toLowerCase().includes(q)) return false;
         return !(c?.sp?.[level] || []).some(k => !k.dom && sameName(k.n, name));
-      })
-      .slice(0, 40);
+      });
   }
 
   /* ----- domain spells: independent of the class list and of preparation ----- */
