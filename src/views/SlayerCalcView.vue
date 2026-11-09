@@ -91,8 +91,7 @@ async function onFile(e) {
       return;
     }
     sheet.value = s;
-    // Feats found in the sheet notes start switched on; the switches can still be changed.
-    options.seethingHatred = s.hasSeethingHatred;
+    // Lastwall Defender found in the sheet notes starts switched on; the switch can still be changed.
     options.lastwall = s.hasLastwall;
   } catch {
     error.value = 'Could not read this PDF.';
@@ -106,7 +105,6 @@ const options = reactive({
   studied: true,
   undead: false,
   sneak: false,
-  seethingHatred: false,
   lastwall: false,
   reduced: 0,
   focus: { attack: false, damage: false, skill: false, dc: false },
@@ -124,7 +122,8 @@ const calc = computed(() => {
     level: level.value,
     studied: options.studied,
     undead: options.undead,
-    seethingHatred: options.seethingHatred,
+    // Seething Hatred needs no switch: it applies by itself to a studied undead target when the sheet has the feat.
+    seethingHatred: !!sheet.value.hasSeethingHatred,
     lastwall: options.lastwall,
     sneak: options.sneak,
     focus: options.focus,
@@ -191,7 +190,6 @@ function clear() {
         <label class="slayer-check"><input v-model="options.studied" type="checkbox" /> Target is studied</label>
         <label class="slayer-check"><input v-model="options.undead" type="checkbox" /> Target is undead</label>
         <label class="slayer-check"><input v-model="options.sneak" type="checkbox" /> Sneak attack applies (flanked or denied Dex)</label>
-        <label class="slayer-check"><input v-model="options.seethingHatred" type="checkbox" /> Seething Hatred</label>
         <label class="slayer-check"><input v-model="options.lastwall" type="checkbox" /> Lastwall Defender (vs undead)</label>
         <label class="slayer-num">Target AC (optional) <input v-model="options.ac" type="number" min="0" inputmode="numeric" /></label>
 
