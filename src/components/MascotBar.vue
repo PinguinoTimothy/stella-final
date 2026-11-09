@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
+import { youtubeId } from '../lib/youtube';
 
 // Sprite sheets. Every cell is 176×176 and is shown at 96px.
 const CELL = 96;
@@ -22,8 +23,9 @@ const ANIMS = {
   vinyl: { sheet: 'extra', row: 1, frames: 8, speed: 4.8, time: 0 }, // putting the record on (0.6s per frame)
 };
 
-// Music: put the record on, then dance until the song ends. Songs come from a YouTube playlist, played in shuffle order.
-const PLAYLIST_ID = 'PLbd9yHyOxA03B9Y71cDbtGaHKlN3VulgA';
+// Music: put the record on, then dance until the song ends. The song is one YouTube video: paste its link here.
+const SONG_URL = 'https://www.youtube.com/watch?v=iDLmYZ5HqgM';
+const VIDEO_ID = youtubeId(SONG_URL);
 const VINYL_MS = ANIMS.vinyl.speed * 1000; // one pass of the record animation
 const SONG_CHECK_MS = 5000; // if the song has not started by then (sound blocked, player not loaded), stop dancing
 const SONG_MAX_MS = 15 * 60000; // safety net: never dance longer than this
@@ -96,9 +98,14 @@ function ensurePlayer() {
           player = new YT.Player(el, {
             height: '1',
             width: '1',
-            playerVars: { listType: 'playlist', list: PLAYLIST_ID, playsinline: 1 },
+            videoId: VIDEO_ID,
+            playerVars: { playsinline: 1 },
             events: {
-              onReady: () => ready(),
+              onReady: () => {
+                player.setVolume(100); // the player's maximum; it cannot go higher
+                player.unMute();
+                ready();
+              },
               onStateChange: onPlayerState,
             },
           });
@@ -151,10 +158,9 @@ function startDance() {
   ensurePlayer()
     .then(() => {
       if (anim.value !== 'dance') return;
-      // Start at a random track. Without a known list length, play from the start of the playlist.
-      const count = player.getPlaylist?.()?.length;
-      if (count) player.playVideoAt(Math.floor(Math.random() * count));
-      else player.playVideo();
+      player.unMute();
+      player.setVolume(100);
+      player.playVideo();
       // Browsers block sound until the user has interacted with the page. If the song has not started, stop dancing.
       checkTimer = setTimeout(() => {
         if (!playing) endSong();
@@ -170,7 +176,7 @@ function endSong() {
 
 /** Called when the mascot pauses while idle: it may put on a record, fall asleep, or walk somewhere. */
 function chooseIdleAction(now) {
-  if (now >= nextSongAt) return startSong();
+  if (VIDEO_ID && now >= nextSongAt) return startSong();
   pickTarget();
 }
 
