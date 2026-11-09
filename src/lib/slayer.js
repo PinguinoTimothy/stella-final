@@ -82,43 +82,78 @@ export function calcWeapon(weapon, opts = {}) {
   const focus = focusBonus(opts.focus, opts.reduced ?? 0);
   const studiedNow = studied ? studiedBonus(level) : 0;
   const lastwall = !!opts.lastwall && undead ? 1 : 0;
+  const effects = opts.effects || [];
 
-  const attack = (weapon.attack || 0) + (studied ? studiedNow + focus.attack : 0) + lastwall;
-
-  const damageStudied = studied ? studiedNow + focus.damage : 0;
-  const hatredMult = opts.seethingHatred && undead && studied ? 2 : 1;
-  const studiedDamage = damageStudied * hatredMult;
+  // Each bonus is listed on its own, so the total can be checked by hand.
+  const attackParts = [{ label: 'Sheet attack', value: weapon.attack || 0 }];
+  if (studied) attackParts.push({ label: 'Studied target', value: studiedNow });
+  if (studied && focus.attack) attackParts.push({ label: 'Legal Focused Target', value: focus.attack });
+  if (lastwall) attackParts.push({ label: 'Lastwall Defender', value: lastwall });
+  for (const e of activeEffects(effects, 'attack')) attackParts.push({ label: e.name, value: e.value });
+  const attack = sumParts(attackParts);
 
   const dice = parseDice(weapon.damage);
   const diceAvg = diceAverage(dice);
-  const flatAll = diceAvg + studiedDamage + lastwall;
+  const damageParts = [];
+  const damageStudied = studied ? studiedNow + focus.damage : 0;
+  if (damageStudied) damageParts.push({ label: 'Studied target', value: damageStudied });
+  const hatredDoubles = !!opts.seethingHatred && undead && studied;
+  if (hatredDoubles && damageStudied) damageParts.push({ label: 'Seething Hatred (doubles studied bonus)', value: damageStudied });
+  if (lastwall) damageParts.push({ label: 'Lastwall Defender', value: lastwall });
+  for (const e of activeEffects(effects, 'damage')) damageParts.push({ label: e.name, value: e.value });
+  const bonusFlat = sumParts(damageParts);
 
   const sneakCount = opts.sneak ? sneakDice(level) : 0;
   const sneakAvg = sneakCount * 3.5;
 
   const crit = parseCrit(weapon.crit);
   // Bonuses to damage rolls are multiplied on a critical. Sneak attack dice are not.
-  const critAvg = flatAll * crit.mult + sneakAvg;
+  const critAvg = (diceAvg + bonusFlat) * crit.mult + sneakAvg;
+
+  // Target armour class: the value given, lowered or raised by any effects on the target.
+  const acEffect = sumParts(activeEffects(effects, 'ac').map(e => ({ value: e.value })));
+  const targetAc = Number.isFinite(opts.ac) ? opts.ac + acEffect : undefined;
 
   return {
     name: weapon.name,
     attack,
-    damage: { dice: weapon.damage || '', average: flatAll + sneakAvg, sneakDice: sneakCount },
+    attackParts,
+    damage: {
+      dice: weapon.damage || '',
+      average: diceAvg + bonusFlat + sneakAvg,
+      diceAverage: diceAvg,
+      parts: damageParts,
+      sneakDice: sneakCount,
+      sneakAverage: sneakAvg,
+    },
     critical: { threshold: crit.threshold, mult: crit.mult, average: critAvg },
-    hit: hitChance(attack, opts.ac),
+    hit: hitChance(attack, targetAc),
+    targetAc,
   };
+}
+
+/** Effects that are switched on and apply to a kind (attack, damage, skill, dc, ac). */
+export function activeEffects(effects, kind) {
+  return (effects || []).filter(e => e && e.on !== false && e.kind === kind && Number.isFinite(Number(e.value)) && Number(e.value) !== 0)
+    .map(e => ({ name: e.name || 'Effect', value: Number(e.value) }));
+}
+
+function sumParts(parts) {
+  return parts.reduce((sum, p) => sum + (Number(p.value) || 0), 0);
 }
 
 /** Skill check bonus against the studied target. Only some skills count: Bluff, Knowledge, Perception, Sense Motive, Survival. */
 export function skillBonus(base, opts = {}) {
   const level = Number(opts.level) || 0;
   const focus = focusBonus(opts.focus, opts.reduced ?? 0);
-  return (base || 0) + (opts.studied ? studiedBonus(level) + focus.skill : 0);
+  const fromEffects = sumParts(activeEffects(opts.effects, 'skill'));
+  return (base || 0) + (opts.studied ? studiedBonus(level) + focus.skill : 0) + fromEffects;
 }
 
 /** Bonus to the DC of the Slayer's abilities against the studied target. */
 export function dcBonus(opts = {}) {
   const level = Number(opts.level) || 0;
   const focus = focusBonus(opts.focus, opts.reduced ?? 0);
-  return opts.studied ? studiedBonus(level) + focus.dc : 0;
+  const fromEffects = sumParts(activeEffects(opts.effects, 'dc'));
+  return (opts.studied ? studiedBonus(level) + focus.dc : 0) + fromEffects;
 }

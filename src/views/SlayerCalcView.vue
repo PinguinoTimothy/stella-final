@@ -7,6 +7,47 @@ import { readFormFields } from '../lib/sheetPdf';
 import { calcWeapon, dcBonus, skillBonus, studiedTargetSlots } from '../lib/slayer';
 
 const KEY = 'pf1e-slayer-sheet-v1';
+const EFFECTS_KEY = 'pf1e-slayer-effects-v1';
+const KINDS = [
+  { value: 'attack', label: 'Attack' },
+  { value: 'damage', label: 'Damage' },
+  { value: 'skill', label: 'Skills' },
+  { value: 'dc', label: 'DCs' },
+  { value: 'ac', label: 'Target AC' },
+];
+
+// Buffs and debuffs. Each has a name, the kind of roll it changes, a value (negative for a debuff) and an on switch.
+function loadEffects() {
+  try {
+    const v = JSON.parse(localStorage.getItem(EFFECTS_KEY) || '[]');
+    return Array.isArray(v) ? v.filter(e => e && KINDS.some(k => k.value === e.kind)) : [];
+  } catch {
+    return [];
+  }
+}
+const effects = ref(loadEffects());
+watch(
+  effects,
+  v => {
+    try {
+      localStorage.setItem(EFFECTS_KEY, JSON.stringify(v));
+    } catch {
+      // Storage full or disabled: the list still works until the page is closed.
+    }
+  },
+  { deep: true },
+);
+const draft = reactive({ name: '', kind: 'attack', value: '' });
+function addEffect() {
+  const value = Number(draft.value);
+  if (!draft.name.trim() || !Number.isFinite(value) || value === 0) return;
+  effects.value.push({ id: Date.now() + Math.random(), name: draft.name.trim(), kind: draft.kind, value, on: true });
+  draft.name = '';
+  draft.value = '';
+}
+function removeEffect(id) {
+  effects.value = effects.value.filter(e => e.id !== id);
+}
 
 function loadSaved() {
   try {
@@ -89,6 +130,7 @@ const calc = computed(() => {
     focus: options.focus,
     reduced: options.reduced,
     ac: acNumber.value,
+    effects: effects.value,
   };
   return sheet.value.weapons.map(w => calcWeapon(w, common));
 });
@@ -96,14 +138,17 @@ const calc = computed(() => {
 const skills = computed(() => {
   if (!sheet.value) return [];
   const wanted = ['Bluff', 'Knowledge (arcana)', 'Knowledge (religion)', 'Knowledge (nature)', 'Knowledge (planes)', 'Perception', 'Sense Motive', 'Survival'];
-  const common = { level: level.value, studied: options.studied, focus: options.focus, reduced: options.reduced };
+  const common = { level: level.value, studied: options.studied, focus: options.focus, reduced: options.reduced, effects: effects.value };
   return Object.entries(sheet.value.skills || {})
     .filter(([name]) => wanted.some(w => name.toLowerCase().startsWith(w.toLowerCase())))
     .map(([name, base]) => ({ name, bonus: skillBonus(base, common) }));
 });
 
-const dc = computed(() => (sheet.value ? dcBonus({ level: level.value, studied: options.studied, focus: options.focus, reduced: options.reduced }) : 0));
+const dc = computed(() =>
+  sheet.value ? dcBonus({ level: level.value, studied: options.studied, focus: options.focus, reduced: options.reduced, effects: effects.value }) : 0,
+);
 
+const kindLabel = kind => KINDS.find(k => k.value === kind)?.label || kind;
 const signed = n => (n >= 0 ? `+${n}` : `${n}`);
 const pct = p => (p == null ? '—' : `${Math.round(p * 100)}%`);
 const avg = n => (Math.round(n * 10) / 10).toString();
@@ -166,6 +211,30 @@ function clear() {
       </section>
 
       <section class="panel">
+        <h3 class="slayer-h">Buffs and debuffs</h3>
+        <ul v-if="effects.length" class="slayer-effects">
+          <li v-for="e in effects" :key="e.id">
+            <label class="slayer-check">
+              <input v-model="e.on" type="checkbox" :aria-label="`${e.name} on`" />
+              <span :class="{ off: !e.on }">{{ e.name }}</span>
+            </label>
+            <span class="mute">{{ kindLabel(e.kind) }} {{ signed(e.value) }}</span>
+            <button type="button" class="slayer-link" :aria-label="`Remove ${e.name}`" @click="removeEffect(e.id)">Remove</button>
+          </li>
+        </ul>
+        <p v-else class="mute">No buffs or debuffs. Add one below.</p>
+        <form class="slayer-add" @submit.prevent="addEffect">
+          <input v-model="draft.name" type="text" placeholder="Name (e.g. Bless, Sunder)" aria-label="Effect name" />
+          <select v-model="draft.kind" aria-label="Changes">
+            <option v-for="k in KINDS" :key="k.value" :value="k.value">{{ k.label }}</option>
+          </select>
+          <input v-model="draft.value" type="number" placeholder="+2 or -2" aria-label="Value" inputmode="numeric" />
+          <button type="submit">Add</button>
+        </form>
+        <p class="mute slayer-meta">Use a negative value for a debuff. A Target AC effect lowers or raises the target's AC.</p>
+      </section>
+
+      <section class="panel">
         <h3 class="slayer-h">Weapons</h3>
         <article v-for="w in calc" :key="w.name" class="slayer-weapon">
           <header>
@@ -178,8 +247,21 @@ function clear() {
           </p>
           <p>
             Crit {{ w.critical.threshold }}–20 <b>avg {{ avg(w.critical.average) }}</b>
-            <span v-if="acNumber != null">· hit {{ pct(w.hit) }}</span>
+            <span v-if="acNumber != null">· hit {{ pct(w.hit) }}<span v-if="w.targetAc !== acNumber"> vs AC {{ w.targetAc }}</span></span>
           </p>
+          <details class="slayer-break">
+            <summary>How it adds up</summary>
+            <p><b>Attack {{ signed(w.attack) }}:</b> {{ w.attackParts.map(p => `${p.label} ${signed(p.value)}`).join(' · ') }}</p>
+            <p>
+              <b>Damage avg {{ avg(w.damage.average) }}:</b>
+              dice {{ w.damage.dice }} = {{ avg(w.damage.diceAverage) }}
+              <template v-for="p in w.damage.parts" :key="p.label"> · {{ p.label }} {{ signed(p.value) }}</template>
+              <template v-if="w.damage.sneakDice"> · sneak {{ w.damage.sneakDice }}d6 = {{ avg(w.damage.sneakAverage) }}</template>
+            </p>
+            <p>
+              <b>Crit avg {{ avg(w.critical.average) }}:</b> dice and bonuses × {{ w.critical.mult }}, sneak dice not multiplied
+            </p>
+          </details>
         </article>
         <p v-if="!calc.length" class="mute">No weapons on this sheet.</p>
       </section>
@@ -254,6 +336,44 @@ function clear() {
 }
 .slayer-weapon:first-of-type {
   border-top: 0;
+}
+.slayer-effects {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.slayer-effects li {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+.slayer-effects .off {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+.slayer-add {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1.2fr) minmax(0, 0.8fr) auto;
+  gap: 6px;
+  align-items: center;
+}
+.slayer-add input,
+.slayer-add select {
+  min-width: 0;
+}
+.slayer-break {
+  margin-top: 6px;
+  font-size: 0.92rem;
+}
+.slayer-break summary {
+  color: var(--mute, #93b6ba);
+  cursor: pointer;
+}
+.slayer-break p {
+  margin: 4px 0;
 }
 .slayer-weapon header {
   display: flex;
