@@ -120,6 +120,9 @@ export function calcWeapon(weapon, opts = {}) {
     attackParts,
     damage: {
       dice: weapon.damage || '',
+      // The dice alone (1d8), and the flat bonus added to them: the sheet's own +N plus every bonus above.
+      diceText: dice ? `${dice.count}d${dice.sides}` : weapon.damage || '',
+      flat: (dice ? dice.flat : 0) + bonusFlat,
       average: diceAvg + bonusFlat + sneakAvg,
       diceAverage: diceAvg,
       parts: damageParts,

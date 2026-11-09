@@ -151,7 +151,6 @@ const dc = computed(() =>
 const kindLabel = kind => KINDS.find(k => k.value === kind)?.label || kind;
 const signed = n => (n >= 0 ? `+${n}` : `${n}`);
 const pct = p => (p == null ? '—' : `${Math.round(p * 100)}%`);
-const avg = n => (Math.round(n * 10) / 10).toString();
 
 function clear() {
   if (window.confirm('Remove the saved sheet from this device?')) sheet.value = null;
@@ -236,33 +235,26 @@ function clear() {
 
       <section class="panel">
         <h3 class="slayer-h">Weapons</h3>
-        <article v-for="w in calc" :key="w.name" class="slayer-weapon">
-          <header>
-            <b>{{ w.name }}</b>
-            <span>Attack <b>{{ signed(w.attack) }}</b></span>
-          </header>
-          <p>
-            Damage {{ w.damage.dice }} <b>avg {{ avg(w.damage.average) }}</b>
-            <span v-if="w.damage.sneakDice">· +{{ w.damage.sneakDice }}d6 sneak</span>
-          </p>
-          <p>
-            Crit {{ w.critical.threshold }}–20 <b>avg {{ avg(w.critical.average) }}</b>
-            <span v-if="acNumber != null">· hit {{ pct(w.hit) }}<span v-if="w.targetAc !== acNumber"> vs AC {{ w.targetAc }}</span></span>
-          </p>
-          <details class="slayer-break">
-            <summary>How it adds up</summary>
-            <p><b>Attack {{ signed(w.attack) }}:</b> {{ w.attackParts.map(p => `${p.label} ${signed(p.value)}`).join(' · ') }}</p>
+        <details v-for="w in calc" :key="w.name" class="slayer-weapon">
+          <summary>
+            <b class="slayer-wname">{{ w.name }}</b>
+            <span class="slayer-atk">{{ signed(w.attack) }}</span>
+            <span class="slayer-dmg">
+              {{ w.damage.diceText }} {{ signed(w.damage.flat) }}<template v-if="w.damage.sneakDice"> + {{ w.damage.sneakDice }}d6 sneak</template>
+            </span>
+          </summary>
+          <div class="slayer-break">
+            <p><b>To hit:</b> {{ w.attackParts.map(p => `${p.label} ${signed(p.value)}`).join(' · ') }}</p>
             <p>
-              <b>Damage avg {{ avg(w.damage.average) }}:</b>
-              dice {{ w.damage.dice }} = {{ avg(w.damage.diceAverage) }}
+              <b>Damage:</b> {{ w.damage.diceText }}
+              <template v-if="w.damage.flat"> · dice bonus {{ signed(w.damage.flat) }}</template>
               <template v-for="p in w.damage.parts" :key="p.label"> · {{ p.label }} {{ signed(p.value) }}</template>
-              <template v-if="w.damage.sneakDice"> · sneak {{ w.damage.sneakDice }}d6 = {{ avg(w.damage.sneakAverage) }}</template>
+              <template v-if="w.damage.sneakDice"> · sneak {{ w.damage.sneakDice }}d6 (not multiplied on a crit)</template>
             </p>
-            <p>
-              <b>Crit avg {{ avg(w.critical.average) }}:</b> dice and bonuses × {{ w.critical.mult }}, sneak dice not multiplied
-            </p>
-          </details>
-        </article>
+            <p><b>Crit:</b> {{ w.critical.threshold }}–20, ×{{ w.critical.mult }} on dice and bonuses</p>
+            <p v-if="acNumber != null"><b>Hit:</b> {{ pct(w.hit) }} vs AC {{ w.targetAc }}</p>
+          </div>
+        </details>
         <p v-if="!calc.length" class="mute">No weapons on this sheet.</p>
       </section>
 
@@ -381,8 +373,27 @@ function clear() {
   gap: 8px;
   flex-wrap: wrap;
 }
-.slayer-weapon p {
-  margin: 4px 0 0;
+.slayer-weapon summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  cursor: pointer;
+  list-style: none;
+}
+.slayer-weapon summary::-webkit-details-marker {
+  display: none;
+}
+.slayer-wname {
+  font-size: 1.02rem;
+}
+.slayer-atk {
+  font-weight: 700;
+  color: var(--acc, #a99bff);
+}
+.slayer-dmg {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 .slayer-skills {
   list-style: none;
