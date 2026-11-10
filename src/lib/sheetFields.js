@@ -83,6 +83,7 @@ export function readSheet(f) {
     hasRapidShot: hasNote('rapid shot'),
     hasManyShot: hasNote('many shot') || hasNote('manyshot'),
     hasPointBlank: hasNote('point blank') || hasNote('pointblank'),
+    hasDeadlyAim: hasNote('deadly aim'),
     skills: readSkills(f),
   };
 }

@@ -5,7 +5,7 @@ import { computed, reactive, ref, watch } from 'vue';
 import { readSheet } from '../lib/sheetFields';
 import { readFormFields } from '../lib/sheetPdf';
 import { calcWeapon, dcBonus, skillBonus, studiedTargetSlots } from '../lib/slayer';
-import { attackModes } from '../lib/attacks';
+import { attackModes, deadlyAimStep } from '../lib/attacks';
 
 const KEY = 'pf1e-slayer-sheet-v1';
 const EFFECTS_KEY = 'pf1e-slayer-effects-v1';
@@ -95,6 +95,7 @@ async function onFile(e) {
     options.lastwall = s.hasLastwall;
     // Point Blank Shot found in the sheet notes starts switched on for this fight.
     options.pointBlank = s.hasPointBlank;
+    options.deadlyAim = s.hasDeadlyAim;
   } catch {
     error.value = 'Could not read this PDF.';
   } finally {
@@ -110,6 +111,7 @@ const options = reactive({
   lastwall: false,
   reduced: 0,
   pointBlank: false,
+  deadlyAim: false,
   focus: { attack: false, damage: false, skill: false, dc: false },
 });
 
@@ -151,7 +153,10 @@ const calc = computed(() => {
     const pointBlank = ranged && options.pointBlank;
     // Point Blank Shot's +1 damage goes in as a damage effect; its +1 attack is added by attackModes.
     const pbDamage = pointBlank ? [{ name: 'Point Blank Shot', kind: 'damage', value: 1, on: true }] : [];
-    const base = calcWeapon(w, { ...common, effects: [...effects.value, ...pbDamage] });
+    // Deadly Aim: its attack penalty is taken in attackModes; its damage bonus goes in as a damage effect.
+    const deadly = ranged && options.deadlyAim ? deadlyAimStep(sheet.value.bab) : null;
+    const deadlyDamage = deadly ? [{ name: 'Deadly Aim', kind: 'damage', value: deadly.bonus, on: true }] : [];
+    const base = calcWeapon(w, { ...common, effects: [...effects.value, ...pbDamage, ...deadlyDamage] });
 
     // Attack bonus = base attack bonus + ability modifier + everything the calculator adds (studied, buffs…).
     // The sheet's own attack number is not used, because it is already a list of attacks.
@@ -167,15 +172,17 @@ const calc = computed(() => {
       rapidShot: !!sheet.value.hasRapidShot,
       manyShot: !!sheet.value.hasManyShot,
       pointBlank,
+      deadlyAim: !!deadly,
     });
     const pb = pointBlank ? ' · Point Blank +1' : '';
+    const da = deadly ? ` · Deadly Aim −${deadly.penalty} atk / +${deadly.bonus} dmg` : '';
     const other = extras ? ` · other ${signed(extras)}` : '';
     return {
       name: w.name,
       modes,
       damage: base.damage,
       critical: base.critical,
-      breakdown: `BAB ${signed(sheet.value.bab)} · ${ranged ? 'Dex' : 'Str'} ${signed(abilityMod)}${pb}${other}`,
+      breakdown: `BAB ${signed(sheet.value.bab)} · ${ranged ? 'Dex' : 'Str'} ${signed(abilityMod)}${pb}${da}${other}`,
     };
   });
 });
@@ -218,7 +225,6 @@ const dc = computed(() =>
 
 const kindLabel = kind => KINDS.find(k => k.value === kind)?.label || kind;
 const signed = n => (n >= 0 ? `+${n}` : `${n}`);
-const attackLine = modes => (modes[0] ? modes[0].attacks.map(a => signed(a.bonus)).join(' / ') : '');
 
 function clear() {
   if (window.confirm('Remove the saved sheet from this device?')) sheet.value = null;
@@ -271,6 +277,10 @@ function clear() {
         >
         <label class="slayer-check"
           ><input v-model="options.pointBlank" type="checkbox" /> Point Blank Shot (within 30 ft)</label
+        >
+        <label class="slayer-check"
+          ><input v-model="options.deadlyAim" type="checkbox" /> Deadly Aim (ranged: −1 attack, +2 damage per
+          step)</label
         >
 
         <div v-if="hasFocusFeat" class="slayer-focus">
