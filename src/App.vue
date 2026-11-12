@@ -6,6 +6,8 @@ import { useViewerPolling } from './composables/useViewerPolling';
 import BottomNav from './components/BottomNav.vue';
 import MascotBar from './components/MascotBar.vue';
 import ConfirmDialog from './components/ConfirmDialog.vue';
+import SheetDock from './components/Sheets/SheetDock.vue';
+import SheetPanel from './components/Sheets/SheetPanel.vue';
 import ToastHost from './components/ToastHost.vue';
 import LoginView from './views/LoginView.vue';
 import PlaceholderView from './views/PlaceholderView.vue';
@@ -37,6 +39,7 @@ const MapsView = lazyView(() => import('./views/MapsView.vue'));
 const FeatsView = lazyView(() => import('./views/FeatsView.vue'));
 const RulesView = lazyView(() => import('./views/RulesView.vue'));
 const SlayerCalcView = lazyView(() => import('./views/SlayerCalcView.vue'));
+const SheetsView = lazyView(() => import('./views/SheetsView.vue'));
 const app = useAppStore();
 const cloud = useCloudStore();
 useViewerPolling();
@@ -67,6 +70,7 @@ const editorViews = {
   feats: FeatsView,
   rules: RulesView,
   slayer: SlayerCalcView,
+  sheets: SheetsView,
 };
 
 const playerViews = {
@@ -113,6 +117,10 @@ const title = computed(() => titles[app.ui.tab] || (app.viewer ? app.ui.tab : ''
       <PlaceholderView v-else :key="`placeholder-${app.ui.tab}`" :title="title" />
     </Transition>
     <ToastHost />
+    <template v-if="!app.viewer">
+      <SheetDock />
+      <SheetPanel />
+    </template>
     <CombatPanel v-if="app.mode !== 'player'" />
     <ConfirmDialog />
     <ReferenceSearch />

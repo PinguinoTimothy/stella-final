@@ -226,3 +226,25 @@ begin
 end $$;
 revoke all on function public.apply_changes(bigint, jsonb, boolean) from public, anon;
 grant execute on function public.apply_changes(bigint, jsonb, boolean) to authenticated;
+
+-- =====================================================================
+--  Hojas de personaje (PDF rellenable). El PDF va a Storage (bucket privado)
+--  y los valores de los campos a la tabla sheets. Solo el admin escribe.
+-- =====================================================================
+create table if not exists public.sheets (
+  id text primary key,
+  name text not null default '',
+  storage_path text not null,
+  fields jsonb not null default '{}',
+  updated_at timestamptz not null default now()
+);
+alter table public.sheets enable row level security;
+create policy "admin sheets" on public.sheets for all to authenticated
+  using (public.is_admin()) with check (public.is_admin());
+grant select, insert, update, delete on public.sheets to authenticated;
+
+insert into storage.buckets (id, name, public) values ('character-sheets', 'character-sheets', false)
+  on conflict (id) do nothing;
+create policy "admin sheet files" on storage.objects for all to authenticated
+  using (bucket_id = 'character-sheets' and public.is_admin())
+  with check (bucket_id = 'character-sheets' and public.is_admin());

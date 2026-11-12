@@ -312,6 +312,7 @@ export const useCloudStore = defineStore('cloud', () => {
     state,
     status,
     dirty,
+    getToken: token,
     signIn,
     signOut,
     sync,

@@ -14,6 +14,7 @@ function openTab(
     | 'equipmentCatalog'
     | 'maps'
     | 'skills'
+    | 'sheets'
     | 'umr'
     | 'grapple'
     | 'conditions'
@@ -108,6 +109,13 @@ function openTab(
       <b>AOO y Concentracion</b>
     </span>
     <span aria-hidden="true">›</span>
+  </button>
+
+  <button class="more-row setup-link" @click="openTab('sheets')">
+    <span>
+      <b>Character sheets</b>
+    </span>
+    <i>›</i>
   </button>
 
   <button class="more-row setup-link" @click="openTab('skills')">
