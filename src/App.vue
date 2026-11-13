@@ -118,10 +118,8 @@ const title = computed(() => titles[app.ui.tab] || (app.viewer ? app.ui.tab : ''
       <PlaceholderView v-else :key="`placeholder-${app.ui.tab}`" :title="title" />
     </Transition>
     <ToastHost />
-    <template v-if="!app.viewer">
-      <SheetDock />
-      <SheetPanel />
-    </template>
+    <SheetDock />
+    <SheetPanel />
     <CombatPanel v-if="app.mode !== 'player'" />
     <ConfirmDialog />
     <ReferenceSearch />
