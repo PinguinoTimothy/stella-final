@@ -88,6 +88,7 @@ const playerViews = {
   feats: FeatsView,
   rules: RulesView,
   slayer: SlayerCalcView,
+  sheets: SheetsView,
 };
 
 const titles = { cast: 'Cast', fx: 'Active effects', db: 'Spells' };
