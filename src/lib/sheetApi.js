@@ -31,8 +31,8 @@ export async function downloadPdf(tok, path) {
 }
 
 export async function listSheets(tok) {
-  const r = await fetch(`${SB_URL}/rest/v1/sheets?select=id,name,storage_path,fields,updated_at&order=name.asc`, {
-    headers: auth(tok),
+const r = await fetch(`${SB_URL}/rest/v1/sheets?select=id,name,storage_path,fields,updated_at,shared&order=name.asc`, {
+      headers: auth(tok),
     cache: 'no-store',
   });
   if (!r.ok) await failed(r);

@@ -29,7 +29,12 @@ async function onFile(e) {
 }
 
 async function remove(s) {
-  const ok = await app.ask({ title: 'Delete sheet?', msg: `${s.name} and its saved values will be deleted.`, ok: 'Delete', danger: true });
+  const ok = await app.ask({
+    title: 'Delete sheet?',
+    msg: `${s.name} and its saved values will be deleted.`,
+    ok: 'Delete',
+    danger: true,
+  });
   if (ok) await sheets.remove(s.id);
 }
 </script>
@@ -39,10 +44,12 @@ async function remove(s) {
 
   <section class="panel">
     <p class="mute" style="margin: 0 0 10px">
-      Upload a fillable PDF sheet. It stays in your cloud, opens in a viewer you can minimize, and its fields can be edited here.
+      <label class="sh-up" data-write :aria-disabled="busy"></label>
+      Upload a fillable PDF sheet. It stays in your cloud, opens in a viewer you can minimize, and its fields can be
+      edited here.
     </p>
     <label class="sh-up" :aria-disabled="busy">
-      <input type="file" accept="application/pdf" :disabled="busy" @change="onFile">
+      <input type="file" accept="application/pdf" :disabled="busy" @change="onFile" />
       <span>{{ busy ? 'Uploading…' : 'Upload a PDF' }}</span>
     </label>
     <p v-if="msg" class="mute" role="status">{{ msg }}</p>
@@ -54,7 +61,10 @@ async function remove(s) {
       <strong>{{ s.name }}</strong>
       <span class="mute">{{ Object.keys(s.fields || {}).length }} saved values</span>
     </button>
-    <button class="danger" :aria-label="'Delete ' + s.name" @click="remove(s)">Delete</button>
+    <button class="danger" data-write :aria-label="'Delete ' + s.name" @click="remove(s)">Delete</button>
+    <button class="sh-share" data-write :aria-pressed="!!s.shared" @click="sheets.toggleShared(s.id)">
+      {{ s.shared ? 'Shared' : 'Share' }}
+    </button>
   </section>
 
   <p v-if="!sheets.list.length && !sheets.error" class="mute">No sheets yet.</p>

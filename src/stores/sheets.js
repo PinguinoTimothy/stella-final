@@ -7,6 +7,8 @@ import * as api from '../lib/sheetApi';
 import { fillPdf, readFields } from '../lib/sheet';
 import { recalc } from '../lib/sheetCalc';
 import { uid } from '../lib/format';
+import { useAppStore } from './app';
+import { SB_ANON } from '../lib/supabase';
 
 const OPEN_KEY = 'pf1e-sheet-open';
 const pendingKey = id => `pf1e-sheet-pending-${id}`;
@@ -35,7 +37,16 @@ export const useSheetsStore = defineStore('sheets', () => {
   let timer = 0;
 
   const current = computed(() => list.value.find(s => s.id === currentId.value) || null);
-  const token = () => cloud.getToken();
+  const app = useAppStore();
+  // Viewers and the DM have no login: they read as anon, and the database decides what they see.
+  const readOnly = computed(() => app.mode !== 'dev');
+  const token = async () => {
+    try {
+      return (await cloud.getToken()) || SB_ANON;
+    } catch {
+      return SB_ANON;
+    }
+  };
 
   async function refresh() {
     try {
@@ -47,6 +58,7 @@ export const useSheetsStore = defineStore('sheets', () => {
   }
 
   async function upload(file) {
+    if (readOnly.value) throw new Error('Read only: only the dev can upload sheets.');
     const id = uid();
     const path = `${id}.pdf`;
     const data = new Uint8Array(await file.arrayBuffer());
@@ -102,6 +114,7 @@ export const useSheetsStore = defineStore('sheets', () => {
   }
 
   function setField(name, value) {
+    if (readOnly.value) return;
     values[name] = value;
     const pending = readPending(currentId.value);
     pending[name] = value;
@@ -134,10 +147,18 @@ export const useSheetsStore = defineStore('sheets', () => {
   }
 
   async function remove(id) {
+    if (readOnly.value) return;
     const row = list.value.find(s => s.id === id);
     if (!row) return;
     await api.deleteSheet(await token(), id, row.storage_path);
     if (currentId.value === id) close();
+    await refresh();
+  }
+
+  async function toggleShared(id) {
+    const row = list.value.find(s => s.id === id);
+    if (!row || readOnly.value) return;
+    await api.setShared(await token(), id, !row.shared);
     await refresh();
   }
 
@@ -159,7 +180,31 @@ export const useSheetsStore = defineStore('sheets', () => {
   }
 
   return {
-    list, error, currentId, current, panel, schema, values, bytes, status, calcs, decimals, calcTick, lastCalc,
-    refresh, upload, open, setField, saveNow, exportPdf, remove, minimize, restore, close, dismiss,
+    list,
+    error,
+    currentId,
+    current,
+    panel,
+    schema,
+    values,
+    bytes,
+    status,
+    calcs,
+    decimals,
+    calcTick,
+    lastCalc,
+    refresh,
+    upload,
+    open,
+    setField,
+    saveNow,
+    exportPdf,
+    remove,
+    minimize,
+    restore,
+    close,
+    dismiss,
+    readOnly,
+    toggleShared,
   };
 });
