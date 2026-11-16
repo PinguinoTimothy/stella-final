@@ -25,7 +25,15 @@ export async function uploadPdf(tok, path, bytes) {
 }
 
 export async function downloadPdf(tok, path) {
-  const r = await fetch(`${SB_URL}/storage/v1/object/authenticated/${BUCKET}/${path}`, { headers: auth(tok), cache: 'no-store' });
+  const r1 = await fetch(`${SB_URL}/storage/v1/object/sign/${BUCKET}/${path}`, {
+    method: 'POST',
+    headers: { ...auth(tok), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ expiresIn: 3600 }),
+    cache: 'no-store',
+  });
+  if (!r1.ok) await failed(r1);
+  const { signedURL, signedUrl } = await r1.json();
+  const r = await fetch(`${SB_URL}/storage/v1${signedURL || signedUrl}`, { cache: 'no-store' });
   if (!r.ok) await failed(r);
   return new Uint8Array(await r.arrayBuffer());
 }
@@ -62,4 +70,13 @@ export async function deleteSheet(tok, id, path) {
   const r1 = await fetch(`${SB_URL}/rest/v1/sheets?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE', headers: h });
   if (!r1.ok) await failed(r1);
   await fetch(`${SB_URL}/storage/v1/object/${BUCKET}/${path}`, { method: 'DELETE', headers: h });
+}
+
+export async function setShared(tok, id, shared) {
+  const r = await fetch(`${SB_URL}/rest/v1/sheets?id=eq.${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    headers: { ...auth(tok), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+    body: JSON.stringify({ shared }),
+  });
+  if (!r.ok) await failed(r);
 }
